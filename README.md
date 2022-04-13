@@ -30,7 +30,11 @@ The setup and prerequisites for both are a bit different.
 - An account with permissions to access the AWS environment you want to acquire data from
 
 **Setup**
+AWS CLI
+Configure AWS account:
+$aws configure 
 
+Note: This requires the AWS Access Key ID for the account you use to run the script.
 
 **Usage**
 AWS CloudShell:
