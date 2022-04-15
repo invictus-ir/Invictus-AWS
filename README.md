@@ -10,6 +10,7 @@ The goal for Invictus-AWS is to allow incident responders or other security pers
 
 Want to know more about this project?
 We did a talk at FIRST Amsterdam 2022 and the slides are available here:
+https://github.com/invictus-ir/talks/blob/main/FIRST_2022_TC_AMS_Presentation.pdf
 
 
 **Getting started**
