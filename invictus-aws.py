@@ -48,7 +48,7 @@ def create_s3_if_not_exists(region, bucket_name):
     return bucket_name
 
 def print_json(data):
-    data = json.dumps(data, indent=4)
+    data = json.dumps(data, indent=4, default=str)
     print(data)
 
 def is_list(list_data):
@@ -117,7 +117,7 @@ class Enumeration:
         self.enumerate_cloudtrail_logs()
         self.enumerate_cloudtrail_trails()
 
-        write_s3(self.bucket, ENUMERATION_KEY, json.dumps(self.services, indent=4))
+        write_s3(self.bucket, ENUMERATION_KEY, json.dumps(self.services, indent=4, default=str))
         return self.active_services
 
     def enumerate_s3(self):
@@ -462,7 +462,7 @@ class Configuration:
         self.get_configuration_maciev2()
         self.get_configuration_cloudtrail()
 
-        write_s3(self.bucket, CONFIGURATION_KEY, json.dumps(self.results, indent=4))
+        write_s3(self.bucket, CONFIGURATION_KEY, json.dumps(self.results, indent=4, default=str))
         return
 
     def get_configuration_s3(self):
@@ -1185,7 +1185,7 @@ class Logs:
         results.append(create_command('guardduty get-findings --detector-id <id> --findings-id <ids>', findings_data))
 
         self.display_progress(len(results), 'guardduty')
-        write_s3(self.bucket, LOGS_KEY + 'guardduty/guardduty.json', json.dumps(results, indent=4))
+        write_s3(self.bucket, LOGS_KEY + 'guardduty/guardduty.json', json.dumps(results, indent=4, default=str))
         return
 
     def cloudtrail_lookup(self, token = None):
@@ -1215,7 +1215,7 @@ class Logs:
 
         response['Events'] = events
         logs = fix_json(response)
-        write_s3(self.bucket, LOGS_KEY + 'cloudtrail/cloudtrail.json', json.dumps(logs, indent=4))
+        write_s3(self.bucket, LOGS_KEY + 'cloudtrail/cloudtrail.json', json.dumps(logs, indent=4, default=str))
         self.display_progress(1, 'cloudtrail-logs')
 
     def get_logs_cloudtrail_trails(self):
@@ -1349,7 +1349,7 @@ class Logs:
         results.append(create_command('cloudwatch describe-alarms --name <name>', alarms))
 
         self.display_progress(len(results), 'cloudwatch')
-        write_s3(self.bucket, LOGS_KEY + 'cloudwatch/cloudwatch.json', json.dumps(results, indent=4))
+        write_s3(self.bucket, LOGS_KEY + 'cloudwatch/cloudwatch.json', json.dumps(results, indent=4, default=str))
         return
 
     def copy_s3_bucket(self, src_bucket, dst_bucket, key_part):
@@ -1414,7 +1414,7 @@ class Logs:
         results.append(create_command("aws inspector2 list-finding-aggregations --aggregation-type TITLE" , get_grouped_findings))
 
         self.display_progress(len(results), 'inspector')
-        write_s3(self.bucket, LOGS_KEY + 'inspector/inspector.json', json.dumps(results, indent=4))
+        write_s3(self.bucket, LOGS_KEY + 'inspector/inspector.json', json.dumps(results, indent=4, default=str))
         return
 
     def get_logs_maciev2(self):
@@ -1436,7 +1436,7 @@ class Logs:
         results.append(create_command("aws macie2 get-findings --finding-ids <ID>" , findings))
 
         self.display_progress(len(results), 'macie')
-        write_s3(self.bucket, LOGS_KEY + 'macie/macie.json', json.dumps(results, indent=4))
+        write_s3(self.bucket, LOGS_KEY + 'macie/macie.json', json.dumps(results, indent=4, default=str))
         return
 
     def create_json(self):
@@ -1612,7 +1612,7 @@ class Logs:
             total_logs.append(self.download_rds(db["DBInstanceIdentifier"], rds,'error/mysql-error.log'))
 
         self.display_progress(len(list_of_dbs), 'rds')
-        write_s3(self.bucket, LOGS_KEY + 'rds/rds.json', json.dumps(total_logs, indent=4))
+        write_s3(self.bucket, LOGS_KEY + 'rds/rds.json', json.dumps(total_logs, indent=4, default=str))
         return
 
     def get_logs_route53(self):
