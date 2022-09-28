@@ -42,8 +42,8 @@ def create_s3_if_not_exists(region, bucket_name):
     print("Logs bucket does not exists, creating it now: " + bucket_name)
     try:
         response = s3.create_bucket(Bucket=bucket_name, CreateBucketConfiguration={'LocationConstraint':region,},)
-    except ClientError:
-        print("ERROR: Bucket already exists")
+    except ClientError as e:
+        print(e)
         sys.exit(-1)
     return bucket_name
 
