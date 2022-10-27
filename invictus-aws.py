@@ -36,9 +36,9 @@ def create_s3_if_not_exists(region, bucket_name):
         Note that for region=us-east-1, AWS necessitates that you leave LocationConstraint blank
         https://docs.aws.amazon.com/AmazonS3/latest/API/API_CreateBucket.html#API_CreateBucket_RequestBody
     '''
-    s3 = boto3.client('s3')
+    s3 = boto3.client('s3',region_name=region)
     response = s3.list_buckets()
-
+    
     for bkt in response['Buckets']:
         if bkt['Name'] == bucket_name:
             return bucket_name
@@ -50,6 +50,7 @@ def create_s3_if_not_exists(region, bucket_name):
         bucket_config['CreateBucketConfiguration'] = {
             'LocationConstraint': region
         }
+    
     try:
         response = s3.create_bucket(Bucket=bucket_name, **bucket_config)
     except ClientError as e:
