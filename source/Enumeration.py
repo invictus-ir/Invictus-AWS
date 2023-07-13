@@ -5,13 +5,14 @@ class Enumeration:
     services = {}
     bucket = ""
     region = None
+    dl = None
 
     def __init__(self, region, dl):
-        if dl:
-            print("ff")
-        else:
-            # self.bucket = create_s3_if_not_exists(region, PREPARATION_BUCKET)
-            print("==")
+        self.dl = dl
+        self.region = region
+
+        if not self.dl:
+            self.bucket = create_s3_if_not_exists(self.region, PREPARATION_BUCKET)
 
     def self_test(self):
         print("Enumeration works")
@@ -45,12 +46,23 @@ class Enumeration:
 
         self.enumerate_cloudtrail_logs()
         self.enumerate_cloudtrail_trails()
-        #
-        # write_s3(
-        #    self.bucket,
-        #    ENUMERATION_KEY,
-        #    json.dumps(self.services, indent=4, default=str),
-        # )
+
+        if self.dl:
+            confs = ROOT_FOLDER + self.region + "/enumeration/"
+            create_folder(confs)
+            for el in self.services:
+                if self.services[el]["count"] != 0:
+                    write_file(
+                        confs + f"{el}_enumeration.json",
+                        "w",
+                        json.dumps(self.services[el], indent=4, default=str),
+                    )
+        else:
+            write_s3(
+                self.bucket,
+                ENUMERATION_KEY,
+                json.dumps(self.services, indent=4, default=str),
+            )
         return self.services
 
     def enumerate_s3(self):

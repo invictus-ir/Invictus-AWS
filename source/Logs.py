@@ -1,18 +1,23 @@
-import boto3, os, time
+import boto3, os, time, requests
 
 from source.utils import *
 
 
 class Logs:
-    bucket = ""
-    region = ""
+    bucket = None
+    region = None
+    dl = None
+    confs = None
 
     def __init__(self, region, dl):
+        self.region = region
+
         if dl:
-            print("ff")
+            self.dl = dl
+            self.confs = ROOT_FOLDER + self.region + "/logs/"
+            create_folder(self.confs)
         else:
-            # self.bucket = create_s3_if_not_exists(region, LOGS_BUCKET)
-            print("==")
+            self.bucket = create_s3_if_not_exists(self.region, LOGS_BUCKET)
 
     def self_test(self):
         print("Logs work")
@@ -21,19 +26,19 @@ class Logs:
         print("Log Extraction")
         self.services = services
 
-        self.get_logs_s3()
-        self.get_logs_wafv2()
-        self.get_logs_vpc()
-        self.get_logs_elasticbeanstalk()
-
-        self.get_logs_route53()
-        self.get_logs_ec2()
-        self.get_logs_rds()
-
-        self.get_logs_cloudwatch()
-        self.get_logs_guardduty()
-        self.get_logs_inspector2()
-        self.get_logs_maciev2()
+        # self.get_logs_s3()
+        # self.get_logs_wafv2()
+        # self.get_logs_vpc()
+        # self.get_logs_elasticbeanstalk()
+        #
+        # self.get_logs_route53()
+        # self.get_logs_ec2()
+        # self.get_logs_rds()
+        #
+        # self.get_logs_cloudwatch()
+        # self.get_logs_guardduty()
+        # self.get_logs_inspector2()
+        # self.get_logs_maciev2()
 
         self.get_logs_cloudtrail_logs()
         self.get_logs_cloudtrail_trails()
@@ -77,12 +82,20 @@ class Logs:
             )
         )
 
+        if self.dl:
+            write_file(
+                self.confs + "guardduty_logs.json",
+                "w",
+                json.dumps(results, indent=4, default=str),
+            )
+        else:
+            write_s3(
+                self.bucket,
+                LOGS_KEY + "guardduty/guardduty.json",
+                json.dumps(results, indent=4, default=str),
+            )
+
         self.display_progress(len(results), "guardduty")
-        write_s3(
-            self.bucket,
-            LOGS_KEY + "guardduty/guardduty.json",
-            json.dumps(results, indent=4, default=str),
-        )
 
     def cloudtrail_lookup(self, token=None):
         if token is None:
@@ -119,11 +132,19 @@ class Logs:
             self.display_progress(0, "cloudtrail")
             return
 
-        # write_s3(
-        #    self.bucket,
-        #    LOGS_KEY + "cloudtrail/cloudtrail.json",
-        #    json.dumps(logs, indent=4, default=str),
-        # )
+        if self.dl:
+            write_file(
+                self.confs + "cloudtrail_logs.json",
+                "w",
+                json.dumps(logs, indent=4, default=str),
+            )
+        else:
+            write_s3(
+                self.bucket,
+                LOGS_KEY + "cloudtrail/cloudtrail.json",
+                json.dumps(logs, indent=4, default=str),
+            )
+
         self.display_progress(1, "cloudtrail-logs")
 
     def get_logs_cloudtrail_trails(self):
@@ -154,7 +175,11 @@ class Logs:
             if "Trail" not in response or "S3BucketName" not in response["Trail"]:
                 continue
             src_bucket = response["Trail"]["S3BucketName"]
-            self.copy_s3_bucket(src_bucket, self.bucket, "cloudtrail/" + trail_name)
+
+            if self.dl:
+                run_s3_dl(src_bucket, self.confs + "cloudtrail-trails/")
+            else:
+                self.copy_s3_bucket(src_bucket, self.bucket, "cloudtrail/" + trail_name)
 
         self.display_progress(1, "cloudtrail-trails")
 
@@ -166,19 +191,21 @@ class Logs:
             response.pop("ResponseMetadata", None)
             wafs = response.get("WebACLs", [])
 
+            if len(wafs) == 0:
+                self.display_progress(0, "wafv2")
+                return
+
             identifiers = []
             for el in wafs:
                 identifiers.append(el["ARN"])
-
-            if len(identifiers) == 0:
-                self.display_progress(0, "wafv2")
-                return
+                return identifiers
 
         elif waf_list["count"] == 0:
             self.display_progress(0, "wafv2")
             return
         else:
             identifiers = waf_list["ids"]
+            return identifiers
 
         cnt = 0
 
@@ -190,7 +217,11 @@ class Logs:
                     if "s3" in destination:
                         bucket = destination.split(":")[-1]
                         src_bucket = bucket.split("/")[0]
-                        self.copy_s3_bucket(src_bucket, self.bucket, "wafv2")
+
+                        if self.dl:
+                            run_s3_dl(src_bucket, self.confs + "wafv2/")
+                        else:
+                            self.copy_s3_bucket(src_bucket, self.bucket, "wafv2")
                         cnt += 1
 
         self.display_progress(cnt, "wafv2")
@@ -220,7 +251,10 @@ class Logs:
             if "s3" in flow_log["LogDestinationType"]:
                 bucket = flow_log["LogDestination"].split(":")[-1]
                 src_bucket = bucket.split("/")[0]
-                self.copy_s3_bucket(src_bucket, self.bucket, "vpc")
+                if self.dl:
+                    run_s3_dl(src_bucket, self.confs + "logs.json")
+                else:
+                    self.copy_s3_bucket(src_bucket, self.bucket, "logs")
                 cnt += 1
         self.display_progress(cnt, "vpc")
 
@@ -245,6 +279,9 @@ class Logs:
         else:
             environments = eb_list["elements"]
 
+        path = self.confs + "elasticbeanstalk/"
+        create_folder(path)
+
         for environment in environments:
             name = environment.get("EnvironmentName", "")
             if name == "":
@@ -266,17 +303,18 @@ class Logs:
                 url = urls[-1]
                 url = url["Message"]
 
-            filename = name + ".zip"
+            filename = path + name + ".zip"
             r = requests.get(url)
             with open(filename, "wb") as f:
                 f.write(r.content)
 
-            key = "eb/" + name + ".zip"
-            writefile_s3(self.bucket, key, filename)
-            os.remove(filename)
+            if not self.dl:
+                key = "eb/" + name + ".zip"
+                writefile_s3(self.bucket, key, filename)
+                os.remove(filename)
+                os.rmdir(path)
 
         self.display_progress(len(environments), "elasticbeanstalk")
-        return
 
     def get_logs_cloudwatch(self):
         cloudwatch_list = self.services["cloudwatch"]

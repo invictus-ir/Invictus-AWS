@@ -6,15 +6,15 @@ from source.utils import *
 class Configuration:
     results = {}
     bucket = ""
-    region = ""
+    region = None
     services = {}
+    dl = None
 
     def __init__(self, region, dl):
-        if dl:
-            print("ff")
-        else:
-            # self.bucket = create_s3_if_not_exists(region, PREPARATION_BUCKET)
-            print("==")
+        self.region = region
+        self.dl = dl
+        if not self.dl:
+            self.bucket = create_s3_if_not_exists(self.region, PREPARATION_BUCKET)
 
     def self_test(self):
         print("Configuration works")
@@ -41,12 +41,22 @@ class Configuration:
         self.get_configuration_inspector2()
         self.get_configuration_maciev2()
         self.get_configuration_cloudtrail()
-        #
-        # write_s3(
-        #    self.bucket,
-        #    CONFIGURATION_KEY,
-        #    json.dumps(self.results, indent=4, default=str),
-        # )
+
+        if self.dl:
+            confs = ROOT_FOLDER + self.region + "/configurations/"
+            create_folder(confs)
+            for el in self.results:
+                write_file(
+                    confs + f"{el}_configuration.json",
+                    "w",
+                    json.dumps(self.results[el], indent=4, default=str),
+                )
+        else:
+            write_s3(
+                self.bucket,
+                CONFIGURATION_KEY,
+                json.dumps(self.results, indent=4, default=str),
+            )
 
     def get_configuration_s3(self):
         s3_list = self.services["s3"]
@@ -647,7 +657,6 @@ class Configuration:
 
         self.results["ec2"] = results
         self.display_progress(len(results), "ec2")
-        return
 
     def get_configuration_iam(self):
         iam_list = self.services["iam"]

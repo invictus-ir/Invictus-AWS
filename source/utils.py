@@ -1,6 +1,7 @@
 import boto3
 from botocore.exceptions import ClientError
-import json, datetime, string, random
+import json, datetime, string, random, sys, os
+from pathlib import Path
 
 
 def get_random_chars(n):
@@ -15,14 +16,12 @@ def try_except(func, *args, **kwargs):
 
 
 def write_s3(bucket, key, content):
-    s3 = boto3.resource("s3")
-    response = s3.Bucket(bucket).put_object(Key=key, Body=content)
+    response = S3_CLIENT.Bucket(bucket).put_object(Key=key, Body=content)
     return response
 
 
 def writefile_s3(bucket, key, filename):
-    s3 = boto3.resource("s3")
-    response = s3.meta.client.upload_file(filename, bucket, key)
+    response = S3_CLIENT.meta.client.upload_file(filename, bucket, key)
     return response
 
 
@@ -91,6 +90,98 @@ def create_command(command, output):
     return command_output
 
 
+"""
+dl : True if the user specified he wanted the results locally
+region : region we're working on
+bucket : bucket to write results if the user asked to
+step : enumeration, configuration, logs
+key : ENUMERATION_KEY, CONFIGURATION_KEY, LOGS_KEY
+results : results we want to write or download
+mode : w for write or ab for append
+"""
+
+
+def dl_or_write(dl, region, bucket, step, key, results, mode):
+    if dl:
+        confs = ROOT_FOLDER + region + f"/{step}/"
+        create_folder(confs)
+        for el in results:
+            write_file(
+                confs + f"{el}_{step}.json",
+                mode,
+                json.dumps(results[el], indent=4, default=str),
+            )
+    else:
+        write_s3(
+            bucket,
+            key,
+            json.dumps(results, indent=4, default=str),
+        )
+
+
+def write_file(file, mode, content):
+    with open(file, mode) as f:
+        f.write(content)
+
+
+def create_folder(path):
+    if not os.path.exists(path):
+        os.makedirs(path)
+    else:
+        print(f"[!] Error : Folder {path} already exists")
+
+
+def get_file_folders(s3_client, bucket_name, prefix=""):
+    file_names = []
+    folders = []
+
+    default_kwargs = {"Bucket": bucket_name, "Prefix": prefix}
+    next_token = ""
+
+    while next_token is not None:
+        updated_kwargs = default_kwargs.copy()
+        if next_token != "":
+            updated_kwargs["ContinuationToken"] = next_token
+
+        response = s3_client.list_objects_v2(**default_kwargs)
+        contents = response.get("Contents")
+
+        for result in contents:
+            key = result.get("Key")
+            if key[-1] == "/":
+                folders.append(key)
+            else:
+                file_names.append(key)
+
+        next_token = response.get("NextContinuationToken")
+
+    return file_names, folders
+
+
+def download_files_from_s3(s3_client, bucket_name, local_path, file_names, folders):
+    local_path = Path(local_path)
+
+    for folder in folders:
+        folder_path = Path.joinpath(local_path, folder)
+        folder_path.mkdir(parents=True, exist_ok=True)
+
+    for file_name in file_names:
+        file_path = Path.joinpath(local_path, file_name)
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+        s3_client.download_file(bucket_name, file_name, str(file_path))
+
+
+def run_s3_dl(bucket, path):
+    file_names, folders = get_file_folders(S3_CLIENT, bucket)
+    download_files_from_s3(
+        S3_CLIENT,
+        bucket,
+        path,
+        file_names,
+        folders,
+    )
+
+
 ##########
 # RANDOM #
 ##########
@@ -104,7 +195,7 @@ LOGS_BUCKET = "invictus-aws-" + date + "-" + random_chars
 # FILES #
 ########
 
-ROOT_FOLDER = "./results"
+ROOT_FOLDER = "./results/"
 ENUMERATION_KEY = "enumeration/enumeration.json"
 CONFIGURATION_KEY = "configuration/configuration.json"
 LOGS_KEY = "logs/"

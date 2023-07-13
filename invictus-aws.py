@@ -1,7 +1,8 @@
-import argparse, sys, os
-from source.IR import IR
+import argparse, os, sys
 
-from source.utils import try_except, ROOT_FOLDER, ACCOUNT_CLIENT
+from source.IR import IR
+from botocore.client import ClientError
+from source.utils import ROOT_FOLDER, ACCOUNT_CLIENT, try_except, create_folder
 
 
 def set_args():
@@ -45,13 +46,6 @@ def set_args():
     return parser.parse_args()
 
 
-def create_folder(path):
-    if not os.path.exists(path):
-        os.mkdir(path)
-    else:
-        print("[!] Error : Folder {path} already exists")
-
-
 def main():
     print(
         """
@@ -68,20 +62,51 @@ def main():
 
     """
     )
+
     args = set_args()
 
-    region = args.region
+    dl = args.locally
+    region = args.aws_region
 
-    if region is None:
-        print(
-            "Error: Invalid syntax\n\t--region=<aws_region> is required to run the script"
+    if region:
+        try:
+            response = ACCOUNT_CLIENT.get_region_opt_status(RegionName=region)
+            response.pop("ResponseMetadata", None)
+            if (
+                response["RegionOptStatus"] == "ENABLED_BY_DEFAULT"
+                or response["RegionOptStatus"] == "ENABLED"
+            ) and dl:
+                create_folder(ROOT_FOLDER + region)
+
+                ir = IR(region, dl)
+                ir.test_modules()
+                # ir.execute_enumeration()
+                # ir.execute_configuration()
+                ir.execute_logs()
+
+        except ClientError:
+            print(
+                "[!] Error : The region you entered doesn't exist or is not enabled. Please enter a valid region. Exiting..."
+            )
+            sys.exit(-1)
+    else:
+        response = try_except(
+            ACCOUNT_CLIENT.list_regions,
+            RegionOptStatusContains=["ENABLED", "ENABLED_BY_DEFAULT"],
         )
-        sys.exit(-1)
-    ir = IR(region)
-    # ir.test_modules()
-    ir.execute_enumeration()
-    ir.execute_configuration()
-    ir.execute_logs()
+        response.pop("ResponseMetadata", None)
+        regions = response["Regions"]
+        for region in regions:
+            name = region["RegionName"]
+
+            if dl:
+                create_folder(ROOT_FOLDER + "/" + name)
+
+            # ir = IR(name, dl)
+            # ir.test_modules()
+            # ir.execute_enumeration()
+            # ir.execute_configuration()
+            # ir.execute_logs()
 
 
 if __name__ == "__main__":
