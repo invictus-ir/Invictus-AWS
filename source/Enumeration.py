@@ -15,14 +15,21 @@ class Enumeration:
             self.bucket = create_s3_if_not_exists(self.region, PREPARATION_BUCKET)
 
     def self_test(self):
-        print("Enumeration works")
+        print("[+] Enumeration test passed")
 
-    def execute(self, services):
-        print("Enumeration")
+    def execute(self, services, regionless):
+        print("\n=====================")
+        print(f"[+] Enumeration Step")
+        print("=====================\n")
 
         self.services = services
 
-        self.enumerate_s3()
+        if (regionless != "" and regionless == self.region) or regionless == "not-all":
+            self.enumerate_s3()
+            self.enumerate_iam()
+            self.enumerate_cloudtrail_logs()
+            self.enumerate_cloudtrail_trails()
+
         self.enumerate_wafv2()
         self.enumerate_lambda()
         self.enumerate_vpc()
@@ -30,7 +37,6 @@ class Enumeration:
 
         self.enumerate_route53()
         self.enumerate_ec2()
-        self.enumerate_iam()
         self.enumerate_dynamodb()
         self.enumerate_rds()
         self.enumerate_eks()
@@ -44,25 +50,24 @@ class Enumeration:
         self.enumerate_inspector2()
         self.enumerate_maciev2()
 
-        self.enumerate_cloudtrail_logs()
-        self.enumerate_cloudtrail_trails()
-
         if self.dl:
             confs = ROOT_FOLDER + self.region + "/enumeration/"
             create_folder(confs)
             for el in self.services:
-                if self.services[el]["count"] != 0:
+                if self.services[el]["count"] > 0:
                     write_file(
                         confs + f"{el}_enumeration.json",
                         "w",
                         json.dumps(self.services[el], indent=4, default=str),
                     )
         else:
-            write_s3(
-                self.bucket,
-                ENUMERATION_KEY,
-                json.dumps(self.services, indent=4, default=str),
-            )
+            for el in self.services:
+                if el["count"] > 0:
+                    write_s3(
+                        self.bucket,
+                        f"{self.region}/enumeration/{el}_enumeration.json",
+                        json.dumps(self.services[el], indent=4, default=str),
+                    )
         return self.services
 
     def enumerate_s3(self):

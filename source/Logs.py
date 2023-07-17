@@ -20,28 +20,32 @@ class Logs:
             self.bucket = create_s3_if_not_exists(self.region, LOGS_BUCKET)
 
     def self_test(self):
-        print("Logs work")
+        print("[+] Logs Extraction test passed\n")
 
-    def execute(self, services):
-        print("Log Extraction")
+    def execute(self, services, regionless):
+        print("\n========================")
+        print(f"[+] Logs Extraction Step")
+        print("========================\n")
+
         self.services = services
 
-        # self.get_logs_s3()
-        # self.get_logs_wafv2()
-        # self.get_logs_vpc()
-        # self.get_logs_elasticbeanstalk()
-        #
-        # self.get_logs_route53()
-        # self.get_logs_ec2()
-        # self.get_logs_rds()
-        #
-        # self.get_logs_cloudwatch()
-        # self.get_logs_guardduty()
-        # self.get_logs_inspector2()
-        # self.get_logs_maciev2()
+        if (regionless != "" and regionless == self.region) or regionless == "not-all":
+            self.get_logs_s3()
+            self.get_logs_cloudtrail_logs()
+            self.get_logs_cloudtrail_trails()
 
-        self.get_logs_cloudtrail_logs()
-        self.get_logs_cloudtrail_trails()
+        self.get_logs_wafv2()
+        self.get_logs_vpc()
+        self.get_logs_elasticbeanstalk()
+    
+        self.get_logs_route53()
+        self.get_logs_ec2()
+        self.get_logs_rds()
+    
+        self.get_logs_cloudwatch()
+        self.get_logs_guardduty()
+        self.get_logs_inspector2()
+        self.get_logs_maciev2()
 
     def get_logs_guardduty(self):
         guardduty_list = self.services["guardduty"]
@@ -131,6 +135,9 @@ class Logs:
         elif cloudtrail_list["count"] == 0:
             self.display_progress(0, "cloudtrail")
             return
+        
+        else:
+            logs = cloudtrail_list["elements"]
 
         if self.dl:
             write_file(
@@ -140,7 +147,7 @@ class Logs:
             )
         else:
             write_s3(
-                self.bucket,
+                self.bucket,    
                 LOGS_KEY + "cloudtrail/cloudtrail.json",
                 json.dumps(logs, indent=4, default=str),
             )
@@ -364,12 +371,19 @@ class Logs:
         )
 
         self.display_progress(len(results), "cloudwatch")
-        write_s3(
-            self.bucket,
-            LOGS_KEY + "cloudwatch/cloudwatch.json",
-            json.dumps(results, indent=4, default=str),
-        )
-        return
+
+        if self.dl:
+            write_file(
+                self.confs + "cloudwatch_logs.json",
+                "w",
+                json.dumps(results, indent=4, default=str),
+            )
+        else:
+            write_s3(
+                self.bucket,
+                LOGS_KEY + "cloudwatch/cloudwatch.json",
+                json.dumps(results, indent=4, default=str),
+            )
 
     """
     src_bucket : bucket where all the s3 logging are stored
@@ -420,7 +434,11 @@ class Logs:
                 target = logging["LoggingEnabled"]["TargetBucket"]
                 bucket = target.split(":")[-1]
                 src_bucket = bucket.split("/")[0]
-                self.copy_s3_bucket(src_bucket, self.bucket, "s3")
+
+                if self.dl:
+                    run_s3_dl(src_bucket, self.confs + "s3/")
+                else:
+                    self.copy_s3_bucket(src_bucket, self.bucket, "s3")
                 cnt += 1
 
         self.display_progress(cnt, "s3")
@@ -462,12 +480,20 @@ class Logs:
             )
         )
 
+        if self.dl:
+            write_file(
+                self.confs + "inspector_logs.json",
+                "w",
+                json.dumps(results, indent=4, default=str),
+            )
+        else:
+            write_s3(
+                self.bucket,
+                LOGS_KEY + "inspector/inspector.json",
+                json.dumps(results, indent=4, default=str),
+            )
+
         self.display_progress(len(results), "inspector")
-        write_s3(
-            self.bucket,
-            LOGS_KEY + "inspector/inspector.json",
-            json.dumps(results, indent=4, default=str),
-        )
 
     def get_logs_maciev2(self):
         macie_list = self.services["macie"]
@@ -502,12 +528,20 @@ class Logs:
             create_command("aws macie2 get-findings --finding-ids <ID>", findings)
         )
 
+        if self.dl:
+            write_file(
+                self.confs + "macie_logs.json",
+                "w",
+                json.dumps(results, indent=4, default=str),
+            )
+        else:
+            write_s3(
+                self.bucket,
+                LOGS_KEY + "macie/macie.json",
+                json.dumps(results, indent=4, default=str),
+            )
+
         self.display_progress(len(results), "macie")
-        write_s3(
-            self.bucket,
-            LOGS_KEY + "macie/macie.json",
-            json.dumps(results, indent=4, default=str),
-        )
 
     def create_json(self):
         file_json = {
@@ -630,13 +664,43 @@ class Logs:
         ]
 
         total_ssm_instances = self.extract_list_ssm_instances()
-        send_command = ssm.send_command(
+
+        if self.dl:
+            send_command = ssm.send_command(
             InstanceIds=total_ssm_instances,
             DocumentName="AWS-RunShellScript",
-            OutputS3BucketName=self.bucket,
-            OutputS3KeyPrefix="ec2",
             Parameters={"commands": list_of_logs},
-        )
+            )
+
+            command_ids = [command['CommandId'] for command in send_command['Commands']]
+
+            waiter = EC2_CLIENT.get_waiter('command_executed')
+            waiter.wait(
+                CommandIds=command_ids,
+                InstanceIds=total_ssm_instances
+            )
+
+            outputs = []
+            for command_id, instance_id in zip(command_ids, total_ssm_instances):
+                output = EC2_CLIENT.get_command_invocation(
+                    CommandId=command_id,
+                    InstanceId=instance_id
+                )
+                outputs.append(output['StandardOutputContent'])
+
+            write_file(
+                self.confs + "ec2_logs.json",
+                "w",
+                json.dumps(outputs, indent=4, default=str),
+            )
+        else:
+            send_command = ssm.send_command(
+                InstanceIds=total_ssm_instances,
+                DocumentName="AWS-RunShellScript",
+                OutputS3BucketName=self.bucket,
+                OutputS3KeyPrefix="ec2",
+                Parameters={"commands": list_of_logs},
+            )
 
     def switch_profiles(self, old_profiles, fields, IamInstanceProfile):
         for profile in old_profiles:
@@ -741,13 +805,20 @@ class Logs:
                 )
             )
 
+        if self.dl:
+            write_file(
+                self.confs + "rds_logs.json",
+                "w",
+                json.dumps(total_logs, indent=4, default=str),
+            )
+        else:
+            write_s3(
+                self.bucket,
+                LOGS_KEY + "rds/rds.json",
+                json.dumps(total_logs, indent=4, default=str),
+            )
+
         self.display_progress(len(list_of_dbs), "rds")
-        write_s3(
-            self.bucket,
-            LOGS_KEY + "rds/rds.json",
-            json.dumps(total_logs, indent=4, default=str),
-        )
-        return
 
     def get_logs_route53(self):
         route53_list = self.services["route53"]
@@ -775,8 +846,13 @@ class Logs:
             if "s3" in bucket_location["DestinationArn"]:
                 bucket = bucket_location["DestinationArn"].split(":")[-1]
                 src_bucket = bucket.split("/")[0]
-                self.copy_s3_bucket(src_bucket, self.bucket, "route53")
+
+                if self.dl:
+                    run_s3_dl(src_bucket, self.confs + "route53/")
+                else:
+                    self.copy_s3_bucket(src_bucket, self.bucket, "route53")
                 cnt += 1
+                
         self.display_progress(cnt, "route53")
 
     def display_progress(self, count, name):

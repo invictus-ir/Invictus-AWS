@@ -17,13 +17,20 @@ class Configuration:
             self.bucket = create_s3_if_not_exists(self.region, PREPARATION_BUCKET)
 
     def self_test(self):
-        print("Configuration works")
+        print("[+] Configuration test passed")
 
-    def execute(self, services):
-        print("Configuration")
+    def execute(self, services, regionless):
+        print("\n=======================")
+        print(f"[+] Configuration Step")
+        print("======================\n")
+
         self.services = services
 
-        self.get_configuration_s3()
+        if (regionless != "" and regionless == self.region) or regionless == "not-all":
+            self.get_configuration_s3()
+            self.get_configuration_iam()
+            self.get_configuration_cloudtrail()
+
         self.get_configuration_wafv2()
         self.get_configuration_lambda()
         self.get_configuration_vpc()
@@ -31,7 +38,6 @@ class Configuration:
 
         self.get_configuration_route53()
         self.get_configuration_ec2()
-        self.get_configuration_iam()
         self.get_configuration_dynamodb()
         self.get_configuration_rds()
 
@@ -40,7 +46,6 @@ class Configuration:
         self.get_configuration_detective()
         self.get_configuration_inspector2()
         self.get_configuration_maciev2()
-        self.get_configuration_cloudtrail()
 
         if self.dl:
             confs = ROOT_FOLDER + self.region + "/configurations/"
@@ -52,11 +57,12 @@ class Configuration:
                     json.dumps(self.results[el], indent=4, default=str),
                 )
         else:
-            write_s3(
-                self.bucket,
-                CONFIGURATION_KEY,
-                json.dumps(self.results, indent=4, default=str),
-            )
+            for el in self.results:
+                write_s3(
+                    self.bucket,
+                    f"{self.region}/configuration/{el}_configuration.json",
+                    json.dumps(self.results, indent=4, default=str),
+                )
 
     def get_configuration_s3(self):
         s3_list = self.services["s3"]

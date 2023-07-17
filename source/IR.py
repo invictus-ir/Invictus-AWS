@@ -12,6 +12,8 @@ class IR:
     l = None
 
     def __init__(self, region, dl):
+        print(f"\n[+] Scanning region \033[1m{region}\033[0;0m\n")
+
         """
         -1 means we didn't enter in the enumerate function associated (either crash or just not yet)
         0 means we ran the associated function but the service wasn't available
@@ -49,11 +51,11 @@ class IR:
         self.c.self_test()
         self.l.self_test()
 
-    def execute_enumeration(self):
-        self.services = self.e.execute(self.services)
+    def execute_enumeration(self, regionless):
+        self.services = self.e.execute(self.services, regionless)
 
-    def execute_configuration(self):
-        self.c.execute(self.services)
+    def execute_configuration(self, regionless):
+        self.c.execute(self.services, regionless)
 
-    def execute_logs(self):
-        self.l.execute(self.services)
+    def execute_logs(self, regionless):
+        self.l.execute(self.services, regionless)

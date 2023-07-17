@@ -1,8 +1,8 @@
 import argparse, os, sys
 
-from source.IR import IR
+#from source.IR import IR
 from botocore.client import ClientError
-from source.utils import ROOT_FOLDER, ACCOUNT_CLIENT, try_except, create_folder
+#from source.utils import ROOT_FOLDER, ACCOUNT_CLIENT, POSSIBLE_STEPS, try_except, create_folder
 
 
 def set_args():
@@ -16,7 +16,17 @@ def set_args():
         help="[+] Show this help message and exit.",
     )
 
-    group1 = parser.add_mutually_exclusive_group()
+    parser.add_argument(
+        "-s", 
+        "--step", 
+        nargs='?', 
+        type=str, 
+        const="1,2,3", 
+        default="1,2,3", 
+        help="[+] Comma separated list of the steps to be runned out. 1 - Enumeration. 2 - Configuration. 3 -    Logs Extraction. Default is 1,2,3"
+    )
+
+    group1 = parser.add_mutually_exclusive_group(required=True)
     group1.add_argument(
         "-l",
         "--locally",
@@ -24,13 +34,13 @@ def set_args():
         help="[+] Download the results locally. Can't be used with -s",
     )
     group1.add_argument(
-        "-s",
-        "--s3",
+        "-c",
+        "--cloud",
         action="store_true",
         help="[+] Set the results in a S3 bucket on the account. Needs extra permissions. Can't be used with -l.",
     )
 
-    group2 = parser.add_mutually_exclusive_group()
+    group2 = parser.add_mutually_exclusive_group(required=True)
     group2.add_argument(
         "-r",
         "--aws-region",
@@ -39,11 +49,96 @@ def set_args():
     group2.add_argument(
         "-a",
         "--all-regions",
-        action="store_true",
-        help="[+] Scan all the enabled regions of the account. Can't be used with -r.",
+        nargs="?",
+        type=str,
+        const="us-east-1",
+        default="not-all",
+        help="[+] Scan all the enabled regions of the account. If you specify a region, it will be used to store the regionless services. Can't be used with -r.",
     )
 
     return parser.parse_args()
+
+def run_steps(dl, region, regionless, steps):
+
+    if dl:
+        create_folder(ROOT_FOLDER + "/" + region)
+                      
+    ir = IR(region, dl)
+
+    try:
+        ir.test_modules()
+    except Exception as e: 
+        print(str(e))
+        sys.exit(-1)
+
+    if "1" in steps:
+        try:
+            ir.execute_enumeration(regionless)
+        except Exception as e: 
+            print(str(e))
+
+    if "2" in steps:
+        try:
+            ir.execute_configuration(regionless)
+        except Exception as e: 
+            print(str(e))
+    
+    if "3" in steps:
+        try:
+            ir.execute_logs(regionless)
+        except Exception as e: 
+            print(str(e))
+
+def verify_all_regions(input_region):
+    print(input_region)
+    response = try_except(
+        ACCOUNT_CLIENT.list_regions,
+        RegionOptStatusContains=["ENABLED", "ENABLED_BY_DEFAULT"],
+    )
+    response.pop("ResponseMetadata", None)
+    regions = response["Regions"]
+
+    region_names = []
+
+    for region in regions:
+        region_names.append(region["RegionName"])
+
+    regionless = ""
+    if input_region in region_names:
+        region_names.remove(input_region)
+        region_names.insert(0, input_region)
+        regionless = input_region
+
+        return region_names, regionless
+    else:
+        print(
+            "[!] Error : The region you entered doesn't exist or is not enabled. Please enter a valid region. Exiting..."
+        )
+        sys.exit(-1)
+
+def verify_one_region(dl, region, regionless):
+    try:
+        response = ACCOUNT_CLIENT.get_region_opt_status(RegionName=region)
+        response.pop("ResponseMetadata", None)
+        if (
+            response["RegionOptStatus"] == "ENABLED_BY_DEFAULT"
+            or response["RegionOptStatus"] == "ENABLED"
+        ):
+            run_steps(dl, region, regionless)
+
+    except Exception as e:
+            print(str(e))
+            sys.exit(-1)
+
+def verify_steps(steps):
+    for step in steps:
+        if step not in POSSIBLE_STEPS:
+            print(
+            "[!] Error : The steps you entered are not allowed. Please enter only valid steps. Exiting..."
+            )
+            sys.exit(-1)
+
+    return steps
 
 
 def main():
@@ -66,47 +161,27 @@ def main():
     args = set_args()
 
     dl = args.locally
+
+    cloudshell = os.environ['AWS_EXECUTION_ENV']
+    if cloudshell == "CloudShell" and dl == True:
+        dl = False
+        print("[!] Error : You are in a Cloudshell environnement. Therefore you can't download your results locally. The results will be stored in a s3 bucket.")
+
     region = args.aws_region
+    regions= args.all_regions
+    steps = verify_steps(args.step.split(","))
 
     if region:
-        try:
-            response = ACCOUNT_CLIENT.get_region_opt_status(RegionName=region)
-            response.pop("ResponseMetadata", None)
-            if (
-                response["RegionOptStatus"] == "ENABLED_BY_DEFAULT"
-                or response["RegionOptStatus"] == "ENABLED"
-            ) and dl:
-                create_folder(ROOT_FOLDER + region)
 
-                ir = IR(region, dl)
-                ir.test_modules()
-                # ir.execute_enumeration()
-                # ir.execute_configuration()
-                ir.execute_logs()
-
-        except ClientError:
-            print(
-                "[!] Error : The region you entered doesn't exist or is not enabled. Please enter a valid region. Exiting..."
-            )
-            sys.exit(-1)
+        verify_one_region(dl, region, regions)
+        run_steps(dl, region, regionless, steps)
+    
     else:
-        response = try_except(
-            ACCOUNT_CLIENT.list_regions,
-            RegionOptStatusContains=["ENABLED", "ENABLED_BY_DEFAULT"],
-        )
-        response.pop("ResponseMetadata", None)
-        regions = response["Regions"]
-        for region in regions:
-            name = region["RegionName"]
+        
+        region_names, regionless = verify_all_regions(regions)
 
-            if dl:
-                create_folder(ROOT_FOLDER + "/" + name)
-
-            # ir = IR(name, dl)
-            # ir.test_modules()
-            # ir.execute_enumeration()
-            # ir.execute_configuration()
-            # ir.execute_logs()
+        for name in region_names:
+            run_steps(dl, name, regionless, steps)
 
 
 if __name__ == "__main__":

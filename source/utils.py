@@ -7,23 +7,19 @@ from pathlib import Path
 def get_random_chars(n):
     return "".join(random.choices(string.ascii_lowercase + string.digits, k=n))
 
-
 def try_except(func, *args, **kwargs):
     try:
         return func(*args, **kwargs)
     except:
         return {"count": 0, "data": [], "identifiers": []}
 
-
 def write_s3(bucket, key, content):
-    response = S3_CLIENT.Bucket(bucket).put_object(Key=key, Body=content)
+    response = S3_CLIENT.put_object(Bucket=bucket, Key=key, Body=content)
     return response
-
 
 def writefile_s3(bucket, key, filename):
     response = S3_CLIENT.meta.client.upload_file(filename, bucket, key)
     return response
-
 
 def create_s3_if_not_exists(region, bucket_name):
     """
@@ -37,7 +33,7 @@ def create_s3_if_not_exists(region, bucket_name):
         if bkt["Name"] == bucket_name:
             return bucket_name
 
-    print("Logs bucket does not exists, creating it now: " + bucket_name)
+    print("[+] Logs bucket does not exists, creating it now: " + bucket_name)
 
     bucket_config = dict()
     if region != "us-east-1":
@@ -50,11 +46,9 @@ def create_s3_if_not_exists(region, bucket_name):
         sys.exit(-1)
     return bucket_name
 
-
 def print_json(data):
     data = json.dumps(data, indent=4, default=str)
     print(data)
-
 
 def is_list(list_data):
     for data in list_data:
@@ -65,7 +59,6 @@ def is_list(list_data):
         if isinstance(data, dict):
             is_dict(data)
 
-
 def is_dict(data_dict):
     for data in data_dict:
         if isinstance(data_dict[data], datetime.datetime):
@@ -75,20 +68,17 @@ def is_dict(data_dict):
         if isinstance(data_dict[data], dict):
             is_dict(data_dict[data])
 
-
 def fix_json(response):
     if isinstance(response, dict):
         is_dict(response)
 
     return response
 
-
 def create_command(command, output):
     command_output = {}
     command_output["command"] = command
     command_output["output"] = output
     return command_output
-
 
 """
 dl : True if the user specified he wanted the results locally
@@ -99,7 +89,6 @@ key : ENUMERATION_KEY, CONFIGURATION_KEY, LOGS_KEY
 results : results we want to write or download
 mode : w for write or ab for append
 """
-
 
 def dl_or_write(dl, region, bucket, step, key, results, mode):
     if dl:
@@ -118,11 +107,9 @@ def dl_or_write(dl, region, bucket, step, key, results, mode):
             json.dumps(results, indent=4, default=str),
         )
 
-
 def write_file(file, mode, content):
     with open(file, mode) as f:
         f.write(content)
-
 
 def create_folder(path):
     if not os.path.exists(path):
@@ -130,8 +117,7 @@ def create_folder(path):
     else:
         print(f"[!] Error : Folder {path} already exists")
 
-
-def get_file_folders(s3_client, bucket_name, prefix=""):
+def get_file_folders(bucket_name, prefix=""):
     file_names = []
     folders = []
 
@@ -143,7 +129,7 @@ def get_file_folders(s3_client, bucket_name, prefix=""):
         if next_token != "":
             updated_kwargs["ContinuationToken"] = next_token
 
-        response = s3_client.list_objects_v2(**default_kwargs)
+        response = S3_CLIENT.list_objects_v2(**default_kwargs)
         contents = response.get("Contents")
 
         for result in contents:
@@ -157,7 +143,6 @@ def get_file_folders(s3_client, bucket_name, prefix=""):
 
     return file_names, folders
 
-
 def download_files_from_s3(s3_client, bucket_name, local_path, file_names, folders):
     local_path = Path(local_path)
 
@@ -170,7 +155,6 @@ def download_files_from_s3(s3_client, bucket_name, local_path, file_names, folde
         file_path.parent.mkdir(parents=True, exist_ok=True)
         s3_client.download_file(bucket_name, file_name, str(file_path))
 
-
 def run_s3_dl(bucket, path):
     file_names, folders = get_file_folders(S3_CLIENT, bucket)
     download_files_from_s3(
@@ -181,19 +165,18 @@ def run_s3_dl(bucket, path):
         folders,
     )
 
-
-##########
-# RANDOM #
-##########
+#####################
+# RANDOM GENERATION #
+#####################
 
 date = datetime.date.today().strftime("%Y-%m-%d")
 random_chars = get_random_chars(5)
 PREPARATION_BUCKET = "invictus-aws-" + date + "-" + random_chars
 LOGS_BUCKET = "invictus-aws-" + date + "-" + random_chars
 
-########
+#########
 # FILES #
-########
+#########
 
 ROOT_FOLDER = "./results/"
 ENUMERATION_KEY = "enumeration/enumeration.json"
@@ -205,7 +188,7 @@ ROLE_JSON = "role.json"
 # CLIENTS #
 ###########
 
-ACCOUNT_CLIENT = boto3.client("account")
+ACCOUNT_CLIENT = boto3.client('account')
 S3_CLIENT = boto3.client("s3")
 WAF_CLIENT = boto3.client("wafv2")
 LAMBDA_CLIENT = boto3.client("lambda")
@@ -226,3 +209,10 @@ GUARDDUTY_CLIENT = boto3.client("guardduty")
 INSPECTOR_CLIENT = boto3.client("inspector2")
 DETECTIVE_CLIENT = boto3.client("detective")
 MACIE_CLIENT = boto3.client("macie2")
+
+########
+# MISC #
+########
+
+REGIONLESS_SERVICES = ["S3", "IAM", "SNS", "SQS"]
+POSSIBLE_STEPS = ["1", "2", "3"]
