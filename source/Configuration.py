@@ -52,17 +52,20 @@ class Configuration:
             create_folder(confs)
             for el in self.results:
                 write_file(
-                    confs + f"{el}_configuration.json",
+                    confs + f"{el}.json",
                     "w",
                     json.dumps(self.results[el], indent=4, default=str),
                 )
+            print(f"\n[+] Configuration results stored in the folder {confs}\n")
         else:
             for el in self.results:
                 write_s3(
                     self.bucket,
-                    f"{self.region}/configuration/{el}_configuration.json",
+                    f"{self.region}/configuration/{el}.json",
                     json.dumps(self.results, indent=4, default=str),
                 )
+
+            print(f"\n[+] Configurations results stored in the bucket {self.bucket}\n")
 
     def get_configuration_s3(self):
         s3_list = self.services["s3"]

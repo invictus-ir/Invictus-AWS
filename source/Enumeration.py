@@ -27,7 +27,6 @@ class Enumeration:
         if (regionless != "" and regionless == self.region) or regionless == "not-all":
             self.enumerate_s3()
             self.enumerate_iam()
-            self.enumerate_cloudtrail_logs()
             self.enumerate_cloudtrail_trails()
 
         self.enumerate_wafv2()
@@ -56,18 +55,20 @@ class Enumeration:
             for el in self.services:
                 if self.services[el]["count"] > 0:
                     write_file(
-                        confs + f"{el}_enumeration.json",
+                        confs + f"{el}.json",
                         "w",
                         json.dumps(self.services[el], indent=4, default=str),
                     )
+            print(f"\n[+] Enumeration results stored in the folder {ROOT_FOLDER}{self.region}/enumeration/\n")
         else:
-            for el in self.services:
-                if el["count"] > 0:
+            for key, value in self.services.items():
+                if value["count"] > 0:
                     write_s3(
                         self.bucket,
-                        f"{self.region}/enumeration/{el}_enumeration.json",
-                        json.dumps(self.services[el], indent=4, default=str),
+                        f"{self.region}/enumeration/{key}.json",
+                        json.dumps(value, indent=4, default=str),
                     )
+            print(f"\n[+] Enumeration results stored in the bucket {self.bucket}\n")
         return self.services
 
     def enumerate_s3(self):
@@ -322,25 +323,6 @@ class Enumeration:
         self.services["cloudwatch"]["ids"] = identifiers
 
         self.display_progress(self.services["cloudwatch"]["ids"], "cloudwatch")
-
-    def enumerate_cloudtrail_logs(self):
-        response = try_except(CLOUDTRAIL_CLIENT.lookup_events)
-        response.pop("ResponseMetadata", None)
-        response = fix_json(response)
-        elements = response.get("Events", [])
-
-        self.services["cloudtrail-logs"]["count"] = len(elements)
-        self.services["cloudtrail-logs"]["elements"] = elements
-
-        identifiers = []
-        for el in elements:
-            identifiers.append(el["EventId"])
-
-        self.services["cloudtrail-logs"]["ids"] = identifiers
-
-        self.display_progress(
-            self.services["cloudtrail-logs"]["ids"], "cloudtrail-logs"
-        )
 
     def enumerate_cloudtrail_trails(self):
         response = try_except(CLOUDTRAIL_CLIENT.list_trails)

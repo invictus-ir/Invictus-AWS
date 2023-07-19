@@ -3,24 +3,87 @@ from botocore.exceptions import ClientError
 import json, datetime, string, random, sys, os
 from pathlib import Path
 
-
+'''
+TODO
+'''
 def get_random_chars(n):
     return "".join(random.choices(string.ascii_lowercase + string.digits, k=n))
 
+'''
+TODO
+'''
 def try_except(func, *args, **kwargs):
     try:
         return func(*args, **kwargs)
     except:
         return {"count": 0, "data": [], "identifiers": []}
 
+'''
+TODO
+'''
 def write_s3(bucket, key, content):
     response = S3_CLIENT.put_object(Bucket=bucket, Key=key, Body=content)
     return response
 
+'''
+TODO
+'''
+def print_json(data):
+    data = json.dumps(data, indent=4, default=str)
+    print(data)
+
+'''
+TODO
+'''
+def is_list(list_data):
+    for data in list_data:
+        if isinstance(data, datetime.datetime):
+            data = str(data)
+        if isinstance(data, list):
+            is_list(data)
+        if isinstance(data, dict):
+            is_dict(data)
+
+'''
+TODO
+'''
+def is_dict(data_dict):
+    for data in data_dict:
+        if isinstance(data_dict[data], datetime.datetime):
+            data_dict[data] = str(data_dict[data])
+        if isinstance(data_dict[data], list):
+            is_list(data_dict[data])
+        if isinstance(data_dict[data], dict):
+            is_dict(data_dict[data])
+
+'''
+TODO
+'''
+def fix_json(response):
+    if isinstance(response, dict):
+        is_dict(response)
+
+    return response
+
+'''
+TODO
+'''
+def create_command(command, output):
+    command_output = {}
+    command_output["command"] = command
+    command_output["output"] = output
+    return command_output
+
+'''
+TODO
+'''
 def writefile_s3(bucket, key, filename):
     response = S3_CLIENT.meta.client.upload_file(filename, bucket, key)
     return response
 
+'''
+TODO
+'''
 def create_s3_if_not_exists(region, bucket_name):
     """
     Note that for region=us-east-1, AWS necessitates that you leave LocationConstraint blank
@@ -33,7 +96,7 @@ def create_s3_if_not_exists(region, bucket_name):
         if bkt["Name"] == bucket_name:
             return bucket_name
 
-    print("[+] Logs bucket does not exists, creating it now: " + bucket_name)
+    print(f"\n[+] Logs bucket does not exists, creating it now: {bucket_name}\n")
 
     bucket_config = dict()
     if region != "us-east-1":
@@ -46,77 +109,25 @@ def create_s3_if_not_exists(region, bucket_name):
         sys.exit(-1)
     return bucket_name
 
-def print_json(data):
-    data = json.dumps(data, indent=4, default=str)
-    print(data)
-
-def is_list(list_data):
-    for data in list_data:
-        if isinstance(data, datetime.datetime):
-            data = str(data)
-        if isinstance(data, list):
-            is_list(data)
-        if isinstance(data, dict):
-            is_dict(data)
-
-def is_dict(data_dict):
-    for data in data_dict:
-        if isinstance(data_dict[data], datetime.datetime):
-            data_dict[data] = str(data_dict[data])
-        if isinstance(data_dict[data], list):
-            is_list(data_dict[data])
-        if isinstance(data_dict[data], dict):
-            is_dict(data_dict[data])
-
-def fix_json(response):
-    if isinstance(response, dict):
-        is_dict(response)
-
-    return response
-
-def create_command(command, output):
-    command_output = {}
-    command_output["command"] = command
-    command_output["output"] = output
-    return command_output
-
-"""
-dl : True if the user specified he wanted the results locally
-region : region we're working on
-bucket : bucket to write results if the user asked to
-step : enumeration, configuration, logs
-key : ENUMERATION_KEY, CONFIGURATION_KEY, LOGS_KEY
-results : results we want to write or download
-mode : w for write or ab for append
-"""
-
-def dl_or_write(dl, region, bucket, step, key, results, mode):
-    if dl:
-        confs = ROOT_FOLDER + region + f"/{step}/"
-        create_folder(confs)
-        for el in results:
-            write_file(
-                confs + f"{el}_{step}.json",
-                mode,
-                json.dumps(results[el], indent=4, default=str),
-            )
-    else:
-        write_s3(
-            bucket,
-            key,
-            json.dumps(results, indent=4, default=str),
-        )
-
+'''
+TODO
+'''
 def write_file(file, mode, content):
     with open(file, mode) as f:
         f.write(content)
 
+'''
+TODO
+'''
 def create_folder(path):
     if not os.path.exists(path):
         os.makedirs(path)
     else:
         print(f"[!] Error : Folder {path} already exists")
 
+'''
+TODO
+'''
 def get_file_folders(bucket_name, prefix=""):
     file_names = []
     folders = []
@@ -143,6 +154,9 @@ def get_file_folders(bucket_name, prefix=""):
 
     return file_names, folders
 
+'''
+TODO
+'''
 def download_files_from_s3(s3_client, bucket_name, local_path, file_names, folders):
     local_path = Path(local_path)
 
@@ -155,6 +169,9 @@ def download_files_from_s3(s3_client, bucket_name, local_path, file_names, folde
         file_path.parent.mkdir(parents=True, exist_ok=True)
         s3_client.download_file(bucket_name, file_name, str(file_path))
 
+'''
+TODO
+'''
 def run_s3_dl(bucket, path):
     file_names, folders = get_file_folders(S3_CLIENT, bucket)
     download_files_from_s3(
@@ -164,6 +181,37 @@ def run_s3_dl(bucket, path):
         file_names,
         folders,
     )
+
+"""
+src_bucket : bucket where all the logs of the corresponding service are stored
+dst_bucket : bucket used in incident response
+key_part : part of the logs' path
+"""
+def copy_s3_bucket(src_bucket, dst_bucket, key_part):
+    s3res = boto3.resource("s3")
+
+    response = try_except(S3_CLIENT.list_objects_v2, Bucket=src_bucket)
+    contents = response.get("Contents", [])
+
+    for key in contents:
+        copy_source = {"Bucket": src_bucket, "Key": key["Key"]}
+        new_key = LOGS_KEY + key_part + "/" + src_bucket + "/" + key["Key"]
+        try_except(s3res.meta.client.copy, copy_source, dst_bucket, new_key)
+
+'''
+TODO
+'''
+def copy_or_write_s3(key, value, dst_bucket, region):
+    if value["action"] == 0:
+        write_s3(
+            dst_bucket,
+            f"{region}/logs/{key}.json",
+            json.dumps(value["results"], indent=4, default=str),
+        )
+    else:
+        for src_bucket in value["buckets"]:
+            copy_s3_bucket(src_bucket, dst_bucket, value)
+
 
 #####################
 # RANDOM GENERATION #
@@ -179,9 +227,6 @@ LOGS_BUCKET = "invictus-aws-" + date + "-" + random_chars
 #########
 
 ROOT_FOLDER = "./results/"
-ENUMERATION_KEY = "enumeration/enumeration.json"
-CONFIGURATION_KEY = "configuration/configuration.json"
-LOGS_KEY = "logs/"
 ROLE_JSON = "role.json"
 
 ###########
@@ -216,3 +261,40 @@ MACIE_CLIENT = boto3.client("macie2")
 
 REGIONLESS_SERVICES = ["S3", "IAM", "SNS", "SQS"]
 POSSIBLE_STEPS = ["1", "2", "3"]
+
+ENUMERATION_SERVICES = {
+    "s3": {"count": -1, "elements": [], "ids": []},
+    "wafv2": {"count": -1, "elements": [], "ids": []},
+    "lambda": {"count": -1, "elements": [], "ids": []},
+    "vpc": {"count": -1, "elements": [], "ids": []},
+    "elasticbeanstalk": {"count": -1, "elements": [], "ids": []},
+    "route53": {"count": -1, "elements": [], "ids": []},
+    "ec2": {"count": -1, "elements": [], "ids": []},
+    "iam": {"count": -1, "elements": [], "ids": []},
+    "dynamodb": {"count": -1, "elements": [], "ids": []},
+    "rds": {"count": -1, "elements": [], "ids": []},
+    "eks": {"count": -1, "elements": [], "ids": []},
+    "els": {"count": -1, "elements": [], "ids": []},
+    "secrets": {"count": -1, "elements": [], "ids": []},
+    "kinesis": {"count": -1, "elements": [], "ids": []},
+    "cloudwatch": {"count": -1, "elements": [], "ids": []},
+    "guardduty": {"count": -1, "elements": [], "ids": []},
+    "detective": {"count": -1, "elements": [], "ids": []},
+    "inspector": {"count": -1, "elements": [], "ids": []},
+    "macie": {"count": -1, "elements": [], "ids": []},
+    "cloudtrail-logs": {"count": -1, "elements": [], "ids": []},
+    "cloudtrail": {"count": -1, "elements": [], "ids": []},
+}
+
+LOGS_RESULTS = {
+    "guardduty": {"action": -1,"results": []},
+    "cloudtrail-logs": {"action": -1,"results": []},
+    "wafv2": {"action": -1,"results": []},
+    "vpc": {"action": -1,"results": []},
+    "cloudwatch": {"action": -1,"results": []},
+    "s3": {"action": -1,"results": []},
+    "inspector": {"action": -1,"results": []},
+    "macie": {"action": -1,"results": []},
+    "rds": {"action": -1,"results": []},
+    "route53": {"action": -1,"results": []}
+}

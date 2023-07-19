@@ -1,8 +1,8 @@
 import argparse, os, sys
 
-#from source.IR import IR
+from source.IR import IR
 from botocore.client import ClientError
-#from source.utils import ROOT_FOLDER, ACCOUNT_CLIENT, POSSIBLE_STEPS, try_except, create_folder
+from source.utils import ROOT_FOLDER, ACCOUNT_CLIENT, POSSIBLE_STEPS, try_except, create_folder
 
 
 def set_args():
@@ -90,7 +90,7 @@ def run_steps(dl, region, regionless, steps):
             print(str(e))
 
 def verify_all_regions(input_region):
-    print(input_region)
+
     response = try_except(
         ACCOUNT_CLIENT.list_regions,
         RegionOptStatusContains=["ENABLED", "ENABLED_BY_DEFAULT"],
@@ -116,7 +116,7 @@ def verify_all_regions(input_region):
         )
         sys.exit(-1)
 
-def verify_one_region(dl, region, regionless):
+def verify_one_region(dl, region, all_regions, steps):
     try:
         response = ACCOUNT_CLIENT.get_region_opt_status(RegionName=region)
         response.pop("ResponseMetadata", None)
@@ -124,7 +124,7 @@ def verify_one_region(dl, region, regionless):
             response["RegionOptStatus"] == "ENABLED_BY_DEFAULT"
             or response["RegionOptStatus"] == "ENABLED"
         ):
-            run_steps(dl, region, regionless)
+            run_steps(dl, region, all_regions, steps)
 
     except Exception as e:
             print(str(e))
@@ -162,23 +162,21 @@ def main():
 
     dl = args.locally
 
-    cloudshell = os.environ['AWS_EXECUTION_ENV']
-    if cloudshell == "CloudShell" and dl == True:
+    if os.getenv('AWS_EXECUTION_ENV') is not None and os.getenv('AWS_EXECUTION_ENV') == "CloudShell" and dl == True:
         dl = False
         print("[!] Error : You are in a Cloudshell environnement. Therefore you can't download your results locally. The results will be stored in a s3 bucket.")
 
     region = args.aws_region
-    regions= args.all_regions
+    all_regions= args.all_regions
     steps = verify_steps(args.step.split(","))
 
     if region:
 
-        verify_one_region(dl, region, regions)
-        run_steps(dl, region, regionless, steps)
+        verify_one_region(dl, region, all_regions, steps)
     
     else:
         
-        region_names, regionless = verify_all_regions(regions)
+        region_names, regionless = verify_all_regions(all_regions)
 
         for name in region_names:
             run_steps(dl, name, regionless, steps)
