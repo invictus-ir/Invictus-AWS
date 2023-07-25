@@ -1,6 +1,7 @@
 import boto3
 
 from source.utils import *
+from source.enum import *
 
 
 class Configuration:
@@ -20,32 +21,33 @@ class Configuration:
         print("[+] Configuration test passed")
 
     def execute(self, services, regionless):
-        print("\n=======================")
+        print("\n======================")
         print(f"[+] Configuration Step")
         print("======================\n")
 
         self.services = services
 
         if (regionless != "" and regionless == self.region) or regionless == "not-all":
+            print("h")
             self.get_configuration_s3()
-            self.get_configuration_iam()
-            self.get_configuration_cloudtrail()
+            #self.get_configuration_iam()
+            #self.get_configuration_cloudtrail()
 
-        self.get_configuration_wafv2()
-        self.get_configuration_lambda()
-        self.get_configuration_vpc()
-        self.get_configuration_elasticbeanstalk()
-
-        self.get_configuration_route53()
-        self.get_configuration_ec2()
-        self.get_configuration_dynamodb()
-        self.get_configuration_rds()
-
-        self.get_configuration_cloudwatch()
-        self.get_configuration_guardduty()
-        self.get_configuration_detective()
-        self.get_configuration_inspector2()
-        self.get_configuration_maciev2()
+        #self.get_configuration_wafv2()
+        #self.get_configuration_lambda()
+        #self.get_configuration_vpc()
+        #self.get_configuration_elasticbeanstalk()
+#
+        #self.get_configuration_route53()
+        #self.get_configuration_ec2()
+        #self.get_configuration_dynamodb()
+        #self.get_configuration_rds()
+#
+        #self.get_configuration_cloudwatch()
+        #self.get_configuration_guardduty()
+        #self.get_configuration_detective()
+        #self.get_configuration_inspector2()
+        #self.get_configuration_maciev2()
 
         if self.dl:
             confs = ROOT_FOLDER + self.region + "/configurations/"
@@ -72,10 +74,8 @@ class Configuration:
 
         if s3_list["count"] == -1:
             # if no listing of the s3 buckets was done before
-            response = try_except(S3_CLIENT.list_buckets)  # buckets' listing
-            response.pop("ResponseMetadata", None)
-            buckets = fix_json(response)
-            elements = buckets.get("Buckets", [])
+            elements = s3_lookup()
+            
 
             if len(elements) == 0:
                 self.display_progress(0, "s3")
@@ -97,32 +97,40 @@ class Configuration:
         for bucket in elements:
             bucket_name = bucket["Name"]
             objects[bucket_name] = []
-            response = try_except(
-                S3_CLIENT.list_objects_v2, Bucket=bucket_name
-            )  # getting objects of each bucket
-            response.pop("ResponseMetadata", None)
-            response = fix_json(response)
-            objects[bucket_name] = response
+
+            print(bucket_name)
+
+            # list_objects_v2
+                
+            objects[bucket_name] = simple_paginate(S3_CLIENT, "list_objects_v2", Bucket=bucket_name)
+            
+            # get_bucket_logging
 
             response = try_except(S3_CLIENT.get_bucket_logging, Bucket=bucket_name)
-            response.pop("ResponseMetadata", None)
             if "LoggingEnabled" in response:
                 buckets_logging[bucket_name] = response
             else:
                 buckets_logging[bucket_name] = {"LoggingEnabled": False}
+        
+            # get_bucket_policy
 
             response = try_except(S3_CLIENT.get_bucket_policy, Bucket=bucket_name)
-            response.pop("ResponseMetadata", None)
             buckets_policy[bucket_name] = json.loads(response.get("Policy", "{}"))
+
+            # get_bucket_acl
 
             response = try_except(S3_CLIENT.get_bucket_acl, Bucket=bucket_name)
             response.pop("ResponseMetadata", None)
+            response = fix_json(response)
             buckets_acl[bucket_name] = response
+            
+            # get_bucket_location
 
             response = try_except(S3_CLIENT.get_bucket_location, Bucket=bucket_name)
             response.pop("ResponseMetadata", None)
+            response = fix_json(response)
             buckets_location[bucket_name] = response
-
+          
         results = []
         results.append(
             create_command("aws s3api list-objects-v2 --bucket <name>", objects)
@@ -147,16 +155,13 @@ class Configuration:
         )
         self.results["s3"] = results
         self.display_progress(len(results), "s3")
-        return
 
     def get_configuration_wafv2(self):
         waf_list = self.services["wafv2"]
 
         if waf_list["count"] == -1:
-            response = try_except(WAF_CLIENT.list_web_acls, Scope="REGIONAL")
-            response.pop("ResponseMetadata", None)
-            wafs = response.get("WebACLs", [])
-
+            wafs = misc_lookup(WAF_CLIENT.list_web_acls, "NextMarker", "WebACLs", Scope="REGIONAL", Limit=100)
+        
             identifiers = []
             for el in wafs:
                 identifiers.append(el["ARN"])
@@ -178,24 +183,33 @@ class Configuration:
         resources = {}
 
         for arn in identifiers:
+
+            # get_logging_configuration
+
             response = try_except(WAF_CLIENT.get_logging_configuration, ResourceArn=arn)
             response.pop("ResponseMetadata", None)
+            response = fix_json(response)
             logging_config[arn] = response
 
-            response = try_except(WAF_CLIENT.list_rule_groups, Scope="REGIONAL")
-            response.pop("ResponseMetadata", None)
-            rule_groups[arn] = response
+            # list_rules_groups
+            # Use of misc_lookup as not every results are listed at the first call if there are a lot
 
-            response = try_except(WAF_CLIENT.list_managed_rule_sets, Scope="REGIONAL")
-            response.pop("ResponseMetadata", None)
-            managed_rule_sets[arn] = response
+            rule_groups[arn] = simple_misc_lookup(WAF_CLIENT.list_rule_groups, "NextMarker", Scope="REGIONAL", Limit=100)
+           
 
-            response = try_except(WAF_CLIENT.list_ip_sets, Scope="REGIONAL")
-            response.pop("ResponseMetadata", None)
-            ip_sets[arn] = response
+            # list_managed_rule_sets
+
+            managed_rule_sets[arn] = simple_misc_lookup(WAF_CLIENT.list_managed_rule_sets, "NextMarker", Scope="REGIONAL", Limit=100)
+
+            # list_ip_sets
+
+            ip_sets[arn] = simple_misc_lookup(WAF_CLIENT.list_ip_sets, "NextMarker", Scope="REGIONAL", Limit=100)
+
+            #list_resources_for_web_acl
 
             response = try_except(WAF_CLIENT.list_resources_for_web_acl, WebACLArn=arn)
             response.pop("ResponseMetadata", None)
+            response = fix_json(response)
             resources[arn] = response
 
         results = []
@@ -223,26 +237,21 @@ class Configuration:
         )
 
         self.results["wafv2"] = results
-        print(results)
         self.display_progress(len(results), "wafv2")
-        return
 
     def get_configuration_lambda(self):
         lambda_list = self.services["lambda"]
 
         if lambda_list["count"] == -1:
-            response = try_except(LAMBDA_CLIENT.list_functions)
-            response.pop("ResponseMetadata", None)
-            response = fix_json(response)
-            functions = response.get("Functions", [])
+            functions = paginate(LAMBDA_CLIENT, "list_functions", "Functions")
 
+            if len(functions) == 0:
+                self.display_progress(0, "lambda")
+                return
+            
             identifiers = []
             for function in functions:
                 identifiers.append(function["FunctionName"])
-
-            if len(identifiers) == 0:
-                self.display_progress(0, "lambda")
-                return
 
         elif lambda_list["count"] == 0:
             self.display_progress(0, "lambda")
@@ -255,19 +264,26 @@ class Configuration:
         for name in identifiers:
             if name == "":
                 continue
+
+            # get_function_configuration
+
             response = try_except(
                 LAMBDA_CLIENT.get_function_configuration, FunctionName=name
             )
             response.pop("ResponseMetadata", None)
+            response = fix_json(response)
             function_config[name] = response
+
+        # get_account_settings
 
         response = try_except(LAMBDA_CLIENT.get_account_settings)
         response.pop("ResponseMetadata", None)
+        response = fix_json(response)
         account_settings = response
 
-        response = try_except(LAMBDA_CLIENT.list_event_source_mappings)
-        response.pop("ResponseMetadata", None)
-        event_source_mappings = response
+        # list_event_source_mappings
+
+        event_source_mappings = simple_paginate(LAMBDA_CLIENT, "list_event_source_mappings")
 
         results = []
         results.append(
@@ -287,24 +303,21 @@ class Configuration:
 
         self.results["lambda"] = results
         self.display_progress(len(results), "lambda")
-        return
 
     def get_configuration_vpc(self):
         vpc_list = self.services["vpc"]
 
         if vpc_list["count"] == -1:
-            response = try_except(EC2_CLIENT.describe_vpcs)
-            response.pop("ResponseMetadata", None)
-            response = fix_json(response)
-            vpcs = response.get("Vpcs", [])
 
-            identifiers = []
-            for vpc in vpcs:
-                identifiers.append(vpc["VpcId"])
+            vpcs = paginate(EC2_CLIENT, "describe_vpcs", "Vpcs")
 
             if len(identifiers) == 0:
                 self.display_progress(0, "vpc")
                 return
+            
+            identifiers = []
+            for vpc in vpcs:
+                identifiers.append(vpc["VpcId"])
 
         elif vpc_list["count"] == 0:
             self.display_progress(0, "vpc")
@@ -318,13 +331,19 @@ class Configuration:
         for id in identifiers:
             if id == "":
                 continue
+
+            # describe_vpc_attribute
+
             response = try_except(
                 EC2_CLIENT.describe_vpc_attribute,
                 VpcId=id,
                 Attribute="enableDnsSupport",
             )
             response.pop("ResponseMetadata", None)
+            response = fix_json(response)
             dns_support[id] = response
+
+            # describe_vpc_attribute
 
             response = try_except(
                 EC2_CLIENT.describe_vpc_attribute,
@@ -332,36 +351,39 @@ class Configuration:
                 Attribute="enableDnsHostnames",
             )
             response.pop("ResponseMetadata", None)
+            response = fix_json(response)
             dns_hostnames[id] = response
 
-        response = try_except(EC2_CLIENT.describe_flow_logs)
-        response.pop("ResponseMetadata", None)
-        flow_logs = response
+        # describe_flow_logs
 
-        response = try_except(EC2_CLIENT.describe_vpc_peering_connections)
-        response.pop("ResponseMetadata", None)
-        peering_connections = response
+        flow_logs = simple_paginate(EC2_CLIENT, "describe_flow_logs")
 
-        response = try_except(EC2_CLIENT.describe_vpc_endpoint_connections)
-        response.pop("ResponseMetadata", None)
-        endpoint_connections = response
+        # describe_vpc_peering_connections
 
-        response = try_except(EC2_CLIENT.describe_vpc_endpoint_service_configurations)
-        response.pop("ResponseMetadata", None)
-        endpoint_service_config = response
+        peering_connections = simple_paginate(EC2_CLIENT, "describe_vpc_peering_connections")
+
+        # describe_vpc_endpoint_connections
+
+        endpoint_connections = simple_paginate(EC2_CLIENT, "describe_vpc_endpoint_connections")
+
+        # describe_vpc_endpoint_service_configurations
+
+        endpoint_service_config = simple_paginate(EC2_CLIENT, "describe_vpc_endpoint_service_configurations")
+
+        # describe_vpc_classic_link
 
         response = try_except(EC2_CLIENT.describe_vpc_classic_link)
         response.pop("ResponseMetadata", None)
+        response = fix_json(response)
         classic_links = response
 
-        response = try_except(EC2_CLIENT.describe_vpc_endpoints)
-        response.pop("ResponseMetadata", None)
-        endpoints = response
+        # describe_vpc_endpoints
 
-        response = try_except(
-            EC2_CLIENT.describe_local_gateway_route_table_vpc_associations
-        )
-        response.pop("ResponseMetadata", None)
+        endpoints = simple_paginate(EC2_CLIENT, "describe_vpc_endpoints")
+
+        # describe_local_gateway_route_table_vpc_associations
+
+        response = simple_paginate(EC2_CLIENT, "describe_local_gateway_route_table_vpc_associations")
         local_gateway_route_table = response
 
         results = []
@@ -407,24 +429,20 @@ class Configuration:
 
         self.results["vpc"] = results
         self.display_progress(len(results), "vpc")
-        return
 
     def get_configuration_elasticbeanstalk(self):
         eb_list = self.services["elasticbeanstalk"]
 
         if eb_list["count"] == -1:
-            response = try_except(EB_CLIENT.describe_environments)
-            response.pop("ResponseMetadata", None)
-            response = fix_json(response)
-            environments = response.get("Environments", [])
+            environments = paginate(EB_CLIENT, "describe_environments", "Environments")
 
+            if len(environments) == 0:
+                self.display_progress(0, "elasticbeanstalk")
+                return
+            
             identifiers = []
             for env in environments:
                 identifiers.append(env["EnvironmentId"])
-
-            if len(identifiers) == 0:
-                self.display_progress(0, "elasticbeanstalk")
-                return
 
         elif eb_list["count"] == 0:
             self.display_progress(0, "elasticbeanstalk")
@@ -444,35 +462,44 @@ class Configuration:
             if id == "":
                 continue
             resources[id] = []
+
+            # describe_environment_resources
+
             response = try_except(
                 EB_CLIENT.describe_environment_resources, EnvironmentId=id
             )
             response.pop("ResponseMetadata", None)
+            response = fix_json(response)
             resources[id] = response
+
+           #  describe_environment_managed_actions
 
             managed_actions[id] = []
             response = try_except(
                 EB_CLIENT.describe_environment_managed_actions, EnvironmentId=id
             )
             response.pop("ResponseMetadata", None)
+            response = fix_json(response)
             managed_actions[id] = response
 
+            # describe_environment_managed_action_history
+
             managed_action_history[id] = []
-            response = try_except(
-                EB_CLIENT.describe_environment_managed_action_history, EnvironmentId=id
-            )
-            response.pop("ResponseMetadata", None)
-            managed_action_history[id] = response
+            managed_action_history[id] = simple_paginate(EB_CLIENT, "describe_environment_managed_action_history", EnvironmentId=id)
+
+            # describe_instances_health
 
             instances_health[id] = []
-            response = try_except(EB_CLIENT.describe_instances_health, EnvironmentId=id)
-            response.pop("ResponseMetadata", None)
-            instances_health[id] = response
+            instances_health[id] = simple_misc_lookup(EB_CLIENT.describe_instances_health, "NextToken", EnvironmentId=id)
+
+        # describe_applications
 
         response = try_except(EB_CLIENT.describe_applications)
         response.pop("ResponseMetadata", None)
         data = fix_json(response)
         applications = data
+
+        # describe_account_attributes
 
         response = try_except(EB_CLIENT.describe_account_attributes)
         response.pop("ResponseMetadata", None)
@@ -518,24 +545,20 @@ class Configuration:
 
         self.results["eb"] = results
         self.display_progress(len(results), "elasticbeanstalk")
-        return
 
     def get_configuration_route53(self):
         route53_list = self.services["route53"]
 
         if route53_list["count"] == -1:
-            response = try_except(ROUTE53_CLIENT.list_hosted_zones)
-            response.pop("ResponseMetadata", None)
-            response = fix_json(response)
-            hosted_zones = response.get("HostedZones", [])
+            hosted_zones = paginate(ROUTE53_CLIENT, "list_hosted_zones", "HostedZones")
 
+            if len(hosted_zones) == 0:
+                self.display_progress(0, "route53")
+                return
+            
             identifiers = []
             for zone in hosted_zones:
                 identifiers.append(zone["Id"])
-
-            if len(identifiers) == 0:
-                self.display_progress(0, "route53")
-                return
 
         elif route53_list["count"] == 0:
             self.display_progress(0, "route53")
@@ -543,28 +566,31 @@ class Configuration:
         else:
             identifiers = route53_list["identifiers"]
 
-        response = try_except(ROUTE53_CLIENT.list_traffic_policies)
-        response.pop("ResponseMetadata", None)
-        get_traffic_policies = response
+        # list_traffic_policies
 
-        response = try_except(ROUTE53_RESOLVER_CLIENT.list_resolver_configs)
-        response.pop("ResponseMetadata", None)
-        resolver_configs = response
+        get_traffic_policies = list_traffic_policies_lookup(ROUTE53_CLIENT.list_traffic_policies)
 
-        response = try_except(ROUTE53_RESOLVER_CLIENT.list_firewall_configs)
-        response.pop("ResponseMetadata", None)
-        resolver_firewall_config = response
+        # list_resolver_configs
 
-        response = try_except(ROUTE53_RESOLVER_CLIENT.list_resolver_query_log_configs)
-        response.pop("ResponseMetadata", None)
-        resolver_log_configs = response
+        resolver_configs = simple_paginate(ROUTE53_RESOLVER_CLIENT, "list_resolver_configs")
+
+        # list_firewall_configs
+
+        resolver_firewall_config = simple_paginate(ROUTE53_RESOLVER_CLIENT, "list_firewall_configs")
+
+        # list_resolver_query_log_configs
+
+        resolver_log_configs = simple_paginate(ROUTE53_RESOLVER_CLIENT, "list_resolver_query_log_configs")
 
         get_zones = []
         results = []
 
+        # get_hosted_zone
+
         for id in identifiers:
             response = try_except(ROUTE53_CLIENT.get_hosted_zone, Id=id)
             response.pop("ResponseMetadata", None)
+            response = fix_json(response)
             get_zones.append(response)
 
         results.append(
@@ -598,16 +624,11 @@ class Configuration:
         ec2_list = self.services["ec2"]
 
         if ec2_list["count"] == -1:
-            response = try_except(EC2_CLIENT.describe_instances)
-            response.pop("ResponseMetadata", None)
-            elements = fix_json(response)
+            elements = ec2_lookup()
 
-            if elements["Reservations"]:
-                elements = elements["Reservations"][0]["Instances"]
-
-                if len(elements) == 0:
-                    self.display_progress(0, "ec2")
-                    return
+            if len(elements) == 0:
+                self.display_progress(0, "ec2")
+                return
 
             else:
                 self.display_progress(0, "ec2")
@@ -617,41 +638,45 @@ class Configuration:
             self.display_progress(0, "ec2")
             return
 
+        # describe_export_tasks
+
         response = try_except(EC2_CLIENT.describe_export_tasks)
         response.pop("ResponseMetadata", None)
         export = fix_json(response)
 
-        response = try_except(EC2_CLIENT.describe_fleets)
-        response.pop("ResponseMetadata", None)
-        fleets = fix_json(response)
+        # describe_fleets
 
-        response = try_except(EC2_CLIENT.describe_hosts)
-        response.pop("ResponseMetadata", None)
-        hosts = fix_json(response)
+        fleets = simple_paginate(EC2_CLIENT, "describe_fleets")
+
+        # describe_hosts
+
+        hosts = simple_paginate(EC2_CLIENT, "describe_hosts")
+
+        # describe_key_pairs
 
         response = try_except(EC2_CLIENT.describe_key_pairs)
         response.pop("ResponseMetadata", None)
         key_pairs = fix_json(response)
 
-        response = try_except(EC2_CLIENT.describe_volumes)
-        response.pop("ResponseMetadata", None)
-        volumes = fix_json(response)
+        # describe_volumes
 
-        response = try_except(EC2_CLIENT.describe_subnets)
-        response.pop("ResponseMetadata", None)
-        subnets = fix_json(response)
+        volumes = simple_paginate(EC2_CLIENT, "describe_volumes")
 
-        response = try_except(EC2_CLIENT.describe_security_groups)
-        response.pop("ResponseMetadata", None)
-        sec_groups = fix_json(response)
+        # describe_subnets
 
-        response = try_except(EC2_CLIENT.describe_route_tables)
-        response.pop("ResponseMetadata", None)
-        route_tables = fix_json(response)
+        subnets = simple_paginate(EC2_CLIENT, "describe_subnets")
 
-        response = try_except(EC2_CLIENT.describe_snapshots)
-        response.pop("ResponseMetadata", None)
-        snapshots = fix_json(response)
+        # describe_security_groups
+
+        sec_groups = simple_paginate(EC2_CLIENT, "describe_security_groups")
+
+        # describe_route_tables
+
+        route_tables = simple_paginate(EC2_CLIENT, "describe_route_tables")
+
+        # describe_snapshots
+
+        snapshots = simple_paginate(EC2_CLIENT, "describe_snapshots")
 
         results = []
         results.append(create_command("aws ec2 describe-export-tasks", export))
@@ -671,10 +696,7 @@ class Configuration:
         iam_list = self.services["iam"]
 
         if iam_list["count"] == -1:
-            response = try_except(IAM_CLIENT.list_users)
-            response.pop("ResponseMetadata", None)
-            response = fix_json(response)
-            elements = response.get("Users", [])
+            elements = paginate(IAM_CLIENT, "list_users", "Users")
 
             if len(elements) == 0:
                 self.display_progress(0, "ec2")
@@ -683,22 +705,24 @@ class Configuration:
         elif iam_list["count"] == 0:
             self.display_progress(0, "iam")
             return
+        
+        # get_account_summary
 
         response = try_except(IAM_CLIENT.get_account_summary)
         response.pop("ResponseMetadata", None)
         get_summary = fix_json(response)
 
-        response = try_except(IAM_CLIENT.get_account_authorization_details)
-        response.pop("ResponseMetadata", None)
-        get_auth_details = fix_json(response)
+        # get_account_authorization_details
 
-        response = try_except(IAM_CLIENT.list_ssh_public_keys)
-        response.pop("ResponseMetadata", None)
-        list_ssh_pub_keys = fix_json(response)
+        get_auth_details = simple_paginate(IAM_CLIENT, "get_account_authorization_details")
 
-        response = try_except(IAM_CLIENT.list_mfa_devices)
-        response.pop("ResponseMetadata", None)
-        list_mfa_devices = fix_json(response)
+        # list_ssh_public_keys
+
+        list_ssh_pub_keys = simple_paginate(IAM_CLIENT, "list_ssh_public_keys")
+
+        # list_mfa_devices
+
+        list_mfa_devices = simple_paginate(IAM_CLIENT, "list_mfa_devices")
 
         results = []
         results.append(create_command("aws iam get-account-summary", get_summary))
@@ -720,10 +744,7 @@ class Configuration:
         dynamodb_list = self.services["s3"]
 
         if dynamodb_list["count"] == -1:
-            response = try_except(DYNAMODB_CLIENT.list_tables)
-            response.pop("ResponseMetadata", None)
-            response = fix_json(response)
-            tables = response.get("TableNames", [])
+            tables = paginate(DYNAMODB_CLIENT, "list_tables", "TableNames")
 
             if len(tables) == 0:
                 self.display_progress(0, "dynamodb")
@@ -738,18 +759,23 @@ class Configuration:
         tables_info = []
         export_info = []
 
-        backups = try_except(DYNAMODB_CLIENT.list_backups)
-        backups.pop("ResponseMetadata", None)
+        # list_backups
 
-        response = try_except(DYNAMODB_CLIENT.list_exports)
-        response.pop("ResponseMetadata", None)
-        list_exports = response.get("ExportSummaries", [])
+        backups = simple_paginate(DYNAMODB_CLIENT, "list_backups")
+
+        # list_exports
+
+        list_exports = misc_lookup(DYNAMODB_CLIENT.list_exports, "NextToken", "ExportSummaries", MaxResults=100)
+
+        # describe_table
 
         for table in tables:
             response = try_except(DYNAMODB_CLIENT.describe_table, TableName=table)
             response.pop("ResponseMetadata", None)
             get_table = fix_json(response)
             tables_info.append(get_table)
+
+        # describe_export
 
         for export in list_exports:
             response = try_except(
@@ -781,10 +807,7 @@ class Configuration:
         rds_list = self.services["rds"]
 
         if rds_list["count"] == -1:
-            response = try_except(RDS_CLIENT.describe_db_instances)
-            response.pop("ResponseMetadata", None)
-            response = fix_json(response)
-            elements = response.get("DBInstances", [])
+            elements = paginate(RDS_CLIENT, "describe_db_instances", "DBInstances")
 
             if len(elements) == 0:
                 self.display_progress(0, "rds")
@@ -794,17 +817,17 @@ class Configuration:
             self.display_progress(0, "rds")
             return
 
-        response = try_except(RDS_CLIENT.describe_db_clusters)
-        response.pop("ResponseMetadata", None)
-        clusters = fix_json(response)
+        # describe_db_clusters
 
-        response = try_except(RDS_CLIENT.describe_db_snapshots)
-        response.pop("ResponseMetadata", None)
-        snapshots = fix_json(response)
+        clusters = simple_paginate(RDS_CLIENT, "describe_db_clusters")
 
-        response = try_except(RDS_CLIENT.describe_db_proxies)
-        response.pop("ResponseMetadata", None)
-        proxies = fix_json(response)
+        # describe_db_snapshots
+
+        snapshots = simple_paginate(RDS_CLIENT, "describe_db_snapshots")
+
+        # describe_db_proxies
+
+        proxies = simple_paginate(RDS_CLIENT, "describe_db_proxies")
 
         results = []
         results.append(create_command("aws rds describe-db-clusters", clusters))
@@ -827,10 +850,7 @@ class Configuration:
         guardduty_list = self.services["guardduty"]
 
         if guardduty_list["count"] == -1:
-            response = try_except(GUARDDUTY_CLIENT.list_detectors)
-            response.pop("ResponseMetadata", None)
-            response = fix_json(response)
-            detectors = response.get("DetectorIds", [])
+            detectors = paginate(GUARDDUTY_CLIENT, "list_detectors", "DetectorIds")
 
             if len(detectors) == 0:
                 self.display_progress(0, "guardduty")
@@ -850,14 +870,22 @@ class Configuration:
         ip_sets = {}
 
         for detector in detectors:
+
+            # get_detector
+
             response = try_except(GUARDDUTY_CLIENT.get_detector, DetectorId=detector)
             response.pop("ResponseMetadata", None)
             detectors[detector] = response
 
-            response = try_except(GUARDDUTY_CLIENT.list_filters, DetectorId=detector)
-            response.pop("ResponseMetadata", None)
-            filters[detector] = response
-            filter_names = response["FilterNames"]
+            # list_filters
+
+            filters[detector] = simple_paginate(GUARDDUTY_CLIENT, "list_filters", DetectorId=detector)
+            
+            filter_names = []
+            for el in filters[detector]:
+                filter_names.extend(el["FilterNames"])
+
+            # get_filter
 
             for filter_name in filter_names:
                 filter_data[detector] = []
@@ -869,21 +897,23 @@ class Configuration:
                 response.pop("ResponseMetadata", None)
                 filter_data[detector].extend(response)
 
-            response = try_except(
-                GUARDDUTY_CLIENT.list_publishing_destinations, DetectorId=detector
-            )
-            response.pop("ResponseMetadata", None)
-            publishing_destinations[detector] = response
+            # list_publishing_destinations
 
-            response = try_except(
-                GUARDDUTY_CLIENT.list_threat_intel_sets, DetectorId=detector
+            publishing_destinations[detector] = simple_misc_lookup(
+                GUARDDUTY_CLIENT.list_publishing_destinations, 
+                "NextToken", 
+                DetectorId=detector, 
+                MaxResults=100
             )
-            response.pop("ResponseMetadata", None)
-            threat_intel[detector] = response
 
-            response = try_except(GUARDDUTY_CLIENT.list_ip_sets, DetectorId=detector)
-            response.pop("ResponseMetadata", None)
-            ip_sets[detector] = response
+            # list_threat_intel_sets
+
+            threat_intel[detector] = simple_paginate(GUARDDUTY_CLIENT, "list_threat_intel_sets", DetectorId=detector)
+
+            # list_ip_sets
+
+            ip_sets[detector] = simple_paginate(GUARDDUTY_CLIENT, "list_ip_sets", DetectorId=detector)
+           
 
         results = []
         results.append(
@@ -921,10 +951,7 @@ class Configuration:
         cloudwatch_list = self.services["cloudwatch"]
 
         if cloudwatch_list["count"] == -1:
-            response = try_except(CLOUDWATCH_CLIENT.list_dashboards)
-            response.pop("ResponseMetadata", None)
-            response = fix_json(response)
-            dashboards = response.get("DashboardEntries", [])
+            dashboards = paginate(CLOUDWATCH_CLIENT, "list_dashboards", "DashboardEntries")
 
             if len(dashboards) == 0:
                 self.display_progress(0, "cloudwatch")
@@ -941,15 +968,18 @@ class Configuration:
             dashboard_name = dashboard["DashboardName"]
             if dashboard_name == "":
                 continue
+
+            # get_dashboard
+
             response = try_except(
                 CLOUDWATCH_CLIENT.get_dashboard, DashboardName=dashboard_name
             )
             response.pop("ResponseMetadata", None)
-            dashboards_data[dashboard_name] = response
+            dashboards_data[dashboard_name] = fix_json(response)
 
-        response = try_except(CLOUDWATCH_CLIENT.list_metrics)
-        response.pop("ResponseMetadata", None)
-        metrics = response
+        # list_metrics
+
+        metrics = simple_paginate(CLOUDWATCH_CLIENT, "list_metrics")
 
         results = []
         results.append(
@@ -969,10 +999,7 @@ class Configuration:
         macie_list = self.services["macie"]
 
         if macie_list["count"] == -1:
-            response = try_except(MACIE_CLIENT.describe_buckets)
-            response.pop("ResponseMetadata", None)
-            response = fix_json(response)
-            elements = response.get("buckets", [])
+            elements = paginate(MACIE_CLIENT, "describe_buckets", "buckets")
 
             if len(elements) == 0:
                 self.display_progress(0, "macie")
@@ -981,9 +1008,13 @@ class Configuration:
             self.display_progress(0, "macie")
             return
 
+        # get_finding_statistics
+
         response = try_except(MACIE_CLIENT.get_finding_statistics, groupBy="type")
         response.pop("ResponseMetadata", None)
         statistics_severity = fix_json(response)
+
+        # get_finding_statistics
 
         response = try_except(
             MACIE_CLIENT.get_finding_statistics, groupBy="severity.description"
@@ -1011,28 +1042,23 @@ class Configuration:
     def get_configuration_inspector2(self):
         inspector_list = self.services["inspector"]
 
-        response = try_except(INSPECTOR_CLIENT.list_coverage)
-        response.pop("ResponseMetadata", None)
-        coverage = fix_json(response)
+        if inspector_list["count"] == 0:
+            self.display_progress(0, "inspector")
+            return
+        
+        coverage = paginate(INSPECTOR_CLIENT, "list_coverage", "coveredResources")
 
-        if inspector_list["count"] == -1:
-            covered = coverage.get("coveredResources", [])
-
-            if len(covered) == 0:
-                self.display_progress(0, "inspector")
-                return
-
-        elif inspector_list["count"] == 0:
+        if len(coverage) == 0:
             self.display_progress(0, "inspector")
             return
 
-        response = try_except(INSPECTOR_CLIENT.list_usage_totals)
-        response.pop("ResponseMetadata", None)
-        usage = fix_json(response)
+        # list_usage_totals
 
-        response = try_except(INSPECTOR_CLIENT.list_account_permissions)
-        response.pop("ResponseMetadata", None)
-        permission = fix_json(response)
+        usage = simple_paginate(INSPECTOR_CLIENT, "list_usage_totals")
+
+        # list_account_permissions
+
+        permission = simple_paginate(INSPECTOR_CLIENT, "list_account_permissions")
 
         results = []
         results.append(create_command("aws inspector2 list-coverage", coverage))
@@ -1047,15 +1073,11 @@ class Configuration:
     def get_configuration_detective(self):
         detective_list = self.services["detective"]
 
-        response = try_except(DETECTIVE_CLIENT.list_graphs)
-        response.pop("ResponseMetadata", None)
-        graphs = fix_json(response)
-
         if detective_list["count"] == -1:
-            glist = graphs.get("GraphList", [])
+            graphs = misc_lookup(DETECTIVE_CLIENT.list_graphs, "NextToken", "GraphList", MaxResults=100)
 
-            if len(glist) == 0:
-                self.display_progress(0, "inspector")
+            if len(graphs) == 0:
+                self.display_progress(0, "detective")
                 return
 
         elif detective_list["count"] == 0:
@@ -1067,15 +1089,13 @@ class Configuration:
 
         self.results["detective"] = results
         self.display_progress(len(results), "detective")
+        print("finito detectivo")
 
     def get_configuration_cloudtrail(self):
         cloudtrail_list = self.services["cloudtrail"]
 
         if cloudtrail_list["count"] == -1:
-            response = try_except(CLOUDTRAIL_CLIENT.list_trails)
-            response.pop("ResponseMetadata", None)
-            response = fix_json(response)
-            trails = response.get("Trails", [])
+            trails = paginate(CLOUDTRAIL_CLIENT, "list_trails", "Trails")
 
             if len(trails) == 0:
                 self.display_progress(0, "cloudtrail")

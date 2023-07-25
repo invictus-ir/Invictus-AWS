@@ -1,4 +1,5 @@
 from source.utils import *
+from source.enum import *
 
 
 class Enumeration:
@@ -25,29 +26,30 @@ class Enumeration:
         self.services = services
 
         if (regionless != "" and regionless == self.region) or regionless == "not-all":
+            print("r")
             self.enumerate_s3()
-            self.enumerate_iam()
-            self.enumerate_cloudtrail_trails()
+            #self.enumerate_iam()   
+            #self.enumerate_cloudtrail_trails()
 
-        self.enumerate_wafv2()
-        self.enumerate_lambda()
-        self.enumerate_vpc()
-        self.enumerate_elasticbeanstalk()
-
-        self.enumerate_route53()
-        self.enumerate_ec2()
-        self.enumerate_dynamodb()
-        self.enumerate_rds()
-        self.enumerate_eks()
-        self.enumerate_elasticsearch()
-        self.enumerate_secrets()
-        self.enumerate_kinesis()
-
-        self.enumerate_cloudwatch()
-        self.enumerate_guardduty()
-        self.enumerate_detective()
-        self.enumerate_inspector2()
-        self.enumerate_maciev2()
+        #self.enumerate_wafv2()
+        #self.enumerate_lambda()m
+        #self.enumerate_vpc()
+        #self.enumerate_elasticbeanstalk()
+#
+        #self.enumerate_route53()
+        #self.enumerate_ec2()
+        #self.enumerate_dynamodb()
+        #self.enumerate_rds()
+        #self.enumerate_eks()
+        #self.enumerate_elasticsearch()
+        #self.enumerate_secrets()
+        #self.enumerate_kinesis()
+#
+        #self.enumerate_cloudwatch()
+        #self.enumerate_guardduty()
+        #self.enumerate_detective()
+        #self.enumerate_inspector2()
+        #self.enumerate_maciev2()
 
         if self.dl:
             confs = ROOT_FOLDER + self.region + "/enumeration/"
@@ -72,12 +74,8 @@ class Enumeration:
         return self.services
 
     def enumerate_s3(self):
-        response = try_except(S3_CLIENT.list_buckets)
-        response.pop("ResponseMetadata", None)
-        buckets = fix_json(response)
-
-        elements = []
-        elements = buckets.get("Buckets", [])
+        
+        elements  = s3_lookup()
 
         self.services["s3"]["count"] = len(elements)
         self.services["s3"]["elements"] = elements
@@ -91,9 +89,8 @@ class Enumeration:
         self.display_progress(self.services["s3"]["ids"], "s3")
 
     def enumerate_wafv2(self):
-        response = try_except(WAF_CLIENT.list_web_acls, Scope="REGIONAL")
-        response.pop("ResponseMetadata", None)
-        elements = response.get("WebACLs", [])
+
+        elements = misc_lookup(WAF_CLIENT.list_web_acls, "NextMarker", "WebACLs", Scope="REGIONAL", Limit=100)
 
         self.services["wafv2"]["count"] = len(elements)
         self.services["wafv2"]["elements"] = elements
@@ -105,11 +102,10 @@ class Enumeration:
         self.services["wafv2"]["ids"] = identifiers
 
         self.display_progress(self.services["wafv2"]["ids"], "wafv2")
-
+   
     def enumerate_lambda(self):
-        response = try_except(LAMBDA_CLIENT.list_functions)
-        response.pop("ResponseMetadata", None)
-        elements = response.get("Functions", [])
+
+        elements = paginate(LAMBDA_CLIENT, "list_functions", "Functions")
 
         self.services["lambda"]["count"] = len(elements)
         self.services["lambda"]["elements"] = elements
@@ -123,9 +119,8 @@ class Enumeration:
         self.display_progress(self.services["lambda"]["ids"], "lambda")
 
     def enumerate_vpc(self):
-        response = try_except(EC2_CLIENT.describe_vpcs)
-        response.pop("ResponseMetadata", None)
-        elements = response.get("Vpcs", [])
+
+        elements = paginate(EC2_CLIENT, "describe_vpcs", "Vpcs")
 
         self.services["vpc"]["count"] = len(elements)
         self.services["vpc"]["elements"] = elements
@@ -139,10 +134,8 @@ class Enumeration:
         self.display_progress(self.services["vpc"]["ids"], "vpc")
 
     def enumerate_elasticbeanstalk(self):
-        response = try_except(EB_CLIENT.describe_environments)
-        response.pop("ResponseMetadata", None)
-        response = fix_json(response)
-        elements = response.get("Environments", [])
+
+        elements = paginate(EB_CLIENT, "describe_environments", "Environments")
 
         self.services["elasticbeanstalk"]["count"] = len(elements)
         self.services["elasticbeanstalk"]["elements"] = elements
@@ -158,9 +151,8 @@ class Enumeration:
         )
 
     def enumerate_route53(self):
-        response = try_except(ROUTE53_CLIENT.list_hosted_zones)
-        response.pop("ResponseMetadata", None)
-        elements = response.get("HostedZones", [])
+
+        elements = paginate(ROUTE53_CLIENT, "list_hosted_zones", "HostedZones")
 
         self.services["route53"]["count"] = len(elements)
         self.services["route53"]["elements"] = elements
@@ -174,32 +166,24 @@ class Enumeration:
         self.display_progress(self.services["route53"]["ids"], "route53")
 
     def enumerate_ec2(self):
-        response = try_except(EC2_CLIENT.describe_instances)
-        response.pop("ResponseMetadata", None)
-        elements = fix_json(response)
 
-        if elements["Reservations"]:
-            elements = elements["Reservations"][0]["Instances"]
+        elements = ec2_lookup()
+        
+        self.services["ec2"]["count"] = len(elements)
+        self.services["ec2"]["elements"] = elements
 
-            self.services["ec2"]["count"] = len(elements)
-            self.services["ec2"]["elements"] = elements
+        
+        identifiers = []
+        for el in elements:
+            identifiers.append(el["InstanceId"])
 
-            identifiers = []
-            for el in elements:
-                identifiers.append(el["InstanceId"])
-
-            self.services["ec2"]["ids"] = identifiers
-
-        else:
-            self.services["ec2"]["count"] = 0
-
+        self.services["ec2"]["ids"] = identifiers
+     
         self.display_progress(self.services["ec2"]["ids"], "ec2")
 
     def enumerate_iam(self):
-        response = try_except(IAM_CLIENT.list_users)
-        response.pop("ResponseMetadata", None)
-        response = fix_json(response)
-        elements = response.get("Users", [])
+
+        elements = paginate(IAM_CLIENT, "list_users", "Users")
 
         self.services["iam"]["count"] = len(elements)
         self.services["iam"]["elements"] = elements
@@ -213,9 +197,8 @@ class Enumeration:
         self.display_progress(self.services["iam"]["ids"], "iam")
 
     def enumerate_dynamodb(self):
-        response = try_except(DYNAMODB_CLIENT.list_tables)
-        response.pop("ResponseMetadata", None)
-        elements = response.get("TableNames", [])
+
+        elements = paginate(DYNAMODB_CLIENT, "list_tables", "TableNames")
 
         self.services["dynamodb"]["count"] = len(elements)
         self.services["dynamodb"]["elements"] = elements
@@ -227,10 +210,8 @@ class Enumeration:
         self.display_progress(self.services["dynamodb"]["ids"], "dynamodb")
 
     def enumerate_rds(self):
-        response = try_except(RDS_CLIENT.describe_db_instances)
-        response.pop("ResponseMetadata", None)
-        response = fix_json(response)
-        elements = response.get("DBInstances", [])
+
+        elements = paginate(RDS_CLIENT, "describe_db_instances", "DBInstances")
 
         self.services["rds"]["count"] = len(elements)
         self.services["rds"]["elements"] = elements
@@ -244,10 +225,8 @@ class Enumeration:
         self.display_progress(self.services["rds"]["ids"], "rds")
 
     def enumerate_eks(self):
-        response = try_except(EKS_CLIENT.list_clusters)
-        response.pop("ResponseMetadata", None)
-        response = fix_json(response)
-        elements = response.get("clusters", [])
+
+        elements = paginate(EKS_CLIENT, "list_clusters", "clusters")
 
         self.services["eks"]["count"] = len(elements)
         self.services["eks"]["elements"] = elements
@@ -261,10 +240,8 @@ class Enumeration:
         self.display_progress(self.services["eks"]["ids"], "eks")
 
     def enumerate_elasticsearch(self):
-        response = try_except(ELS_CLIENT.list_domain_names)
-        response.pop("ResponseMetadata", None)
-        response = fix_json(response)
-        elements = response.get("DomainNames", [])
+
+        elements = elasticsearch_lookup()
 
         self.services["els"]["count"] = len(elements)
         self.services["els"]["elements"] = elements
@@ -278,14 +255,12 @@ class Enumeration:
         self.display_progress(self.services["els"]["ids"], "els")
 
     def enumerate_secrets(self):
-        response = try_except(SECRETS_CLIENT.list_secrets)
-        response.pop("ResponseMetadata", None)
-        response = fix_json(response)
-        elements = response.get("SecretList", [])
 
+        elements = paginate(SECRETS_CLIENT, "list_secrets", "SecretList")
+            
         self.services["secrets"]["count"] = len(elements)
         self.services["secrets"]["elements"] = elements
-
+                
         identifiers = []
         for el in elements:
             identifiers.append(el["ARN"])
@@ -295,11 +270,9 @@ class Enumeration:
         self.display_progress(self.services["secrets"]["ids"], "secrets")
 
     def enumerate_kinesis(self):
-        response = try_except(KINESIS_CLIENT.list_streams)
-        response.pop("ResponseMetadata", None)
-        response = fix_json(response)
-        elements = response.get("StreamNames", [])
 
+        elements = paginate(KINESIS_CLIENT, "list_streams", "StreamNames")
+                    
         self.services["kinesis"]["count"] = len(elements)
         self.services["kinesis"]["elements"] = elements
 
@@ -308,14 +281,12 @@ class Enumeration:
         self.display_progress(self.services["kinesis"]["ids"], "kinesis")
 
     def enumerate_cloudwatch(self):
-        response = try_except(CLOUDWATCH_CLIENT.list_dashboards)
-        response.pop("ResponseMetadata", None)
-        response = fix_json(response)
-        elements = response.get("DashboardEntries", [])
+
+        elements = paginate(CLOUDWATCH_CLIENT, "list_dashboards", "DashboardEntries")
 
         self.services["cloudwatch"]["count"] = len(elements)
         self.services["cloudwatch"]["elements"] = elements
-
+       
         identifiers = []
         for el in elements:
             identifiers.append(el["DashboardArn"])
@@ -325,10 +296,8 @@ class Enumeration:
         self.display_progress(self.services["cloudwatch"]["ids"], "cloudwatch")
 
     def enumerate_cloudtrail_trails(self):
-        response = try_except(CLOUDTRAIL_CLIENT.list_trails)
-        response.pop("ResponseMetadata", None)
-        response = fix_json(response)
-        elements = response.get("Trails", [])
+
+        elements = paginate(CLOUDTRAIL_CLIENT, "list_trails", "Trails")
 
         self.services["cloudtrail"]["count"] = len(elements)
         self.services["cloudtrail"]["elements"] = elements
@@ -342,10 +311,8 @@ class Enumeration:
         self.display_progress(self.services["cloudtrail"]["ids"], "cloudtrail")
 
     def enumerate_guardduty(self):
-        response = try_except(GUARDDUTY_CLIENT.list_detectors)
-        response.pop("ResponseMetadata", None)
-        response = fix_json(response)
-        elements = response.get("DetectorIds", [])
+
+        elements = paginate(GUARDDUTY_CLIENT, "list_detectors", "DetectorIds")
 
         self.services["guardduty"]["count"] = len(elements)
         self.services["guardduty"]["elements"] = elements
@@ -357,11 +324,9 @@ class Enumeration:
         self.display_progress(self.services["guardduty"]["ids"], "guardduty")
 
     def enumerate_inspector2(self):
-        response = try_except(INSPECTOR_CLIENT.list_coverage)
-        response.pop("ResponseMetadata", None)
-        response = fix_json(response)
-        elements = response.get("coveredResources", [])
 
+        elements = paginate(INSPECTOR_CLIENT, "list_coverage", "coveredResources")
+ 
         self.services["inspector"]["count"] = len(elements)
         self.services["inspector"]["elements"] = elements
 
@@ -374,11 +339,9 @@ class Enumeration:
         self.display_progress(self.services["inspector"]["ids"], "inspector")
 
     def enumerate_detective(self):
-        response = try_except(DETECTIVE_CLIENT.list_graphs)
-        response.pop("ResponseMetadata", None)
-        response = fix_json(response)
-        elements = response.get("GraphList", [])
-
+        
+        elements = misc_lookup(DETECTIVE_CLIENT.list_graphs, "NextToken", "GraphList", MaxResults=100)
+    
         self.services["detective"]["count"] = len(elements)
         self.services["detective"]["elements"] = elements
 
@@ -391,10 +354,8 @@ class Enumeration:
         self.display_progress(self.services["detective"]["ids"], "detective")
 
     def enumerate_maciev2(self):
-        response = try_except(MACIE_CLIENT.describe_buckets)
-        response.pop("ResponseMetadata", None)
-        response = fix_json(response)
-        elements = response.get("buckets", [])
+
+        elements = paginate(MACIE_CLIENT, "describe_buckets", "buckets")
 
         self.services["macie"]["count"] = len(elements)
         self.services["macie"]["elements"] = elements

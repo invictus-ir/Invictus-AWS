@@ -1,8 +1,7 @@
 import argparse, os, sys
 
-from source.IR import IR
-from botocore.client import ClientError
-from source.utils import ROOT_FOLDER, ACCOUNT_CLIENT, POSSIBLE_STEPS, try_except, create_folder
+from source.main.IR import IR
+from source.utils import *
 
 
 def set_args():
@@ -168,7 +167,7 @@ def main():
 
     region = args.aws_region
     all_regions= args.all_regions
-    steps = verify_steps(args.step.split(","))
+    steps = verify_steps(args.step.split(","))    
 
     if region:
 

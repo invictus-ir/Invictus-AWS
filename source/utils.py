@@ -1,16 +1,16 @@
 import boto3
 from botocore.exceptions import ClientError
 import json, datetime, string, random, sys, os
-from pathlib import Path
 
 '''
-TODO
+Generate random chars
+n : number of char to be generated
 '''
 def get_random_chars(n):
     return "".join(random.choices(string.ascii_lowercase + string.digits, k=n))
 
 '''
-TODO
+try except function
 '''
 def try_except(func, *args, **kwargs):
     try:
@@ -19,21 +19,16 @@ def try_except(func, *args, **kwargs):
         return {"count": 0, "data": [], "identifiers": []}
 
 '''
-TODO
-'''
-def write_s3(bucket, key, content):
-    response = S3_CLIENT.put_object(Bucket=bucket, Key=key, Body=content)
-    return response
-
-'''
-TODO
+Print content of json. Used for debug
+data : content of the json
 '''
 def print_json(data):
     data = json.dumps(data, indent=4, default=str)
     print(data)
 
 '''
-TODO
+Verify if the given data are a list
+list_data : List to verify
 '''
 def is_list(list_data):
     for data in list_data:
@@ -45,7 +40,8 @@ def is_list(list_data):
             is_dict(data)
 
 '''
-TODO
+Verify if the given data are a dictionary
+data_dict : Dictionary to verify
 '''
 def is_dict(data_dict):
     for data in data_dict:
@@ -57,7 +53,8 @@ def is_dict(data_dict):
             is_dict(data_dict[data])
 
 '''
-TODO
+Used to correct json format
+response : Usually the response of a request (boto3, requests)
 '''
 def fix_json(response):
     if isinstance(response, dict):
@@ -66,7 +63,10 @@ def fix_json(response):
     return response
 
 '''
-TODO
+Merge the command and its results
+command : command made
+output : output of the command
+I imagine you guessed it already :)
 '''
 def create_command(command, output):
     command_output = {}
@@ -75,14 +75,19 @@ def create_command(command, output):
     return command_output
 
 '''
-TODO
+Write a local file to a s3 bucket
+bucket : Bucket in which the file is uploaded
+key : Path where the file is uploaded
+filename : file to be uploaded
 '''
 def writefile_s3(bucket, key, filename):
     response = S3_CLIENT.meta.client.upload_file(filename, bucket, key)
     return response
 
 '''
-TODO
+Create a s3 bucket if needed during the investigation
+region : Region where to create the s3
+bucket_name : Name of the new bucket
 '''
 def create_s3_if_not_exists(region, bucket_name):
     """
@@ -110,96 +115,81 @@ def create_s3_if_not_exists(region, bucket_name):
     return bucket_name
 
 '''
-TODO
+Write content to a new file
+file : File to be filled 
+mode : Oppening mode of the file (w, a, etc)
+content : Content to be written in the file
 '''
 def write_file(file, mode, content):
     with open(file, mode) as f:
         f.write(content)
 
 '''
-TODO
+Create a folder 
+path : Path of the folder to be created
 '''
 def create_folder(path):
-    if not os.path.exists(path):
-        os.makedirs(path)
-    else:
-        print(f"[!] Error : Folder {path} already exists")
+        os.makedirs(path, exist_ok=True)
 
 '''
-TODO
+Handle the steps of the content's download of a s3 bucket
+bucket : Bucket being copied
+path : Local path where to paste the content of the bucket
 '''
-def get_file_folders(bucket_name, prefix=""):
-    file_names = []
-    folders = []
+def run_s3_dl(bucket, path, prefix=""):
+    s3 = boto3.resource('s3')
 
-    default_kwargs = {"Bucket": bucket_name, "Prefix": prefix}
-    next_token = ""
+    paginator = S3_CLIENT.get_paginator('list_objects_v2')
+    operation_parameters = {"Bucket": bucket, "Prefix": prefix}
 
-    while next_token is not None:
-        updated_kwargs = default_kwargs.copy()
-        if next_token != "":
-            updated_kwargs["ContinuationToken"] = next_token
+    for page in paginator.paginate(**operation_parameters):
+        if 'Contents' in page:
+            for s3_object in page['Contents']:
+                s3_key = s3_object['Key']
+                local_path = os.path.join(path, s3_key)
 
-        response = S3_CLIENT.list_objects_v2(**default_kwargs)
-        contents = response.get("Contents")
+                local_directory = os.path.dirname(local_path)
+                create_folder(local_directory)
 
-        for result in contents:
-            key = result.get("Key")
-            if key[-1] == "/":
-                folders.append(key)
-            else:
-                file_names.append(key)
-
-        next_token = response.get("NextContinuationToken")
-
-    return file_names, folders
+                s3.meta.client.download_file(bucket, s3_key, local_path)
 
 '''
-TODO
+Write content to s3 bucket
+bucket : Name of the bucket in which we put data
+key : Path in the bucket
+content : Data to be put
 '''
-def download_files_from_s3(s3_client, bucket_name, local_path, file_names, folders):
-    local_path = Path(local_path)
-
-    for folder in folders:
-        folder_path = Path.joinpath(local_path, folder)
-        folder_path.mkdir(parents=True, exist_ok=True)
-
-    for file_name in file_names:
-        file_path = Path.joinpath(local_path, file_name)
-        file_path.parent.mkdir(parents=True, exist_ok=True)
-        s3_client.download_file(bucket_name, file_name, str(file_path))
-
-'''
-TODO
-'''
-def run_s3_dl(bucket, path):
-    file_names, folders = get_file_folders(S3_CLIENT, bucket)
-    download_files_from_s3(
-        S3_CLIENT,
-        bucket,
-        path,
-        file_names,
-        folders,
-    )
+def write_s3(bucket, key, content):
+    response = S3_CLIENT.put_object(Bucket=bucket, Key=key, Body=content)
+    return response
 
 """
+Copy the content at a specific path of a s3 bucket to another
 src_bucket : bucket where all the logs of the corresponding service are stored
 dst_bucket : bucket used in incident response
-key_part : part of the logs' path
+service : Service of which the logs are copied (s3, ec2, etc)
+region : Region where the serice is scanned
+prefix : Path of the data to copy to reduce the amount of data
 """
-def copy_s3_bucket(src_bucket, dst_bucket, key_part):
+def copy_s3_bucket(src_bucket, dst_bucket, service, region, prefix=""):
     s3res = boto3.resource("s3")
 
-    response = try_except(S3_CLIENT.list_objects_v2, Bucket=src_bucket)
-    contents = response.get("Contents", [])
+    paginator = S3_CLIENT.get_paginator('list_objects_v2')
+    operation_parameters = {"Bucket": src_bucket, "Prefix": prefix}
 
-    for key in contents:
-        copy_source = {"Bucket": src_bucket, "Key": key["Key"]}
-        new_key = LOGS_KEY + key_part + "/" + src_bucket + "/" + key["Key"]
-        try_except(s3res.meta.client.copy, copy_source, dst_bucket, new_key)
+    for page in paginator.paginate(**operation_parameters):
+        if 'Contents' in page:
+            for key in page['Contents']:
+                copy_source = {"Bucket": src_bucket, "Key": key["Key"]}
+                new_key = f"{region}/logs/{service}/{src_bucket}/{key['Key']}"
+                try_except(s3res.meta.client.copy, copy_source, dst_bucket, new_key)
 
 '''
-TODO
+Depending on the action content of value (0 or 1), write the data to our s3 bucket, or copy the data to the source bucket to our bucket
+key : Name of the service
+value : either logs of the service or the buckets where the logs are stored, based on the const LOGS_RESULTS
+dst_bucket : Bucket where to put the data
+region : Region where the serice is scanned
 '''
 def copy_or_write_s3(key, value, dst_bucket, region):
     if value["action"] == 0:
@@ -209,9 +199,15 @@ def copy_or_write_s3(key, value, dst_bucket, region):
             json.dumps(value["results"], indent=4, default=str),
         )
     else:
-        for src_bucket in value["buckets"]:
-            copy_s3_bucket(src_bucket, dst_bucket, value)
+        for src_bucket in value["results"]:
+            prefix = ""
 
+            if "|" in src_bucket:
+                split = src_bucket.split("|")
+                bucket = split[0]
+                prefix = split[1]
+
+            copy_s3_bucket(bucket, dst_bucket, key, region, prefix)
 
 #####################
 # RANDOM GENERATION #
@@ -259,7 +255,6 @@ MACIE_CLIENT = boto3.client("macie2")
 # MISC #
 ########
 
-REGIONLESS_SERVICES = ["S3", "IAM", "SNS", "SQS"]
 POSSIBLE_STEPS = ["1", "2", "3"]
 
 ENUMERATION_SERVICES = {

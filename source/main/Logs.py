@@ -1,6 +1,7 @@
 import boto3, os, time, requests
 
 from source.utils import *
+from source.enum import *
 
 
 class Logs:
@@ -32,30 +33,43 @@ class Logs:
 
         self.services = services
         if regionless == self.region or regionless == "not-all":
+            print("j")
             self.get_logs_s3()
-            self.get_logs_cloudtrail_logs()
-
-        self.get_logs_wafv2()
-        self.get_logs_vpc()
-        self.get_logs_elasticbeanstalk()
-    
-        self.get_logs_route53()
-        self.get_logs_ec2()
-        self.get_logs_rds()
-    
-        self.get_logs_cloudwatch()
-        self.get_logs_guardduty()
-        self.get_logs_inspector2()
-        self.get_logs_maciev2()
+            #self.get_logs_cloudtrail_logs()
+#
+        #self.get_logs_wafv2()
+        #self.get_logs_vpc()
+        #self.get_logs_elasticbeanstalk()
+    #
+        #self.get_logs_route53()
+        #self.get_logs_ec2()
+        #self.get_logs_rds()
+    #
+        #self.get_logs_cloudwatch()
+        #self.get_logs_guardduty()
+        #self.get_logs_inspector2()
+        #self.get_logs_maciev2()
 
         if self.dl:
             for key, value in self.results.items():
-                if value["results"]:
+                if value["action"] == 0:
                     write_file(
                         self.confs + f"{key}.json",
                         "w",
                         json.dumps(value["results"], indent=4, default=str),
                     )
+                else:
+                    for bucket in value["results"]:
+                        path = f"{self.confs}/{key}"
+                        create_folder(path) 
+                        prefix = ""
+                        
+                        if "|" in bucket:
+                            split = bucket.split("|")
+                            bucket = split[0]
+                            prefix = split[1]
+                        print(bucket, prefix)
+                        #run_s3_dl(bucket, path, prefix)
 
             print(f"\n[+] Logs extraction results stored in the folder {self.confs}\n")
         else:
@@ -69,10 +83,7 @@ class Logs:
         guardduty_list = self.services["guardduty"]
 
         if guardduty_list["count"] == -1:
-            response = try_except(GUARDDUTY_CLIENT.list_detectors)
-            response.pop("ResponseMetadata", None)
-            response = fix_json(response)
-            detectors_ids = response.get("DetectorIds", [])
+            detectors_ids = paginate(GUARDDUTY_CLIENT, "list_detectors", "DetectorIds")
 
             if len(detectors_ids) == 0:
                 self.display_progress(0, "guardduty")
@@ -86,8 +97,7 @@ class Logs:
 
         findings_data = {}
         for detector in detector_ids:
-            findings = try_except(GUARDDUTY_CLIENT.list_findings, DetectorId=detector)
-            findings = findings["FindingIds"]
+            findings = paginate(GUARDDUTY_CLIENT, "list_findings", "FindingIds", DetectorId=detector)
 
             response = try_except(
                 GUARDDUTY_CLIENT.get_findings, DetectorId=detector, FindingIds=findings
@@ -109,56 +119,24 @@ class Logs:
 
         self.display_progress(len(results), "guardduty")
 
-    def cloudtrail_lookup(self, token=None):
-        if token is None:
-            response = CLOUDTRAIL_CLIENT.lookup_events(
-                MaxResults=50,
-            )
-        else:
-            response = CLOUDTRAIL_CLIENT.lookup_events(
-                MaxResults=50,
-                NextToken=token,
-            )
-        return response
-
     def get_logs_cloudtrail_logs(self):
-        cloudtrail_list = self.services["cloudtrail-logs"]
 
-        if cloudtrail_list["count"] == -1:
-            response = self.cloudtrail_lookup()
+        logs = paginate(CLOUDTRAIL_CLIENT, "lookup_events", "Events")
 
-            if len(response["Events"]) == 0:
-                self.display_progress(0, "cloudtrail")
-                return
-            else:
-                events = response["Events"]
-                token = response.get("NextToken")
-                while token:
-                    response = self.cloudtrail_lookup(token)
-                    events.append(response["Events"])
-                    token = response.get("NextToken")
-
-                logs = fix_json(events)
-
-        elif cloudtrail_list["count"] == 0:
+        if len(logs) == 0:
             self.display_progress(0, "cloudtrail")
             return
         
-        else:
-            logs = cloudtrail_list["elements"]
-
         self.results["cloudtrail-logs"]["action"] = 0
         self.results["cloudtrail-logs"]["results"] = logs
-
+        
         self.display_progress(1, "cloudtrail-logs")
 
     def get_logs_wafv2(self):
         waf_list = self.services["wafv2"]
 
         if waf_list["count"] == -1:
-            response = try_except(WAF_CLIENT.list_web_acls, Scope="REGIONAL")
-            response.pop("ResponseMetadata", None)
-            wafs = response.get("WebACLs", [])
+            wafs = misc_lookup(WAF_CLIENT.list_web_acls, "NextMarker", "WebACLs", Scope="REGIONAL", Limit=100)
 
             if len(wafs) == 0:
                 self.display_progress(0, "wafv2")
@@ -200,10 +178,7 @@ class Logs:
         vpc_list = self.services["vpc"]
 
         if vpc_list["count"] == -1:
-            response = try_except(EC2_CLIENT.describe_vpcs)
-            response.pop("ResponseMetadata", None)
-            response = fix_json(response)
-            vpcs = response.get("Vpcs", [])
+            vpcs = paginate(EC2_CLIENT, "describe_vpcs", "Vpcs")
 
             if len(vpcs) == 0:
                 self.display_progress(0, "vpc")
@@ -213,8 +188,7 @@ class Logs:
             self.display_progress(0, "vpc")
             return
 
-        response = try_except(EC2_CLIENT.describe_flow_logs)
-        flow_logs = response.get("FlowLogs", [])
+        flow_logs = paginate(EC2_CLIENT, "describe_flow_logs", "FlowLogs")
         cnt = 0
 
         self.results["VPC"] = {}
@@ -236,10 +210,8 @@ class Logs:
         eb_list = self.services["elasticbeanstalk"]
 
         if eb_list["count"] == -1:
-            response = try_except(eb.describe_environments)
-            response.pop("ResponseMetadata", None)
-            response = fix_json(response)
-            environments = response.get("Environments", [])
+
+            environments = paginate(EB_CLIENT, "describe_environments", "Environments")
 
             if len(environments) == 0:
                 self.display_progress(0, "elasticbeanstalk")
@@ -262,12 +234,14 @@ class Logs:
             response = try_except(
                 eb.request_environment_info, EnvironmentName=name, InfoType="bundle"
             )
+            response.pop("ResponseMetadata", None)
             response = fix_json(response)
             time.sleep(60)
 
             response = try_except(
                 eb.retrieve_environment_info, EnvironmentName=name, InfoType="bundle"
             )
+            response.pop("ResponseMetadata", None)
             response = fix_json(response)
 
             urls = response["EnvironmentInfo"]
@@ -292,10 +266,7 @@ class Logs:
         cloudwatch_list = self.services["cloudwatch"]
 
         if cloudwatch_list["count"] == -1:
-            response = try_except(CLOUDWATCH_CLIENT.list_dashboards)
-            response.pop("ResponseMetadata", None)
-            response = fix_json(response)
-            dashboards = response.get("DashboardEntries", [])
+            dashboards = paginate(CLOUDWATCH_CLIENT, "list_dashboards", "DashboardEntries")
 
             if len(dashboards) == 0:
                 self.display_progress(0, "cloudwatch")
@@ -318,13 +289,9 @@ class Logs:
             response.pop("ResponseMetadata", None)
             dashboards_data[dashboard_name] = fix_json(response)
 
-        response = try_except(CLOUDWATCH_CLIENT.list_metrics)
-        response.pop("ResponseMetadata", None)
-        metrics = fix_json(response)
+        metrics = try_except(CLOUDWATCH_CLIENT, "list_metrics")
 
-        response = try_except(CLOUDWATCH_CLIENT.describe_alarms)
-        response.pop("ResponseMetadata", None)
-        alarms = fix_json(response)
+        alarms = simple_paginate(CLOUDWATCH_CLIENT, "describe_alarms")
 
         results = []
         results.append(
@@ -344,11 +311,8 @@ class Logs:
         s3_list = self.services["s3"]
 
         if s3_list["count"] == -1:
-            # if no listing of the s3 buckets was done before
-            response = try_except(S3_CLIENT.list_buckets)  # buckets' listing
-            response.pop("ResponseMetadata", None)
-            buckets = fix_json(response)
-            elements = buckets.get("Buckets", [])
+
+            elements = s3_lookup()
 
             if len(elements) == 0:
                 self.display_progress(0, "s3")
@@ -377,6 +341,10 @@ class Logs:
                 bucket = target.split(":")[-1]
                 src_bucket = bucket.split("/")[0]
 
+                if logging["LoggingEnabled"]["TargetPrefix"]:
+                    prefix = logging["LoggingEnabled"]["TargetPrefix"]
+                src_bucket = f"{src_bucket}|{prefix}"
+
                 self.results["s3"]["results"].append(src_bucket)
              
                 cnt += 1
@@ -387,11 +355,8 @@ class Logs:
         inspector_list = self.services["inspector"]
 
         if inspector_list["count"] == -1:
-            response = try_except(INSPECTOR_CLIENT.list_coverage)
-            response.pop("ResponseMetadata", None)
-            coverage = fix_json(response)
 
-            covered = coverage.get("coveredResources", [])
+            covered = paginate(INSPECTOR_CLIENT, "list_coverage", "coveredResources")
 
             if len(covered) == 0:
                 self.display_progress(0, "inspector")
@@ -401,15 +366,11 @@ class Logs:
             self.display_progress(0, "inspector")
             return
 
-        response = try_except(INSPECTOR_CLIENT.list_findings)
-        response.pop("ResponseMetadata", None)
-        get_findings = fix_json(response)
+        get_findings = simple_paginate(INSPECTOR_CLIENT, "list_findings")
 
-        response = try_except(
-            INSPECTOR_CLIENT.list_finding_aggregations, aggregationType="TITLE"
+        get_grouped_findings = simple_paginate(
+            INSPECTOR_CLIENT, "list_finding_aggregations", aggregationType="TITLE"
         )
-        response.pop("ResponseMetadata", None)
-        get_grouped_findings = fix_json(response)
 
         results = []
         results.append(create_command("aws inspector2 list-findings", get_findings))
@@ -429,10 +390,8 @@ class Logs:
         macie_list = self.services["macie"]
 
         if macie_list["count"] == -1:
-            response = try_except(MACIE_CLIENT.describe_buckets)
-            response.pop("ResponseMetadata", None)
-            response = fix_json(response)
-            elements = response.get("buckets", [])
+
+            elements = paginate(MACIE_CLIENT, "describe_buckets", "buckets")
 
             if len(elements) == 0:
                 self.display_progress(0, "macie")
@@ -441,9 +400,7 @@ class Logs:
             self.display_progress(0, "macie")
             return
 
-        response = try_except(MACIE_CLIENT.list_findings)
-        response.pop("ResponseMetadata", None)
-        get_list_findings = fix_json(response)
+        get_list_findings = simple_paginate(MACIE_CLIENT, "list_findings")
 
         response = try_except(
             MACIE_CLIENT.get_findings,
@@ -482,7 +439,7 @@ class Logs:
 
     def create_ssm_role(self):
         data = self.create_json()
-        iam = boto3.client("iam")
+        iam = IAM_CLIENT
         role_name = "SSM_IR_Extraction01"
         instance_name = "SSM_S3_IR_Extraction01"
 
@@ -694,10 +651,8 @@ class Logs:
         rds_list = self.services["rds"]
 
         if rds_list["count"] == -1:
-            response = try_except(RDS_CLIENT.describe_db_instances)
-            response.pop("ResponseMetadata", None)
-            response = fix_json(response)
-            list_of_dbs = response.get("DBInstances", [])
+
+            list_of_dbs = paginate(RDS_CLIENT, "describe_db_instances", "DBInstances")
 
             if len(list_of_dbs) == 0:
                 self.display_progress(0, "rds")
@@ -734,10 +689,8 @@ class Logs:
         route53_list = self.services["route53"]
 
         if route53_list["count"] == -1:
-            response = try_except(ROUTE53_CLIENT.list_hosted_zones)
-            response.pop("ResponseMetadata", None)
-            response = fix_json(response)
-            hosted_zones = response.get("HostedZones", [])
+            
+            hosted_zones = paginate(ROUTE53_CLIENT, "list_hosted_zones", "HostedZones")
 
             if hosted_zones:
                 self.display_progress(0, "route53")
@@ -747,9 +700,7 @@ class Logs:
             self.display_progress(0, "route53")
             return
 
-        route53resolver = boto3.client("route53resolver")
-        response = try_except(route53resolver.list_resolver_query_log_configs)
-        resolver_log_configs = response.get("ResolverQueryLogConfigs", [])
+        resolver_log_configs = paginate(ROUTE53_RESOLVER_CLIENT, "list_resolver_query_log_configs", "ResolverQueryLogConfigs")
         cnt = 0
 
         self.results["route53"]["action"] = 1
@@ -772,7 +723,7 @@ class Logs:
                 "         \u2705 "
                 + name.upper()
                 + "\033[1m"
-                + " - Logs extracted to S3 bucket "
+                + " - Logs extracted"
                 + "\033[0m"
             )
         else:

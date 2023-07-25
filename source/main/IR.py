@@ -1,6 +1,6 @@
-from source.Enumeration import Enumeration
-from source.Configuration import Configuration
-from source.Logs import Logs
+from source.main.Enumeration import Enumeration
+from source.main.Configuration import Configuration
+from source.main.Logs import Logs
 from source.utils import ENUMERATION_SERVICES
 
 class IR:
