@@ -15,8 +15,8 @@ try except function
 def try_except(func, *args, **kwargs):
     try:
         return func(*args, **kwargs)
-    except:
-        return {"count": 0, "data": [], "identifiers": []}
+    except Exception as e:
+        return {"count": 0, "error": str(e)}
 
 '''
 Print content of json. Used for debug
@@ -117,7 +117,7 @@ def create_s3_if_not_exists(region, bucket_name):
 '''
 Write content to a new file
 file : File to be filled 
-mode : Oppening mode of the file (w, a, etc)
+mode : Opening mode of the file (w, a, etc)
 content : Content to be written in the file
 '''
 def write_file(file, mode, content):
@@ -135,15 +135,16 @@ def create_folder(path):
 Handle the steps of the content's download of a s3 bucket
 bucket : Bucket being copied
 path : Local path where to paste the content of the bucket
+prefix : Specific folder in the bucket to download
 '''
 def run_s3_dl(bucket, path, prefix=""):
-    s3 = boto3.resource('s3')
 
     paginator = S3_CLIENT.get_paginator('list_objects_v2')
     operation_parameters = {"Bucket": bucket, "Prefix": prefix}
 
     for page in paginator.paginate(**operation_parameters):
         if 'Contents' in page:
+            #print(page)
             for s3_object in page['Contents']:
                 s3_key = s3_object['Key']
                 local_path = os.path.join(path, s3_key)
@@ -151,7 +152,8 @@ def run_s3_dl(bucket, path, prefix=""):
                 local_directory = os.path.dirname(local_path)
                 create_folder(local_directory)
 
-                s3.meta.client.download_file(bucket, s3_key, local_path)
+                if not local_path.endswith("/"): 
+                    S3_CLIENT.download_file(bucket, s3_key, local_path)
 
 '''
 Write content to s3 bucket
@@ -206,6 +208,8 @@ def copy_or_write_s3(key, value, dst_bucket, region):
                 split = src_bucket.split("|")
                 bucket = split[0]
                 prefix = split[1]
+            else:
+                bucket = src_bucket
 
             copy_s3_bucket(bucket, dst_bucket, key, region, prefix)
 
@@ -231,25 +235,65 @@ ROLE_JSON = "role.json"
 
 ACCOUNT_CLIENT = boto3.client('account')
 S3_CLIENT = boto3.client("s3")
-WAF_CLIENT = boto3.client("wafv2")
-LAMBDA_CLIENT = boto3.client("lambda")
-EC2_CLIENT = boto3.client("ec2")
-EB_CLIENT = boto3.client("elasticbeanstalk")
-ROUTE53_CLIENT = boto3.client("route53")
-ROUTE53_RESOLVER_CLIENT = boto3.client("route53resolver")
-IAM_CLIENT = boto3.client("iam")
-DYNAMODB_CLIENT = boto3.client("dynamodb")
-RDS_CLIENT = boto3.client("rds")
-EKS_CLIENT = boto3.client("eks")
-ELS_CLIENT = boto3.client("es")
-SECRETS_CLIENT = boto3.client("secretsmanager")
-KINESIS_CLIENT = boto3.client("kinesis")
 CLOUDWATCH_CLIENT = boto3.client("cloudwatch")
 CLOUDTRAIL_CLIENT = boto3.client("cloudtrail")
-GUARDDUTY_CLIENT = boto3.client("guardduty")
-INSPECTOR_CLIENT = boto3.client("inspector2")
-DETECTIVE_CLIENT = boto3.client("detective")
-MACIE_CLIENT = boto3.client("macie2")
+ROUTE53_CLIENT = boto3.client("route53")
+IAM_CLIENT = boto3.client("iam")
+GUARDDUTY_CLIENT = None
+WAF_CLIENT = None
+LAMBDA_CLIENT = None
+EC2_CLIENT = None
+EB_CLIENT = None
+ROUTE53_RESOLVER_CLIENT = None
+DYNAMODB_CLIENT = None
+RDS_CLIENT = None
+EKS_CLIENT = None
+ELS_CLIENT = None
+SECRETS_CLIENT = None
+KINESIS_CLIENT = None
+INSPECTOR_CLIENT = None
+DETECTIVE_CLIENT = None
+MACIE_CLIENT = None
+SSM_CLIENT = None
+
+'''
+Set the clients to the given region.
+region : Region where the client will be used
+'''
+def set_clients(region):
+    global LAMBDA_CLIENT
+    global WAF_CLIENT
+    global EC2_CLIENT
+    global EB_CLIENT
+    global ROUTE53_RESOLVER_CLIENT
+    global DYNAMODB_CLIENT
+    global RDS_CLIENT
+    global EKS_CLIENT
+    global ELS_CLIENT
+    global SECRETS_CLIENT
+    global KINESIS_CLIENT
+    global GUARDDUTY_CLIENT
+    global INSPECTOR_CLIENT
+    global DETECTIVE_CLIENT
+    global MACIE_CLIENT
+    global SSM_CLIENT
+
+    WAF_CLIENT = boto3.client("wafv2", region_name=region)
+    LAMBDA_CLIENT = boto3.client("lambda", region_name=region)
+    EC2_CLIENT = boto3.client("ec2", region_name=region)
+    EB_CLIENT = boto3.client("elasticbeanstalk", region_name=region)
+    ROUTE53_RESOLVER_CLIENT = boto3.client("route53resolver", region_name=region)
+    DYNAMODB_CLIENT = boto3.client("dynamodb", region_name=region)
+    RDS_CLIENT = boto3.client("rds", region_name=region)
+    EKS_CLIENT = boto3.client("eks", region_name=region)
+    ELS_CLIENT = boto3.client("es", region_name=region)
+    SECRETS_CLIENT = boto3.client("secretsmanager", region_name=region)
+    KINESIS_CLIENT = boto3.client("kinesis", region_name=region)
+    GUARDDUTY_CLIENT = boto3.client("guardduty", region_name=region)
+    INSPECTOR_CLIENT = boto3.client("inspector2", region_name=region)
+    DETECTIVE_CLIENT = boto3.client("detective", region_name=region)
+    MACIE_CLIENT = boto3.client("macie2", region_name=region)
+    SSM_CLIENT = boto3.client("ssm", region_name=region)
 
 ########
 # MISC #
@@ -257,6 +301,10 @@ MACIE_CLIENT = boto3.client("macie2")
 
 POSSIBLE_STEPS = ["1", "2", "3"]
 
+'''
+-1 means we didn't enter in the enumerate function associated 
+0 means we ran the associated function but the service wasn't available
+'''
 ENUMERATION_SERVICES = {
     "s3": {"count": -1, "elements": [], "ids": []},
     "wafv2": {"count": -1, "elements": [], "ids": []},
@@ -293,3 +341,4 @@ LOGS_RESULTS = {
     "rds": {"action": -1,"results": []},
     "route53": {"action": -1,"results": []}
 }
+

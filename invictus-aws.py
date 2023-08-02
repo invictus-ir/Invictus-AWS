@@ -3,7 +3,9 @@ import argparse, os, sys
 from source.main.IR import IR
 from source.utils import *
 
-
+'''
+Define the arguments used when calling the tool
+'''
 def set_args():
     parser = argparse.ArgumentParser(add_help=False)
 
@@ -22,7 +24,7 @@ def set_args():
         type=str, 
         const="1,2,3", 
         default="1,2,3", 
-        help="[+] Comma separated list of the steps to be runned out. 1 - Enumeration. 2 - Configuration. 3 -    Logs Extraction. Default is 1,2,3"
+        help="[+] Comma separated list of the steps to be runned out. 1 = Enumeration. 2 = Configuration. 3 = Logs Extraction. Default is 1,2,3"
     )
 
     group1 = parser.add_mutually_exclusive_group(required=True)
@@ -57,6 +59,13 @@ def set_args():
 
     return parser.parse_args()
 
+'''
+Run the steps of the tool (enum, config, logs extraction) 
+dl : True if the user wants to download the results, False if he wants the results to be written in a s3 bucket
+region : region to run the tool in
+regionless : "not-all" if the tool is used on only one region. First region to run the tool on otherwise
+steps : steps to run (1 for enum, 2 for config, 3 for logs extraction)
+'''
 def run_steps(dl, region, regionless, steps):
 
     if dl:
@@ -88,6 +97,10 @@ def run_steps(dl, region, regionless, steps):
         except Exception as e: 
             print(str(e))
 
+'''
+Search for all enabled regions and verify that the fivent region exists (region that the tool will begin with)
+input_region : If we're in this function, the used decided to run the tool on all enabled functions. This given region is the first one that the tool will analyze.
+'''
 def verify_all_regions(input_region):
 
     response = try_except(
@@ -115,6 +128,13 @@ def verify_all_regions(input_region):
         )
         sys.exit(-1)
 
+'''
+Verify the region inputs and run the steps of the tool for one region
+dl : True if the user wants to download the results, False if he wants the results to be written in a s3 bucket
+region : region to run the tool in
+all_regions : "not-all" in this case to show that the tool is runned for only one region
+steps : steps to run (1 for enum, 2 for config, 3 for logs extraction)
+'''
 def verify_one_region(dl, region, all_regions, steps):
     try:
         response = ACCOUNT_CLIENT.get_region_opt_status(RegionName=region)
@@ -129,6 +149,10 @@ def verify_one_region(dl, region, all_regions, steps):
             print(str(e))
             sys.exit(-1)
 
+'''
+Verify that the steps entered are correct
+steps : Steps to verify
+'''
 def verify_steps(steps):
     for step in steps:
         if step not in POSSIBLE_STEPS:
@@ -139,7 +163,9 @@ def verify_steps(steps):
 
     return steps
 
-
+'''
+Main function of the tool
+'''
 def main():
     print(
         """

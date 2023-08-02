@@ -2,3 +2,4 @@ __pycache__/
 source/__pycache__/
 .vscode
 t.json
+results/
