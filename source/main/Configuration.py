@@ -70,6 +70,7 @@ class Configuration:
             print(f"\n[+] Configuration results stored in the folder {confs}\n")
         else:
             for el in self.results:
+                print(el)
                 write_s3(
                     self.bucket,
                     f"{self.region}/configuration/{el}.json",

@@ -1,7 +1,7 @@
 import boto3, os, time, requests, json
 
 import source.utils
-from source.utils import write_file, create_folder, copy_or_write_s3, create_command, writefile_s3, ROLE_JSON, run_s3_dl, LOGS_RESULTS, create_s3_if_not_exists, LOGS_BUCKET, ROOT_FOLDER, set_clients
+from source.utils import write_file, create_folder, copy_or_write_s3, create_command, writefile_s3, ROLE_JSON, run_s3_dl, LOGS_RESULTS, create_s3_if_not_exists, LOGS_BUCKET, ROOT_FOLDER, set_clients, write_or_dl, write_s3, athena_query
 from source.enum import *
 
 
@@ -16,14 +16,15 @@ class Logs:
 
         self.region = region
         self.results = LOGS_RESULTS
+        self.dl = dl
 
-        if dl:
-            self.dl = dl
-            self.confs = ROOT_FOLDER + self.region + "/logs"
+        #Also created for cloudtrail-logs results
+        self.confs = ROOT_FOLDER + self.region + "/logs"
+        self.bucket = create_s3_if_not_exists(self.region, LOGS_BUCKET)
+
+        if self.dl:
             create_folder(self.confs)
-        else:
-            self.bucket = create_s3_if_not_exists(self.region, LOGS_BUCKET)
-
+        
     '''
     Test function
     '''
@@ -62,32 +63,44 @@ class Logs:
 
         if self.dl:
             for key, value in self.results.items():
-                if value["action"] == 0:
-                    write_file(
-                        self.confs + f"/{key}.json",
-                        "w",
-                        json.dumps(value["results"], indent=4, default=str),
-                    )
-                else:
-                    for bucket in value["results"]:
-                        path = f"{self.confs}/{key}"
-                        create_folder(path) 
-                        prefix = ""
-                        
-                        if "|" in bucket:
-                            split = bucket.split("|")
-                            bucket = split[0]
-                            prefix = split[1]
-                        run_s3_dl(bucket, path, prefix)
+                if value["results"] and key != "cloudtrail-logs":
+                    write_or_dl(key, value, self.confs)
+                elif key == "cloudtrail-logs":
+                    trail = value["results"]["CloudTrailEvent"]
+                    obj = json.loads(trail)
+                    dump = json.dumps(obj, default=str)
 
-            print(f"\n[+] Logs extraction results stored in the folder {self.confs}\n")
+                    write_file(
+                        f"{self.region}/logs/cloudtrail-logs/{obj['eventID']}.json",
+                        "w",
+                        dump,
+                    )
+
         else:
             for key, value in self.results.items():
-                if value["results"]:
+                if value["results"] and key != "cloudtrail-logs":
                     copy_or_write_s3(key, value, self.bucket, self.region)
 
-            print(f"\n[+] Logs extraction results stored in the bucket {self.bucket}\n")
+        # cloudtrail-logs has to be done in any case for further analysis
+        if self.results["cloudtrail-logs"]["results"]:
+            res = self.results["cloudtrail-logs"]["results"]
+            for el in res:
 
+                trail = el["CloudTrailEvent"]
+                obj = json.loads(trail)
+                dump = json.dumps(obj, default=str)
+                write_s3(
+                    self.bucket,
+                    f"{self.region}/logs/cloudtrail-logs/{obj['eventID']}.json",
+                    dump,
+                )    
+
+            source_bucket, output_bucket = self.init_athena()       
+
+        print(f"\n[+] Logs extraction results stored in the bucket {self.bucket}\n")
+
+        return source_bucket, output_bucket
+        
     '''
     Retrieve the logs of the existing guardduty detectors
     '''
@@ -101,9 +114,9 @@ class Logs:
         '''
 
         if guardduty_list["count"] == -1:
-            detectors_ids = paginate(source.utils.GUARDDUTY_CLIENT, "list_detectors", "DetectorIds")
+            detector_ids = paginate(source.utils.GUARDDUTY_CLIENT, "list_detectors", "DetectorIds")
 
-            if len(detectors_ids) == 0:
+            if len(detector_ids) == 0:
                 self.display_progress(0, "guardduty")
                 return
 
@@ -691,13 +704,17 @@ class Logs:
     old_profiles : old profiles to change
     new_profiles : profiles that will replace the old ones
     '''
-    def back_to_normal(self, old_profiles, new_profiles):
+    def back_to_normal(self, old_profiles, new_profiles, created_role):
         for old_profile in old_profiles:
             for new_profile in new_profiles:
                 if old_profile["instanceID"] == new_profile["instanceID"]:
                     self.replace_role(
                         old_profile["profileARN"], new_profile["AssociatedID"]
                     )
+        try:
+            source.utils.IAM_CLIENT.delete_role(RoleName=created_role["Name"])
+        except Exception as e:
+            print(str(e))
     
     '''
     Retrieve the logs of the configuration of the existing ec2 instances
@@ -730,7 +747,7 @@ class Logs:
         self.extract_logs()
         new_profiles = self.extract_role_and_id()
 
-        self.back_to_normal(old_profiles, new_profiles)
+        self.back_to_normal(old_profiles, new_profiles, profile_for_replace)
         self.display_progress(1, "ec2")
 
     '''
@@ -833,6 +850,82 @@ class Logs:
                 cnt += 1
                 
         self.display_progress(cnt, "route53")
+
+    '''
+    Initiates athena database and table for further analysis
+    '''
+    def init_athena(self):
+
+        source_bucket = f"s3://{self.bucket}/{self.region}/logs/cloudtrail-logs/"
+        output_bucket = f"s3://{self.bucket}/cloudtrail-analysis/"
+
+        print(source_bucket, output_bucket)
+
+        query_db = "create database if not exists `cloudtrail-analysis`;"
+        db_creation = athena_query(self.region, query_db, output_bucket)
+        print(db_creation)
+
+        query_table = f"""
+            CREATE EXTERNAL TABLE IF NOT EXISTS `cloudtrail-analysis`.logs (
+            eventversion STRING,
+            useridentity STRUCT<
+                           type:STRING,
+                           principalid:STRING,
+                           arn:STRING,
+                           accountid:STRING,
+                           invokedby:STRING,
+                           accesskeyid:STRING,
+                           userName:STRING,
+              sessioncontext:STRUCT<
+                attributes:STRUCT<
+                           mfaauthenticated:STRING,
+                           creationdate:STRING>,
+                sessionissuer:STRUCT<  
+                           type:STRING,
+                           principalId:STRING,
+                           arn:STRING, 
+                           accountId:STRING,
+                           userName:STRING>,
+                ec2RoleDelivery:string,
+                webIdFederationData:map<string,string>
+              >
+            >,
+            eventtime STRING,
+            eventsource STRING,
+            eventname STRING,
+            awsregion STRING,
+            sourceipaddress STRING,
+            useragent STRING,
+            errorcode STRING,
+            errormessage STRING,
+            requestparameters STRING,
+            responseelements STRING,
+            additionaleventdata STRING,
+            requestid STRING,
+            eventid STRING,
+            resources ARRAY<STRUCT<
+                           arn:STRING,
+                           accountid:STRING,
+                           type:STRING>>,
+            eventtype STRING,
+            apiversion STRING,
+            readonly STRING,
+            recipientaccountid STRING,
+            serviceeventdetails STRING,
+            sharedeventid STRING,
+            vpcendpointid STRING,
+            tlsDetails struct<
+              tlsVersion:string,
+              cipherSuite:string,
+              clientProvidedHostHeader:string>
+            )
+            ROW FORMAT SERDE 'org.openx.data.jsonserde.JsonSerDe'
+            LOCATION '{self.source_bucket}'  
+        """
+        table_creation = athena_query(self.region, query_table, output_bucket)
+        print(table_creation)
+
+        return source_bucket, output_bucket
 
     '''
     Diplays if the configuration of the given service worked

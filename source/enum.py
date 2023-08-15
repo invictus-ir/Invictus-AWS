@@ -71,7 +71,8 @@ def paginate(client, command, array, **kwargs):
             page = fix_json(page)
             elements.extend(page.get(array, []))
     except Exception as e:
-        print(f"[!] Error : {str(e)}")  
+        if client != source.utils.MACIE_CLIENT and "Macie is not enabled" not in str(e):
+            print(f"[!] Error : {str(e)}")  
 
     return elements  
 

@@ -101,7 +101,7 @@ def create_s3_if_not_exists(region, bucket_name):
         if bkt["Name"] == bucket_name:
             return bucket_name
 
-    print(f"\n[+] Logs bucket does not exists, creating it now: {bucket_name}\n")
+    print(f"[+] Logs bucket does not exists, creating it now: {bucket_name}")
 
     bucket_config = dict()
     if region != "us-east-1":
@@ -189,7 +189,7 @@ def copy_s3_bucket(src_bucket, dst_bucket, service, region, prefix=""):
 '''
 Depending on the action content of value (0 or 1), write the data to our s3 bucket, or copy the data to the source bucket to our bucket
 key : Name of the service
-value : either logs of the service or the buckets where the logs are stored, based on the const LOGS_RESULTS
+value : Either logs of the service or the buckets where the logs are stored, based on the const LOGS_RESULTS
 dst_bucket : Bucket where to put the data
 region : Region where the serice is scanned
 '''
@@ -212,6 +212,79 @@ def copy_or_write_s3(key, value, dst_bucket, region):
                 bucket = src_bucket
 
             copy_s3_bucket(bucket, dst_bucket, key, region, prefix)
+
+'''
+Depending on the action content of value (0 or 1), write the data to a single json file, or download the content of a s3 bucket
+key : Name of the service
+value : Either logs of the service or the buckets where the logs are stored, based on the const LOGS_RESULTS
+conf : Path to write the results
+'''
+def write_or_dl(key, value, conf):
+    if value["action"] == 0:
+        write_file(
+            conf + f"/{key}.json",
+            "w",
+            json.dumps(value["results"], indent=4, default=str),
+        )
+    else:
+        for bucket in value["results"]:
+            path = f"{conf}/{key}"
+            create_folder(path) 
+            prefix = ""
+            
+            if "|" in bucket:
+                split = bucket.split("|")
+                bucket = split[0]
+                prefix = split[1]
+            run_s3_dl(bucket, path, prefix)
+
+'''
+Runs an athena query and verifies it worked
+region: Region where the query is made
+query : Query to be run
+bucket : bucket where the results are written
+
+'''
+def athena_query(region, query, bucket):
+
+    athena = boto3.client("athena", region_name=region)
+
+    result = athena.start_query_execution(
+        QueryString=query,
+        ResultConfiguration={"OutputLocation": bucket}
+    )
+    
+    id = result["QueryExecutionId"]
+    status = "QUEUED"
+
+    while status != "SUCCEEDED":
+        response = athena.get_query_execution(QueryExecutionId=id)
+        status = response["QueryExecution"]["Status"]["State"]
+
+        if status == "FAILED" or status == "CANCELLED":
+            print(f'[!] Error : {response["QueryExecution"]["Status"]["AthenaError"]["ErrorMessage"]}')
+            sys.exit(-1)    
+    
+    return response
+
+'''
+Rename a s3 file (well it copies it, changes the name, then delete the old one)
+bucket : Bucket where the file to rename is
+folder : Folder where the file to rename is
+new_key : New name of the file
+old_key : Old name of the file
+'''
+def rename_file_s3(bucket, folder, new_key, old_key):
+    S3_CLIENT.copy_object(
+        Bucket=bucket,
+        Key=f'{folder}{new_key}',
+        CopySource = {"Bucket": bucket, "Key": f"{folder}{old_key}"}
+    )
+
+    S3_CLIENT.delete_objects(
+        Bucket=bucket,
+        Delete={'Objects': [{'Key': f"{folder}{old_key}"}]}
+    )
 
 #####################
 # RANDOM GENERATION #
@@ -255,6 +328,7 @@ INSPECTOR_CLIENT = None
 DETECTIVE_CLIENT = None
 MACIE_CLIENT = None
 SSM_CLIENT = None
+ATHENA_CLIENT = None
 
 '''
 Set the clients to the given region.
@@ -277,6 +351,7 @@ def set_clients(region):
     global DETECTIVE_CLIENT
     global MACIE_CLIENT
     global SSM_CLIENT
+    global ATHENA_CLIENT
 
     WAF_CLIENT = boto3.client("wafv2", region_name=region)
     LAMBDA_CLIENT = boto3.client("lambda", region_name=region)
@@ -294,12 +369,13 @@ def set_clients(region):
     DETECTIVE_CLIENT = boto3.client("detective", region_name=region)
     MACIE_CLIENT = boto3.client("macie2", region_name=region)
     SSM_CLIENT = boto3.client("ssm", region_name=region)
+    ATHENA_CLIENT = boto3.client("athena", region_name=region)
 
 ########
 # MISC #
 ########
 
-POSSIBLE_STEPS = ["1", "2", "3"]
+POSSIBLE_STEPS = ["1", "2", "3", "4"]
 
 '''
 -1 means we didn't enter in the enumerate function associated 
