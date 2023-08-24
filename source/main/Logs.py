@@ -1,8 +1,8 @@
 import boto3, os, time, requests, json
 
-import source.utils
-from source.utils import write_file, create_folder, copy_or_write_s3, create_command, writefile_s3, ROLE_JSON, run_s3_dl, LOGS_RESULTS, create_s3_if_not_exists, LOGS_BUCKET, ROOT_FOLDER, set_clients, write_or_dl, write_s3, athena_query
-from source.enum import *
+import source.utils.utils
+from source.utils.utils import write_file, date, create_folder, copy_or_write_s3, create_command, writefile_s3, ROLE_JSON, LOGS_RESULTS, create_s3_if_not_exists, LOGS_BUCKET, ROOT_FOLDER, set_clients, write_or_dl, write_s3, athena_query
+from source.utils.enum import *
 
 
 class Logs:
@@ -37,13 +37,15 @@ class Logs:
     regionless : "not-all" if the tool is used on only one region. First region to run the tool on otherwise
     '''
     def execute(self, services, regionless):
-        print("\n========================")
-        print(f"[+] Logs Extraction Step")
-        print("========================\n")
+        
+        print(f"[+] Beginning Logs Extraction")
 
         set_clients(self.region)
 
         self.services = services
+        source_bucket = ""
+        output_bucket = ""
+
         if regionless == self.region or regionless == "not-all":
             self.get_logs_s3()
             self.get_logs_cloudtrail_logs()
@@ -66,15 +68,16 @@ class Logs:
                 if value["results"] and key != "cloudtrail-logs":
                     write_or_dl(key, value, self.confs)
                 elif key == "cloudtrail-logs":
-                    trail = value["results"]["CloudTrailEvent"]
-                    obj = json.loads(trail)
-                    dump = json.dumps(obj, default=str)
-
-                    write_file(
-                        f"{self.region}/logs/cloudtrail-logs/{obj['eventID']}.json",
-                        "w",
-                        dump,
-                    )
+                    for el in value["results"]:
+                        trail = el["CloudTrailEvent"]
+                        obj = json.loads(trail)
+                        dump = json.dumps(obj, default=str)
+                        create_folder(f"{self.confs}/cloudtrail-logs/")
+                        write_file(
+                            f"{self.confs}/cloudtrail-logs/{obj['eventID']}.json",
+                            "w",
+                            dump,
+                        )
 
         else:
             for key, value in self.results.items():
@@ -84,6 +87,10 @@ class Logs:
         # cloudtrail-logs has to be done in any case for further analysis
         if self.results["cloudtrail-logs"]["results"]:
             res = self.results["cloudtrail-logs"]["results"]
+
+            ###
+            limit = 0
+
             for el in res:
 
                 trail = el["CloudTrailEvent"]
@@ -94,12 +101,23 @@ class Logs:
                     f"{self.region}/logs/cloudtrail-logs/{obj['eventID']}.json",
                     dump,
                 )    
+                if limit == 750:
+                    break
 
-            source_bucket, output_bucket = self.init_athena()       
+                ###
+                limit = limit + 1
 
-        print(f"\n[+] Logs extraction results stored in the bucket {self.bucket}\n")
+            source_bucket, output_bucket = self.init_athena()
 
-        return source_bucket, output_bucket
+            ret1 = source_bucket
+            ret2 = output_bucket
+        else:
+            ret1 = "0"
+            ret2 = "0"
+        
+        print(f"[+] Logs extraction results stored in the bucket {self.bucket}")
+        return ret1, ret2
+        
         
     '''
     Retrieve the logs of the existing guardduty detectors
@@ -114,7 +132,7 @@ class Logs:
         '''
 
         if guardduty_list["count"] == -1:
-            detector_ids = paginate(source.utils.GUARDDUTY_CLIENT, "list_detectors", "DetectorIds")
+            detector_ids = paginate(source.utils.utils.GUARDDUTY_CLIENT, "list_detectors", "DetectorIds")
 
             if len(detector_ids) == 0:
                 self.display_progress(0, "guardduty")
@@ -133,10 +151,10 @@ class Logs:
 
         findings_data = {}
         for detector in detector_ids:
-            findings = paginate(source.utils.GUARDDUTY_CLIENT, "list_findings", "FindingIds", DetectorId=detector)
+            findings = paginate(source.utils.utils.GUARDDUTY_CLIENT, "list_findings", "FindingIds", DetectorId=detector)
 
             response = try_except(
-                source.utils.GUARDDUTY_CLIENT.get_findings, DetectorId=detector, FindingIds=findings
+                source.utils.utils.GUARDDUTY_CLIENT.get_findings, DetectorId=detector, FindingIds=findings
             )
             response.pop("ResponseMetadata", None)
             response = fix_json(response)
@@ -160,7 +178,7 @@ class Logs:
     '''
     def get_logs_cloudtrail_logs(self):
 
-        logs = paginate(source.utils.CLOUDTRAIL_CLIENT, "lookup_events", "Events")
+        logs = paginate(source.utils.utils.CLOUDTRAIL_CLIENT, "lookup_events", "Events")
 
         if len(logs) == 0:
             self.display_progress(0, "cloudtrail")
@@ -178,7 +196,7 @@ class Logs:
         waf_list = self.services["wafv2"]
 
         if waf_list["count"] == -1:
-            wafs = misc_lookup(source.utils.WAF_CLIENT.list_web_acls, "NextMarker", "WebACLs", Scope="REGIONAL", Limit=100)
+            wafs = misc_lookup(source.utils.utils.WAF_CLIENT.list_web_acls, "NextMarker", "WebACLs", Scope="REGIONAL", Limit=100)
 
             if len(wafs) == 0:
                 self.display_progress(0, "wafv2")
@@ -200,7 +218,7 @@ class Logs:
         self.results["wafv2"]["action"] = 1
 
         for arn in identifiers:
-            logging = try_except(source.utils.WAF_CLIENT.get_logging_configuration, ResourceArn=arn)
+            logging = try_except(source.utils.utils.WAF_CLIENT.get_logging_configuration, ResourceArn=arn)
             if "LoggingConfiguration" in logging:
                 destinations = logging["LoggingConfiguration"]["LogDestinationConfigs"]
                 for destination in destinations:
@@ -221,7 +239,7 @@ class Logs:
         vpc_list = self.services["vpc"]
 
         if vpc_list["count"] == -1:
-            vpcs = paginate(source.utils.EC2_CLIENT, "describe_vpcs", "Vpcs")
+            vpcs = paginate(source.utils.utils.EC2_CLIENT, "describe_vpcs", "Vpcs")
 
             if len(vpcs) == 0:
                 self.display_progress(0, "vpc")
@@ -231,7 +249,7 @@ class Logs:
             self.display_progress(0, "vpc")
             return
 
-        flow_logs = paginate(source.utils.EC2_CLIENT, "describe_flow_logs", "FlowLogs")
+        flow_logs = paginate(source.utils.utils.EC2_CLIENT, "describe_flow_logs", "FlowLogs")
         cnt = 0
 
         self.results["vpc"]["action"] = 1
@@ -255,7 +273,7 @@ class Logs:
 
         if eb_list["count"] == -1:
 
-            environments = paginate(source.utils.EB_CLIENT, "describe_environments", "Environments")
+            environments = paginate(source.utils.utils.EB_CLIENT, "describe_environments", "Environments")
 
             if len(environments) == 0:
                 self.display_progress(0, "elasticbeanstalk")
@@ -313,7 +331,7 @@ class Logs:
         cloudwatch_list = self.services["cloudwatch"]
 
         if cloudwatch_list["count"] == -1:
-            dashboards = paginate(source.utils.CLOUDWATCH_CLIENT, "list_dashboards", "DashboardEntries")
+            dashboards = paginate(source.utils.utils.CLOUDWATCH_CLIENT, "list_dashboards", "DashboardEntries")
 
             if len(dashboards) == 0:
                 self.display_progress(0, "cloudwatch")
@@ -331,14 +349,14 @@ class Logs:
             if dashboard_name == "":
                 continue
             response = try_except(
-                source.utils.CLOUDWATCH_CLIENT.get_dashboard, DashboardName=dashboard_name
+                source.utils.utils.CLOUDWATCH_CLIENT.get_dashboard, DashboardName=dashboard_name
             )
             response.pop("ResponseMetadata", None)
             dashboards_data[dashboard_name] = fix_json(response)
 
-        metrics = try_except(source.utils.CLOUDWATCH_CLIENT, "list_metrics")
+        metrics = try_except(source.utils.utils.CLOUDWATCH_CLIENT, "list_metrics")
 
-        alarms = simple_paginate(source.utils.CLOUDWATCH_CLIENT, "describe_alarms")
+        alarms = simple_paginate(source.utils.utils.CLOUDWATCH_CLIENT, "describe_alarms")
 
         results = []
         results.append(
@@ -409,7 +427,7 @@ class Logs:
 
         if inspector_list["count"] == -1:
 
-            covered = paginate(source.utils.INSPECTOR_CLIENT, "list_coverage", "coveredResources")
+            covered = paginate(source.utils.utils.INSPECTOR_CLIENT, "list_coverage", "coveredResources")
 
             if len(covered) == 0:
                 self.display_progress(0, "inspector")
@@ -419,10 +437,10 @@ class Logs:
             self.display_progress(0, "inspector")
             return
 
-        get_findings = simple_paginate(source.utils.INSPECTOR_CLIENT, "list_findings")
+        get_findings = simple_paginate(source.utils.utils.INSPECTOR_CLIENT, "list_findings")
 
         get_grouped_findings = simple_paginate(
-            source.utils.INSPECTOR_CLIENT, "list_finding_aggregations", aggregationType="TITLE"
+            source.utils.utils.INSPECTOR_CLIENT, "list_finding_aggregations", aggregationType="TITLE"
         )
 
         results = []
@@ -447,7 +465,7 @@ class Logs:
 
         if macie_list["count"] == -1:
 
-            elements = paginate(source.utils.MACIE_CLIENT, "describe_buckets", "buckets")
+            elements = paginate(source.utils.utils.MACIE_CLIENT, "describe_buckets", "buckets")
 
             if len(elements) == 0:
                 self.display_progress(0, "macie")
@@ -456,10 +474,10 @@ class Logs:
             self.display_progress(0, "macie")
             return
 
-        get_list_findings = simple_paginate(source.utils.MACIE_CLIENT, "list_findings")
+        get_list_findings = simple_paginate(source.utils.utils.MACIE_CLIENT, "list_findings")
 
         response = try_except(
-            source.utils.MACIE_CLIENT.get_findings,
+            source.utils.utils.MACIE_CLIENT.get_findings,
             findingIds=get_list_findings.get("findingIds", []),
         )
         response.pop("ResponseMetadata", None)
@@ -501,7 +519,7 @@ class Logs:
     '''
     def create_ssm_role(self):
         data = self.create_json()
-        iam = source.utils.IAM_CLIENT
+        iam = source.utils.utils.IAM_CLIENT
         role_name = "SSM_IR_Extraction01"
         instance_name = "SSM_S3_IR_Extraction01"
 
@@ -551,7 +569,7 @@ class Logs:
     instance_prof : profile of the instance
     '''
     def associate_role(self, instanceid, instance_prof):
-        associate_prof = source.utils.EC2_CLIENT.associate_iam_instance_profile(
+        associate_prof = source.utils.utils.EC2_CLIENT.associate_iam_instance_profile(
             IamInstanceProfile={"Arn": instance_prof["Arn"], "Name": instance_prof["Name"]},
             InstanceId=instanceid
         )
@@ -562,7 +580,7 @@ class Logs:
     Retrieve the role and id of each instances
     '''
     def extract_role_and_id(self):
-        list_instances_profiles = source.utils.EC2_CLIENT.describe_iam_instance_profile_associations()
+        list_instances_profiles = source.utils.utils.EC2_CLIENT.describe_iam_instance_profile_associations()
         old_profiles = []
         profile = {}
         prof = {}
@@ -585,7 +603,7 @@ class Logs:
     associade_id : id associated to the IAM profile
     '''
     def replace_role(self, iam_profile, associate_id):
-        new_profile = source.utils.EC2_CLIENT.replace_iam_instance_profile_association(
+        new_profile = source.utils.utils.EC2_CLIENT.replace_iam_instance_profile_association(
             IamInstanceProfile=iam_profile, AssociationId=associate_id
         )
 
@@ -595,7 +613,7 @@ class Logs:
     Get the list of every ssm instances
     '''
     def extract_list_ssm_instances(self):
-        ssm_instances = source.utils.SSM_CLIENT.describe_instance_information()
+        ssm_instances = source.utils.utils.SSM_CLIENT.describe_instance_information()
         total_ssm_instances = []
 
         for instance in ssm_instances["InstanceInformationList"]:
@@ -610,17 +628,28 @@ class Logs:
     '''
     def wait_for_command_completion(self, instance_name, command_id):
 
+        stillInProgress = 0
+        worked = True
+
         while True:
-            response = source.utils.SSM_CLIENT.get_command_invocation(
+            response = source.utils.utils.SSM_CLIENT.get_command_invocation(
                 InstanceId=instance_name,
                 CommandId=command_id,
             )
 
             status = response['Status']
+            print(status)
             if status in ['Pending', 'InProgress']:
-                time.sleep(5)  # Attendez 5 secondes avant de vérifier à nouveau
+                time.sleep(5)  # Wait before reverifying
+                stillInProgress = stillInProgress + 1
+            #elif stillInProgress == 12:
+            #    print(f"[!] Error : Logs collection of {instance_name} didn't work")
+            #    worked = False
+            #    break
             else:
                 break
+        
+        return worked
 
     '''
     Extract logs of the defined log files.
@@ -642,7 +671,7 @@ class Logs:
 
         if self.dl:
             create_folder(self.confs + "/ec2")
-            send_command = source.utils.SSM_CLIENT.send_command(
+            send_command = source.utils.utils.SSM_CLIENT.send_command(
             InstanceIds=total_ssm_instances,
             DocumentName="AWS-RunShellScript",
             Parameters={"commands": list_of_logs},
@@ -654,20 +683,20 @@ class Logs:
 
             for instance in total_ssm_instances:
 
-                self.wait_for_command_completion(instance, command_id)
+                if self.wait_for_command_completion(instance, command_id):
 
-                output = source.utils.SSM_CLIENT.get_command_invocation(
-                    InstanceId=instance,
-                    CommandId=command_id,
-                )['StandardOutputContent']
+                    output = source.utils.utils.SSM_CLIENT.get_command_invocation(
+                        InstanceId=instance,
+                        CommandId=command_id,
+                    )['StandardOutputContent']
 
-                write_file(
-                    self.confs + f"/ec2/{instance}_logs.json",
-                    "w",
-                    json.dumps(output, indent=4, default=str),
-                )
+                    write_file(
+                        self.confs + f"/ec2/{instance}_logs.json",
+                        "w",
+                        json.dumps(output, indent=4, default=str),
+                    )
         else:
-            send_command = source.utils.SSM_CLIENT.send_command(
+            send_command = source.utils.utils.SSM_CLIENT.send_command(
                 InstanceIds=total_ssm_instances,
                 DocumentName="AWS-RunShellScript",
                 OutputS3BucketName=self.bucket,
@@ -712,7 +741,7 @@ class Logs:
                         old_profile["profileARN"], new_profile["AssociatedID"]
                     )
         try:
-            source.utils.IAM_CLIENT.delete_role(RoleName=created_role["Name"])
+            source.utils.utils.IAM_CLIENT.delete_role(RoleName=created_role["Name"])
         except Exception as e:
             print(str(e))
     
@@ -735,19 +764,25 @@ class Logs:
         else:
             instances = ec2_list["elements"]
 
+        print("a")
         profile_for_replace = self.create_ssm_role()
 
         time.sleep(60)
 
+        print("b")
         old_profiles = self.extract_role_and_id()
+        print('c')
         self.new_profiles_instances(old_profiles, instances, profile_for_replace)
 
-        time.sleep(60)
+        time.sleep(5)
 
+        print("d")
         self.extract_logs()
+        print("e")
         new_profiles = self.extract_role_and_id()
-
+        print("f")
         self.back_to_normal(old_profiles, new_profiles, profile_for_replace)
+        print("g")
         self.display_progress(1, "ec2")
 
     '''
@@ -755,7 +790,6 @@ class Logs:
     nameDB : name of the rds instance
     rds : RDS client
     logname : name of the logfile to get
-
     '''
     def download_rds(self, nameDB, rds, logname):
         response = try_except(
@@ -775,7 +809,7 @@ class Logs:
 
         if rds_list["count"] == -1:
 
-            list_of_dbs = paginate(source.utils.RDS_CLIENT, "describe_db_instances", "DBInstances")
+            list_of_dbs = paginate(source.utils.utils.RDS_CLIENT, "describe_db_instances", "DBInstances")
 
             if len(list_of_dbs) == 0:
                 self.display_progress(0, "rds")
@@ -793,13 +827,13 @@ class Logs:
             total_logs.append(
                 self.download_rds(
                     db["DBInstanceIdentifier"],
-                    source.utils.RDS_CLIENT,
+                    source.utils.utils.RDS_CLIENT,
                     "external/mysql-external.log",
                 )
             )
             total_logs.append(
                 self.download_rds(
-                    db["DBInstanceIdentifier"], source.utils.RDS_CLIENT, "error/mysql-error.log"
+                    db["DBInstanceIdentifier"], source.utils.utils.RDS_CLIENT, "error/mysql-error.log"
                 )
             )
 
@@ -816,7 +850,7 @@ class Logs:
 
         if route53_list["count"] == -1:
             
-            hosted_zones = paginate(source.utils.ROUTE53_CLIENT, "list_hosted_zones", "HostedZones")
+            hosted_zones = paginate(source.utils.utils.ROUTE53_CLIENT, "list_hosted_zones", "HostedZones")
 
             if hosted_zones:
                 self.display_progress(0, "route53")
@@ -826,7 +860,7 @@ class Logs:
             self.display_progress(0, "route53")
             return
 
-        resolver_log_configs = paginate(source.utils.ROUTE53_RESOLVER_CLIENT, "list_resolver_query_log_configs", "ResolverQueryLogConfigs")
+        resolver_log_configs = paginate(source.utils.utils.ROUTE53_RESOLVER_CLIENT, "list_resolver_query_log_configs", "ResolverQueryLogConfigs")
         cnt = 0
 
         self.results["route53"]["action"] = 1
@@ -857,16 +891,14 @@ class Logs:
     def init_athena(self):
 
         source_bucket = f"s3://{self.bucket}/{self.region}/logs/cloudtrail-logs/"
-        output_bucket = f"s3://{self.bucket}/cloudtrail-analysis/"
+        output_bucket = f"s3://{self.bucket}/cloudtrail-analysis/{date}/"
 
-        print(source_bucket, output_bucket)
-
-        query_db = "create database if not exists `cloudtrail-analysis`;"
-        db_creation = athena_query(self.region, query_db, output_bucket)
-        print(db_creation)
-
+        query_db = "create database if not exists `cloudtrailanalysis`;"
+        athena_query(self.region, query_db, output_bucket)
+        print(f"[+] Database cloudtrailanalysis created")
+        
         query_table = f"""
-            CREATE EXTERNAL TABLE IF NOT EXISTS `cloudtrail-analysis`.logs (
+            CREATE EXTERNAL TABLE IF NOT EXISTS cloudtrailAnalysis.logs (
             eventversion STRING,
             useridentity STRUCT<
                            type:STRING,
@@ -920,10 +952,10 @@ class Logs:
               clientProvidedHostHeader:string>
             )
             ROW FORMAT SERDE 'org.openx.data.jsonserde.JsonSerDe'
-            LOCATION '{self.source_bucket}'  
+            LOCATION '{source_bucket}'  
         """
-        table_creation = athena_query(self.region, query_table, output_bucket)
-        print(table_creation)
+        athena_query(self.region, query_table, output_bucket)
+        print(f"[+] Table cloudtrailanalysis.logs created")
 
         return source_bucket, output_bucket
 

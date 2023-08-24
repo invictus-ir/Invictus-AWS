@@ -1,7 +1,10 @@
-import argparse, os, sys
+import argparse, sys
+from difflib import SequenceMatcher 
+from click import confirm
+from os import path
 
 from source.main.IR import IR
-from source.utils import *
+from source.utils.utils import *
 
 '''
 Define the arguments used when calling the tool
@@ -52,42 +55,42 @@ def set_args():
         required=True,
         default="1,2,3,4",
         const="1,2,3,4", 
-        help="[+] Comma separated list of the steps to run. 1 = Enumeration. 2 = Configuration. 3 = Logs Extraction. 4 = Log Analysis. Default is 1,2,3, 4"
+        help="[+] Comma separated list of the steps to run. 1 = Enumeration. 2 = Configuration. 3 = Logs Extraction. 4 = Log Analysis. Default is 1,2,3,4"
     )
 
     parser.add_argument(
         "-b",
         "--source-bucket",
         type=str,
-        help="[+] Bucket where the logs used for the analysis are stored"
+        help="[+] Bucket where the logs used for the analysis are stored."
     )
 
     parser.add_argument(
         "-o",
         "--output-bucket",
         type=str,
-        help="[+] Bucket where the results of the analysis are stored"
+        help="[+] Bucket where the results of the analysis are stored."
     )
 
     parser.add_argument(
         "-c",
         "--catalog",
         type=str,
-        help="[+] Data catalog containing the database you want to use"
+        help="[+] Data catalog containing the database you want to use."
     )
 
     parser.add_argument(
         "-d",
         "--database",
         type=str,
-        help="[+] Database containing the table you want to use"
+        help="[+] Database containing the table you want to use. If the database you input doesn't exist, it'll create it."
     )
 
     parser.add_argument(
         "-t",
         "--table",
         type=str,
-        help="[+] Table for your cloudtrail logs"
+        help="[+] Table for your cloudtrail logs. You can specify an existing table or a .ddl file to create your table."
     )
 
     return parser.parse_args()
@@ -109,9 +112,10 @@ def run_steps(dl, region, regionless, steps, source, output, catalog, database, 
     if dl:
         create_folder(ROOT_FOLDER + "/" + region)
 
-    if "4" in steps and "3" not in steps:
-        verify_athena(catalog, database, table, region)                
-        ir = IR(region, dl, steps, source, output)
+    logs = ""
+
+    if "4" in steps and "3" not in steps: 
+        ir = IR(region, dl, steps, source, output, catalog, database, table)
     else :
         ir = IR(region, dl, steps)
 
@@ -129,15 +133,19 @@ def run_steps(dl, region, regionless, steps, source, output, catalog, database, 
     
     if "3" in steps:
         try:
-            ir.execute_logs(regionless)
+            logs = ir.execute_logs(regionless)
         except Exception as e: 
             print(str(e))
 
     if "4" in steps:
-        try:
-            ir.execute_analysis()
-        except Exception as e: 
-            print(str(e))
+        if "3" in steps and logs == "0":
+            print("[!] Error : No cloudtrail logs available")
+            sys.exit(-1)
+        else:
+            try:
+                ir.execute_analysis()
+            except Exception as e: 
+                print(str(e))
 
 '''
 Search for all enabled regions and verify that the fivent region exists (region that the tool will begin with)
@@ -174,15 +182,10 @@ def verify_all_regions(input_region):
 Verify the region inputs and run the steps of the tool for one region
 dl : True if the user wants to download the results, False if he wants the results to be written in a s3 bucket
 region : Region to run the tool in
-all_regions : "not-all" in this case to show that the tool is runned for only one region
-steps : Steps to run (1 for enum, 2 for config, 3 for logs extraction)
-source : Source bucket for the analysis part (4)
-output : Output bucket for the analysis part (4)
-catalog : Data catalog used with the database 
-database : Database containing the table for logs analytics
-table : Contains the sql requirements to query the logs
 '''
-def verify_one_region(dl, region, all_regions, steps, source, output, catalog, database, table):
+def verify_one_region(region):
+    good = False
+
     try:
         response = ACCOUNT_CLIENT.get_region_opt_status(RegionName=region)
         response.pop("ResponseMetadata", None)
@@ -190,19 +193,25 @@ def verify_one_region(dl, region, all_regions, steps, source, output, catalog, d
             response["RegionOptStatus"] == "ENABLED_BY_DEFAULT"
             or response["RegionOptStatus"] == "ENABLED"
         ):
-            run_steps(dl, region, all_regions, steps, source, output, catalog, database, table)
-
+            good = True
     except Exception as e:
             print(str(e))
             sys.exit(-1)
+
+    return good
 
 '''
 Verify that the steps entered are correct
 steps : Steps to verify
 source : Source bucket for the analysis part (4)
 output : Output bucket for the analysis part (4)
+catalog : Catalog used for the analysis part (4)
+database : Database used for the analysis part (4)
+table : Table used for the analysis part (4)
+region : Region to run the tool in
 '''
-def verify_steps(steps, source, output):
+def verify_steps(steps, source, output, catalog, database, table, region):
+
     for step in steps:
         if step not in POSSIBLE_STEPS:
             print(
@@ -210,14 +219,101 @@ def verify_steps(steps, source, output):
             )
             sys.exit(-1)
 
-    if "4" in steps:
-        if "3" not in steps and (source == None or output == None):
-            print("invictus-aws.py: error: the following arguments are required: -b/--source-bucket, -o/--output-bucket")
+    #Verify Athena#
+
+    new_db = False
+    new_db = True
+
+    if "4" in steps and "3" not in steps:
+
+        athena = boto3.client("athena", region_name=region)
+
+        if catalog is None and database is None and table is None:
+            pass
+        elif catalog is not None and database is not None and table is not None:
+
+            catalogs = athena.list_data_catalogs()
+            if not any(cat['CatalogName'] == catalog for cat in catalogs['DataCatalogsSummary']):
+                print("invictus-aws.py: error: the data catalog you entered doesn't exist")
+                sys.exit(-1) 
+
+            new_db = True
+            exist_db = False
+            close_db = []
+            databases = athena.list_databases(CatalogName=catalog)
+            for db in databases["DatabaseList"]:
+                diff = SequenceMatcher(None, db["Name"], database).ratio()
+                if diff > 0.8 and diff < 1:
+                    close_db.append(db["Name"])
+
+                elif diff == 1:
+                    new_db = False
+                    exist_db = True
+
+            if not exist_db:
+                for db in close_db:
+                    print(db)
+                    if not confirm(f'[!] The database you entered has a really close name to {db}. Do you still want to create {database} ?', default=True):
+                        new_db = False
+                        database = db
+                        break         
+
+            new_table = True
+            exist_tb = False
+            close_tb = []
+            if not new_db:
+                tables = athena.list_table_metadata(CatalogName=catalog,DatabaseName=database)
+                for tb in tables["TableMetadataList"]:
+                    if table.endswith(".ddl"):
+                        tmp_table = get_table(table, False)[0]
+                    else:
+                        tmp_table = table
+                    diff = SequenceMatcher(None, tb["Name"], tmp_table).ratio()
+                    if diff > 0.8 and diff < 1:
+                        close_tb.append(tb["Name"])
+                    
+                    elif diff == 1:
+                        new_table = False
+                        exist_tb = True
+
+            if not exist_tb:
+                for tb in close_tb:
+                    if not confirm(f'[!] The table you entered has a really close name to {tb["Name"]}. Do you still want to create {tmp_table} ?', default=True):
+                        new_table = False
+                        table = tb["Name"]
+                        break
+
+            if new_table :
+                exists = path.isfile(table)
+                if not exists or not table.endswith(".ddl"):
+                    print("invictus-aws.py: error: you have to input a valid .ddl file to create a new table. This error can be raised because you inputted a new database so you need to create your table in, or because the table doesn't exist. ")
+                    sys.exit(-1)
+
+        else:
+            print("invictus-aws.py: error: all or none of these arguments are required: -c/--catalog, -d/--database, -t/--table")
             sys.exit(-1)
-        elif "3" in steps and (source != None or output != None):
+
+
+    if "4" in steps:
+        if "3" not in steps:
+            if (source == None and output == None and catalog == None and database == None and table == None) or output == None:
+                print("invictus-aws.py: error: the following arguments are required: -o/--output-bucket")
+                sys.exit(-1)
+
+            if catalog is not None and database is not None and table is not None:
+                if table.endswith(".ddl") and source != None:
+                    print("invictus-aws.py: error: the following arguments are not asked: -b/--source-bucket")
+                    sys.exit(-1)
+                elif source != None and (new_db == False and new_table == False):
+                    print("invictus-aws.py: error: the following arguments are not asked: -b/--source-bucket")
+                    sys.exit(-1)
+
+        elif "3" in steps and (source != None or output != None) :
             print("invictus-aws.py: error: the following arguments are not asked: -b/--source-bucket, -o/--output-bucket")
             sys.exit(-1)
-   
+    
+    #Verify buckets#
+
     if source != None:
         verify_bucket(source, "source")
         source = f"s3://{source}"
@@ -227,8 +323,7 @@ def verify_steps(steps, source, output):
         verify_bucket(output, "output")
         output = f"s3://{output}"
 
-
-    return steps, source, output
+    return steps, source, output, database, table
 
 '''
 Verify that the user inputs regarding the buckets logs are correct
@@ -255,41 +350,6 @@ def verify_bucket(bucket, type):
         if 'Contents' not in response or len(response['Contents']) == 0:
             print(f"invictus-aws.py: error: the path of the {type} bucket you entered doesn't exists or is not written well. Please verify that the format is 's3-name/[potential-folders]/'")
             sys.exit(-1)
-
-'''
-Verify that the user inputs regarding athena are correct
-catalog : Data catalog used with the database 
-database : Database containing the table for logs analytics
-table : Contains the sql requirements to query the logs
-region : Region where the analysis will take place
-'''
-
-def verify_athena(catalog, database, table, region):
-
-    athena = boto3.client("athena", region_name=region)
-
-    if catalog is None and database is None and table is None:
-        pass
-    elif catalog is not None and database is not None and table is not None:
-
-        catalogs = athena.list_data_catalogs()
-        if not any(cat['CatalogName'] == catalog for cat in catalogs['DataCatalogsSummary']):
-            print("invictus-aws.py: error: the data catalog you entered doesn't exist")
-            sys.exit(-1) 
-
-        databases = athena.list_databases(CatalogName=catalog)
-        if not any(db['Name'] == database for db in databases['DatabaseList']):
-            print("invictus-aws.py: error: the database you entered doesn't exist")
-            sys.exit(-1) 
-
-        tables = athena.list_table_metadata(CatalogName=catalog,DatabaseName=database)
-        if not any(tb['Name'] == table for tb in tables['TableMetadataList']):
-            print("invictus-aws.py: error: the table you entered doesn't exist")
-            sys.exit(-1) 
-
-    else:
-        print("invictus-aws.py: error: all or none of these arguments are required: -c/--catalog, -d/--database, -t/--table")
-        sys.exit(-1)
     
 '''
 Main function of the tool
@@ -307,7 +367,6 @@ def main():
                                                              
      Copyright (c) 2023 Invictus Incident Response
      Authors: Antonio Macovei & Rares Bratean & Benjamin Guillouzo
-
     """
     )
 
@@ -324,18 +383,19 @@ def main():
     database = args.database
     table = args.table
 
-    steps, source, output = verify_steps(args.step.split(","), source, output,)  
-
-
     if region:
 
-        verify_one_region(dl, region, all_regions, steps, source, output, catalog, database, table)
+        if verify_one_region(region):
+            steps, source, output, database, table = verify_steps(args.step.split(","), source, output, catalog, database, table, region)  
+            run_steps(dl, region, all_regions, steps, source, output, catalog, database, table)
+
     
     else:
         
         region_names, regionless = verify_all_regions(all_regions)
 
         for name in region_names:
+            steps, source, output, database, table = verify_steps(args.step.split(","), source, output, catalog, database, table, name)  
             run_steps(dl, name, regionless, steps, source, output, catalog, database, table)
 
 

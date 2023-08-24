@@ -281,10 +281,35 @@ def rename_file_s3(bucket, folder, new_key, old_key):
         CopySource = {"Bucket": bucket, "Key": f"{folder}{old_key}"}
     )
 
-    S3_CLIENT.delete_objects(
+    S3_CLIENT.delete_object(
         Bucket=bucket,
-        Delete={'Objects': [{'Key': f"{folder}{old_key}"}]}
+        Key=f"{folder}{old_key}"
     )
+
+'''
+Get the table name out of a ddl file
+ddl : Ddl file 
+get_db : False if you only want the table name. True if you also want the db name that can be present just before the table name.
+'''
+def get_table(ddl, get_db):
+    with open(ddl, "rt") as ddl:
+        data = ddl.read()
+        table_content = data.split("(", 1)
+        table = table_content[0].strip().split(" ")[-1]
+        if "." in table and not get_db:
+            table = table.split(".")[1]
+        return table, data
+
+def get_bucket_and_prefix(bucket):
+    if bucket.startswith("s3://"):
+        bucket = bucket.replace("s3://", "")
+    
+    el = bucket.split("/", 1)
+    bucket_name = el[0]
+    prefix = el[1]
+
+    return bucket_name, prefix
+
 
 #####################
 # RANDOM GENERATION #

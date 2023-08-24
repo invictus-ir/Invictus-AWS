@@ -12,8 +12,11 @@ class IR:
     a = None
     source = None
     output = None
+    catalog = None
+    database = None
+    table = None
 
-    def __init__(self, region, dl, steps, source=None, output=None):
+    def __init__(self, region, dl, steps, source=None, output=None, catalog=None, database=None, table=None):
         print(f"\n[+] Working on region \033[1m{region}\033[0;0m")
 
         self.services = ENUMERATION_SERVICES
@@ -26,10 +29,16 @@ class IR:
             self.l = Logs(region, dl)
         if "4" in steps:
             self.a = Analysis(region)
-            if source != None:
+            if output != None:
                 self.source = source
             if output != None:
                 self.output = output
+            if catalog != None:
+                self.catalog = catalog
+            if database != None:
+                self.database = database
+            if table != None:
+                self.table = table
 
 
     '''
@@ -52,10 +61,13 @@ class IR:
     '''
     def execute_logs(self, regionless):
         source, output = self.l.execute(self.services, regionless)
-        if self.source == None:
-            self.source = source
-        if self.output == None:
-            self.output = output
+        if source == "0":
+            return "0", "0"
+        else:
+            if self.source == None:
+                self.source = source
+            if self.output == None:
+                self.output = output
 
     def execute_analysis(self):
-        self.a.execute(self.source, self.output)
+        self.a.execute(self.source, self.output, self.catalog, self.database, self.table)
