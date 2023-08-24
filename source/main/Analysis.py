@@ -45,7 +45,7 @@ class Analysis:
         self.init_athena(db, table)
 
         try:
-            with open('source/queries.yaml') as f:
+            with open('source/file/queries.yaml') as f:
                 queries = yaml.safe_load(f)
         except Exception as e:
             print(f"[!] Error : {str(e)}")

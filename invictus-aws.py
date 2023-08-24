@@ -28,7 +28,7 @@ def set_args():
         required=True,
         const="cloud",
         choices=['cloud', 'local'],
-        help="[+] Decide where to write the results. 'cloud' will write the results in a s3 bucket. 'local' will write the results locally. Default is 'cloud'."
+        help="[+] 'cloud' option if you want the results to be stored in a s3 bucket (automatically created). 'local' option if you want the results to be written down locally. Default is 'cloud'."
     )
 
     group2 = parser.add_mutually_exclusive_group(required=True)
@@ -62,35 +62,35 @@ def set_args():
         "-b",
         "--source-bucket",
         type=str,
-        help="[+] Bucket where the logs used for the analysis are stored."
+        help="[+] Bucket containing the cloudtrail logs. Must look like bucket/subfolders/."
     )
 
     parser.add_argument(
         "-o",
         "--output-bucket",
         type=str,
-        help="[+] Bucket where the results of the analysis are stored."
+        help="[+] Bucket where the results of the queries will be stored. Must look like bucket/subfolders/."
     )
 
     parser.add_argument(
         "-c",
         "--catalog",
         type=str,
-        help="[+] Data catalog containing the database you want to use."
+        help="[+] Catalog used by Athena."
     )
 
     parser.add_argument(
         "-d",
         "--database",
         type=str,
-        help="[+] Database containing the table you want to use. If the database you input doesn't exist, it'll create it."
+        help="[+] Database used by Athena. You can either input an existing database or a new one that will be created. If so, don't forget to input a .ddl file for your table."
     )
 
     parser.add_argument(
         "-t",
         "--table",
         type=str,
-        help="[+] Table for your cloudtrail logs. You can specify an existing table or a .ddl file to create your table."
+        help="[+]  Table used by Athena. You can either input an existing table or input a .ddl file giving details about your new table. An example.ddl is available for you, just add the structure, modify the name of the table and the location of your logs."
     )
 
     return parser.parse_args()

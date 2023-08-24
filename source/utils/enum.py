@@ -1,5 +1,5 @@
-from source.utils import fix_json, try_except, S3_CLIENT
-import source.utils
+from source.utils.utils import fix_json, try_except, S3_CLIENT
+import source.utils.utils
 
 '''
 Used to return all buckets
