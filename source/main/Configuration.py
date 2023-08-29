@@ -68,7 +68,6 @@ class Configuration:
             print(f"[+] Configuration results stored in the folder {confs}")
         else:
             for el in self.results:
-                print(el)
                 write_s3(
                     self.bucket,
                     f"{self.region}/configuration/{el}.json",
@@ -182,7 +181,7 @@ class Configuration:
         waf_list = self.services["wafv2"]
 
         if waf_list["count"] == -1:
-            wafs = misc_lookup(source.utils.utils.utils.WAF_CLIENT.list_web_acls, "NextMarker", "WebACLs", Scope="REGIONAL", Limit=100)
+            wafs = misc_lookup(source.utils.utils.WAF_CLIENT.list_web_acls, "NextMarker", "WebACLs", Scope="REGIONAL", Limit=100)
         
             identifiers = []
             for el in wafs:
@@ -208,7 +207,7 @@ class Configuration:
 
             # get_logging_configuration
 
-            response = try_except(source.utils.utils.utils.WAF_CLIENT.get_logging_configuration, ResourceArn=arn)
+            response = try_except(source.utils.utils.WAF_CLIENT.get_logging_configuration, ResourceArn=arn)
             response.pop("ResponseMetadata", None)
             response = fix_json(response)
             if "WAFNonexistentItemException" in response["error"]:
@@ -218,20 +217,20 @@ class Configuration:
             # list_rules_groups
             # Use of misc_lookup as not every results are listed at the first call if there are a lot
 
-            rule_groups[arn] = simple_misc_lookup(source.utils.utils.utils.WAF_CLIENT.list_rule_groups, "NextMarker", Scope="REGIONAL", Limit=100)
+            rule_groups[arn] = simple_misc_lookup(source.utils.utils.WAF_CLIENT.list_rule_groups, "NextMarker", Scope="REGIONAL", Limit=100)
            
 
             # list_managed_rule_sets
 
-            managed_rule_sets[arn] = simple_misc_lookup(source.utils.utils.utils.WAF_CLIENT.list_managed_rule_sets, "NextMarker", Scope="REGIONAL", Limit=100)
+            managed_rule_sets[arn] = simple_misc_lookup(source.utils.utils.WAF_CLIENT.list_managed_rule_sets, "NextMarker", Scope="REGIONAL", Limit=100)
 
             # list_ip_sets
 
-            ip_sets[arn] = simple_misc_lookup(source.utils.utils.utils.WAF_CLIENT.list_ip_sets, "NextMarker", Scope="REGIONAL", Limit=100)
+            ip_sets[arn] = simple_misc_lookup(source.utils.utils.WAF_CLIENT.list_ip_sets, "NextMarker", Scope="REGIONAL", Limit=100)
 
             #list_resources_for_web_acl
 
-            response = try_except(source.utils.utils.utils.WAF_CLIENT.list_resources_for_web_acl, WebACLArn=arn)
+            response = try_except(source.utils.utils.WAF_CLIENT.list_resources_for_web_acl, WebACLArn=arn)
             response.pop("ResponseMetadata", None)
             response = fix_json(response)
             resources[arn] = response
@@ -270,7 +269,7 @@ class Configuration:
         lambda_list = self.services["lambda"]
 
         if lambda_list["count"] == -1:
-            functions = paginate(source.utils.utils.utils.LAMBDA_CLIENT, "list_functions", "Functions")
+            functions = paginate(source.utils.utils.LAMBDA_CLIENT, "list_functions", "Functions")
 
             if len(functions) == 0:
                 self.display_progress(0, "lambda")
@@ -295,7 +294,7 @@ class Configuration:
             # get_function_configuration
 
             response = try_except(
-                source.utils.utils.utils.LAMBDA_CLIENT.get_function_configuration, FunctionName=name
+                source.utils.utils.LAMBDA_CLIENT.get_function_configuration, FunctionName=name
             )
             response.pop("ResponseMetadata", None)
             response = fix_json(response)
@@ -303,14 +302,14 @@ class Configuration:
 
         # get_account_settings
 
-        response = try_except(source.utils.utils.utils.LAMBDA_CLIENT.get_account_settings)
+        response = try_except(source.utils.utils.LAMBDA_CLIENT.get_account_settings)
         response.pop("ResponseMetadata", None)
         response = fix_json(response)
         account_settings = response
 
         # list_event_source_mappings
 
-        event_source_mappings = simple_paginate(source.utils.utils.utils.LAMBDA_CLIENT, "list_event_source_mappings")
+        event_source_mappings = simple_paginate(source.utils.utils.LAMBDA_CLIENT, "list_event_source_mappings")
 
         results = []
         results.append(
@@ -330,6 +329,7 @@ class Configuration:
 
         self.results["lambda"] = results
         self.display_progress(len(results), "lambda")
+    
     '''
     Retrieve multiple elements of the configuration of the existing vpcs
     '''
@@ -338,7 +338,7 @@ class Configuration:
 
         if vpc_list["count"] == -1:
 
-            vpcs = paginate(source.utils.utils.utils.EC2_CLIENT, "describe_vpcs", "Vpcs")
+            vpcs = paginate(source.utils.utils.EC2_CLIENT, "describe_vpcs", "Vpcs")
 
             if len(vpcs) == 0:
                 self.display_progress(0, "vpc")
@@ -364,7 +364,7 @@ class Configuration:
             # describe_vpc_attribute
 
             response = try_except(
-                source.utils.utils.utils.EC2_CLIENT.describe_vpc_attribute,
+                source.utils.utils.EC2_CLIENT.describe_vpc_attribute,
                 VpcId=id,
                 Attribute="enableDnsSupport",
             )
@@ -375,7 +375,7 @@ class Configuration:
             # describe_vpc_attribute
 
             response = try_except(
-                source.utils.utils.utils.EC2_CLIENT.describe_vpc_attribute,
+                source.utils.utils.EC2_CLIENT.describe_vpc_attribute,
                 VpcId=id,
                 Attribute="enableDnsHostnames",
             )
@@ -385,34 +385,34 @@ class Configuration:
 
         # describe_flow_logs
 
-        flow_logs = simple_paginate(source.utils.utils.utils.EC2_CLIENT, "describe_flow_logs")
+        flow_logs = simple_paginate(source.utils.utils.EC2_CLIENT, "describe_flow_logs")
 
         # describe_vpc_peering_connections
 
-        peering_connections = simple_paginate(source.utils.utils.utils.EC2_CLIENT, "describe_vpc_peering_connections")
+        peering_connections = simple_paginate(source.utils.utils.EC2_CLIENT, "describe_vpc_peering_connections")
 
         # describe_vpc_endpoint_connections
 
-        endpoint_connections = simple_paginate(source.utils.utils.utils.EC2_CLIENT, "describe_vpc_endpoint_connections")
+        endpoint_connections = simple_paginate(source.utils.utils.EC2_CLIENT, "describe_vpc_endpoint_connections")
 
         # describe_vpc_endpoint_service_configurations
 
-        endpoint_service_config = simple_paginate(source.utils.utils.utils.EC2_CLIENT, "describe_vpc_endpoint_service_configurations")
+        endpoint_service_config = simple_paginate(source.utils.utils.EC2_CLIENT, "describe_vpc_endpoint_service_configurations")
 
         # describe_vpc_classic_link
 
-        response = try_except(source.utils.utils.utils.EC2_CLIENT.describe_vpc_classic_link)
+        response = try_except(source.utils.utils.EC2_CLIENT.describe_vpc_classic_link)
         response.pop("ResponseMetadata", None)
         response = fix_json(response)
         classic_links = response
 
         # describe_vpc_endpoints
 
-        endpoints = simple_paginate(source.utils.utils.utils.EC2_CLIENT, "describe_vpc_endpoints")
+        endpoints = simple_paginate(source.utils.utils.EC2_CLIENT, "describe_vpc_endpoints")
 
         # describe_local_gateway_route_table_vpc_associations
 
-        response = simple_paginate(source.utils.utils.utils.EC2_CLIENT, "describe_local_gateway_route_table_vpc_associations")
+        response = simple_paginate(source.utils.utils.EC2_CLIENT, "describe_local_gateway_route_table_vpc_associations")
         local_gateway_route_table = response
 
         results = []
@@ -458,6 +458,7 @@ class Configuration:
 
         self.results["vpc"] = results
         self.display_progress(len(results), "vpc")
+    
     '''
     Retrieve multiple elements of the configuration of the existing elasticbeanstalk environments
     '''
@@ -465,7 +466,7 @@ class Configuration:
         eb_list = self.services["elasticbeanstalk"]
 
         if eb_list["count"] == -1:
-            environments = paginate(source.utils.utils.utils.EB_CLIENT, "describe_environments", "Environments")
+            environments = paginate(source.utils.utils.EB_CLIENT, "describe_environments", "Environments")
 
             if len(environments) == 0:
                 self.display_progress(0, "elasticbeanstalk")
@@ -497,7 +498,7 @@ class Configuration:
             # describe_environment_resources
 
             response = try_except(
-                source.utils.utils.utils.EB_CLIENT.describe_environment_resources, EnvironmentId=id
+                source.utils.utils.EB_CLIENT.describe_environment_resources, EnvironmentId=id
             )
             response.pop("ResponseMetadata", None)
             response = fix_json(response)
@@ -507,7 +508,7 @@ class Configuration:
 
             managed_actions[id] = []
             response = try_except(
-                source.utils.utils.utils.EB_CLIENT.describe_environment_managed_actions, EnvironmentId=id
+                source.utils.utils.EB_CLIENT.describe_environment_managed_actions, EnvironmentId=id
             )
             response.pop("ResponseMetadata", None)
             response = fix_json(response)
@@ -516,23 +517,23 @@ class Configuration:
             # describe_environment_managed_action_history
 
             managed_action_history[id] = []
-            managed_action_history[id] = simple_paginate(source.utils.utils.utils.EB_CLIENT, "describe_environment_managed_action_history", EnvironmentId=id)
+            managed_action_history[id] = simple_paginate(source.utils.utils.EB_CLIENT, "describe_environment_managed_action_history", EnvironmentId=id)
 
             # describe_instances_health
 
             instances_health[id] = []
-            instances_health[id] = simple_misc_lookup(source.utils.utils.utils.EB_CLIENT.describe_instances_health, "NextToken", EnvironmentId=id)
+            instances_health[id] = simple_misc_lookup(source.utils.utils.EB_CLIENT.describe_instances_health, "NextToken", EnvironmentId=id)
 
         # describe_applications
 
-        response = try_except(source.utils.utils.utils.EB_CLIENT.describe_applications)
+        response = try_except(source.utils.utils.EB_CLIENT.describe_applications)
         response.pop("ResponseMetadata", None)
         data = fix_json(response)
         applications = data
 
         # describe_account_attributes
 
-        response = try_except(source.utils.utils.utils.EB_CLIENT.describe_account_attributes)
+        response = try_except(source.utils.utils.EB_CLIENT.describe_account_attributes)
         response.pop("ResponseMetadata", None)
         data = response
         account_attributes = data
@@ -576,6 +577,7 @@ class Configuration:
 
         self.results["eb"] = results
         self.display_progress(len(results), "elasticbeanstalk")
+    
     '''
     Retrieve multiple elements of the configuration of the existing routes53 hosted zones
     '''
@@ -583,7 +585,7 @@ class Configuration:
         route53_list = self.services["route53"]
 
         if route53_list["count"] == -1:
-            hosted_zones = paginate(source.utils.utils.utils.ROUTE53_CLIENT, "list_hosted_zones", "HostedZones")
+            hosted_zones = paginate(source.utils.utils.ROUTE53_CLIENT, "list_hosted_zones", "HostedZones")
 
             if len(hosted_zones) == 0:
                 self.display_progress(0, "route53")
@@ -601,19 +603,19 @@ class Configuration:
 
         # list_traffic_policies
 
-        get_traffic_policies = list_traffic_policies_lookup(source.utils.utils.utils.ROUTE53_CLIENT.list_traffic_policies)
+        get_traffic_policies = list_traffic_policies_lookup(source.utils.utils.ROUTE53_CLIENT.list_traffic_policies)
 
         # list_resolver_configs
 
-        resolver_configs = simple_paginate(source.utils.utils.utils.ROUTE53_RESOLVER_CLIENT, "list_resolver_configs")
+        resolver_configs = simple_paginate(source.utils.utils.ROUTE53_RESOLVER_CLIENT, "list_resolver_configs")
 
         # list_firewall_configs
 
-        resolver_firewall_config = simple_paginate(source.utils.utils.utils.ROUTE53_RESOLVER_CLIENT, "list_firewall_configs")
+        resolver_firewall_config = simple_paginate(source.utils.utils.ROUTE53_RESOLVER_CLIENT, "list_firewall_configs")
 
         # list_resolver_query_log_configs
 
-        resolver_log_configs = simple_paginate(source.utils.utils.utils.ROUTE53_RESOLVER_CLIENT, "list_resolver_query_log_configs")
+        resolver_log_configs = simple_paginate(source.utils.utils.ROUTE53_RESOLVER_CLIENT, "list_resolver_query_log_configs")
 
         get_zones = []
         results = []
@@ -621,7 +623,7 @@ class Configuration:
         # get_hosted_zone
 
         for id in identifiers:
-            response = try_except(source.utils.utils.utils.ROUTE53_CLIENT.get_hosted_zone, Id=id)
+            response = try_except(source.utils.utils.ROUTE53_CLIENT.get_hosted_zone, Id=id)
             response.pop("ResponseMetadata", None)
             response = fix_json(response)
             get_zones.append(response)
@@ -652,6 +654,7 @@ class Configuration:
         self.results["route53"] = results
         self.display_progress(len(results), "route53")
         return
+    
     '''
     Retrieve multiple elements of the configuration of the existing ec2 instances
     '''
@@ -675,43 +678,43 @@ class Configuration:
 
         # describe_export_tasks
 
-        response = try_except(source.utils.utils.utils.EC2_CLIENT.describe_export_tasks)
+        response = try_except(source.utils.utils.EC2_CLIENT.describe_export_tasks)
         response.pop("ResponseMetadata", None)
         export = fix_json(response)
 
         # describe_fleets
 
-        fleets = simple_paginate(source.utils.utils.utils.EC2_CLIENT, "describe_fleets")
+        fleets = simple_paginate(source.utils.utils.EC2_CLIENT, "describe_fleets")
 
         # describe_hosts
 
-        hosts = simple_paginate(source.utils.utils.utils.EC2_CLIENT, "describe_hosts")
+        hosts = simple_paginate(source.utils.utils.EC2_CLIENT, "describe_hosts")
 
         # describe_key_pairs
 
-        response = try_except(source.utils.utils.utils.EC2_CLIENT.describe_key_pairs)
+        response = try_except(source.utils.utils.EC2_CLIENT.describe_key_pairs)
         response.pop("ResponseMetadata", None)
         key_pairs = fix_json(response)
 
         # describe_volumes
 
-        volumes = simple_paginate(source.utils.utils.utils.EC2_CLIENT, "describe_volumes")
+        volumes = simple_paginate(source.utils.utils.EC2_CLIENT, "describe_volumes")
 
         # describe_subnets
 
-        subnets = simple_paginate(source.utils.utils.utils.EC2_CLIENT, "describe_subnets")
+        subnets = simple_paginate(source.utils.utils.EC2_CLIENT, "describe_subnets")
 
         # describe_security_groups
 
-        sec_groups = simple_paginate(source.utils.utils.utils.EC2_CLIENT, "describe_security_groups")
+        sec_groups = simple_paginate(source.utils.utils.EC2_CLIENT, "describe_security_groups")
 
         # describe_route_tables
 
-        route_tables = simple_paginate(source.utils.utils.utils.EC2_CLIENT, "describe_route_tables")
+        route_tables = simple_paginate(source.utils.utils.EC2_CLIENT, "describe_route_tables")
 
         # describe_snapshots
 
-        snapshots = simple_paginate(source.utils.utils.utils.EC2_CLIENT, "describe_snapshots")
+        snapshots = simple_paginate(source.utils.utils.EC2_CLIENT, "describe_snapshots")
 
         results = []
         results.append(create_command("aws ec2 describe-export-tasks", export))
@@ -726,6 +729,7 @@ class Configuration:
 
         self.results["ec2"] = results
         self.display_progress(len(results), "ec2")
+    
     '''
     Retrieve multiple elements of the configuration of the existing iam users
     '''
@@ -733,7 +737,7 @@ class Configuration:
         iam_list = self.services["iam"]
 
         if iam_list["count"] == -1:
-            elements = paginate(source.utils.utils.utils.IAM_CLIENT, "list_users", "Users")
+            elements = paginate(source.utils.utils.IAM_CLIENT, "list_users", "Users")
 
             if len(elements) == 0:
                 self.display_progress(0, "ec2")
@@ -745,21 +749,21 @@ class Configuration:
         
         # get_account_summary
 
-        response = try_except(source.utils.utils.utils.IAM_CLIENT.get_account_summary)
+        response = try_except(source.utils.utils.IAM_CLIENT.get_account_summary)
         response.pop("ResponseMetadata", None)
         get_summary = fix_json(response)
 
         # get_account_authorization_details
 
-        get_auth_details = simple_paginate(source.utils.utils.utils.IAM_CLIENT, "get_account_authorization_details")
+        get_auth_details = simple_paginate(source.utils.utils.IAM_CLIENT, "get_account_authorization_details")
 
         # list_ssh_public_keys
 
-        list_ssh_pub_keys = simple_paginate(source.utils.utils.utils.IAM_CLIENT, "list_ssh_public_keys")
+        list_ssh_pub_keys = simple_paginate(source.utils.utils.IAM_CLIENT, "list_ssh_public_keys")
 
         # list_mfa_devices
 
-        list_mfa_devices = simple_paginate(source.utils.utils.utils.IAM_CLIENT, "list_mfa_devices")
+        list_mfa_devices = simple_paginate(source.utils.utils.IAM_CLIENT, "list_mfa_devices")
 
         results = []
         results.append(create_command("aws iam get-account-summary", get_summary))
@@ -776,6 +780,7 @@ class Configuration:
         self.results["iam"] = results
         self.display_progress(len(results), "iam")
         return
+    
     '''
     Retrieve multiple elements of the configuration of the existing dynamodb tables
     '''
@@ -783,7 +788,7 @@ class Configuration:
         dynamodb_list = self.services["s3"]
 
         if dynamodb_list["count"] == -1:
-            tables = paginate(source.utils.utils.utils.DYNAMODB_CLIENT, "list_tables", "TableNames")
+            tables = paginate(source.utils.utils.DYNAMODB_CLIENT, "list_tables", "TableNames")
 
             if len(tables) == 0:
                 self.display_progress(0, "dynamodb")
@@ -800,16 +805,16 @@ class Configuration:
 
         # list_backups
 
-        backups = simple_paginate(source.utils.utils.utils.DYNAMODB_CLIENT, "list_backups")
+        backups = simple_paginate(source.utils.utils.DYNAMODB_CLIENT, "list_backups")
 
         # list_exports
 
-        list_exports = misc_lookup(source.utils.utils.utils.DYNAMODB_CLIENT.list_exports, "NextToken", "ExportSummaries", MaxResults=100)
+        list_exports = misc_lookup(source.utils.utils.DYNAMODB_CLIENT.list_exports, "NextToken", "ExportSummaries", MaxResults=100)
 
         # describe_table
 
         for table in tables:
-            response = try_except(source.utils.utils.utils.DYNAMODB_CLIENT.describe_table, TableName=table)
+            response = try_except(source.utils.utils.DYNAMODB_CLIENT.describe_table, TableName=table)
             response.pop("ResponseMetadata", None)
             get_table = fix_json(response)
             tables_info.append(get_table)
@@ -818,7 +823,7 @@ class Configuration:
 
         for export in list_exports:
             response = try_except(
-                source.utils.utils.utils.DYNAMODB_CLIENT.describe_export, ExportArn=export.get("ExportArn", "")
+                source.utils.utils.DYNAMODB_CLIENT.describe_export, ExportArn=export.get("ExportArn", "")
             )
             response.pop("ResponseMetadata", None)
             get_export = fix_json(response)
@@ -841,6 +846,7 @@ class Configuration:
         self.results["dynamodb"] = results
         self.display_progress(len(results), "dynamodb")
         return
+    
     '''
     Retrieve multiple elements of the configuration of the existing rds instances
     '''
@@ -848,7 +854,7 @@ class Configuration:
         rds_list = self.services["rds"]
 
         if rds_list["count"] == -1:
-            elements = paginate(source.utils.utils.utils.RDS_CLIENT, "describe_db_instances", "DBInstances")
+            elements = paginate(source.utils.utils.RDS_CLIENT, "describe_db_instances", "DBInstances")
 
             if len(elements) == 0:
                 self.display_progress(0, "rds")
@@ -860,15 +866,15 @@ class Configuration:
 
         # describe_db_clusters
 
-        clusters = simple_paginate(source.utils.utils.utils.RDS_CLIENT, "describe_db_clusters")
+        clusters = simple_paginate(source.utils.utils.RDS_CLIENT, "describe_db_clusters")
 
         # describe_db_snapshots
 
-        snapshots = simple_paginate(source.utils.utils.utils.RDS_CLIENT, "describe_db_snapshots")
+        snapshots = simple_paginate(source.utils.utils.RDS_CLIENT, "describe_db_snapshots")
 
         # describe_db_proxies
 
-        proxies = simple_paginate(source.utils.utils.utils.RDS_CLIENT, "describe_db_proxies")
+        proxies = simple_paginate(source.utils.utils.RDS_CLIENT, "describe_db_proxies")
 
         results = []
         results.append(create_command("aws rds describe-db-clusters", clusters))
@@ -878,16 +884,7 @@ class Configuration:
         self.results["rds"] = results
         self.display_progress(len(results), "rds")
         return
-    '''
-    Retrieve multiple elements of the configuration of the existing eks clusters
-    '''
-    def get_configuration_eks(self):
-        eks_list = self.services["eks"]
-
-        if eks_list["count"] == 0:
-            # if there is not bucket at all
-            self.display_progress(0, "eks")
-            return
+    
     '''
     Retrieve multiple elements of the configuration of the existing guardduty detectors
     '''
@@ -895,7 +892,7 @@ class Configuration:
         guardduty_list = self.services["guardduty"]
 
         if guardduty_list["count"] == -1:
-            detectors = paginate(source.utils.utils.utils.GUARDDUTY_CLIENT, "list_detectors", "DetectorIds")
+            detectors = paginate(source.utils.utils.GUARDDUTY_CLIENT, "list_detectors", "DetectorIds")
 
             if len(detectors) == 0:
                 self.display_progress(0, "guardduty")
@@ -918,13 +915,13 @@ class Configuration:
 
             # get_detector
 
-            response = try_except(source.utils.utils.utils.GUARDDUTY_CLIENT.get_detector, DetectorId=detector)
+            response = try_except(source.utils.utils.GUARDDUTY_CLIENT.get_detector, DetectorId=detector)
             response.pop("ResponseMetadata", None)
             detectors[detector] = response
 
             # list_filters
 
-            filters[detector] = simple_paginate(source.utils.utils.utils.GUARDDUTY_CLIENT, "list_filters", DetectorId=detector)
+            filters[detector] = simple_paginate(source.utils.utils.GUARDDUTY_CLIENT, "list_filters", DetectorId=detector)
             
             filter_names = []
             for el in filters[detector]:
@@ -935,7 +932,7 @@ class Configuration:
             for filter_name in filter_names:
                 filter_data[detector] = []
                 response = try_except(
-                    source.utils.utils.utils.GUARDDUTY_CLIENT.get_filter,
+                    source.utils.utils.GUARDDUTY_CLIENT.get_filter,
                     DetectorId=detector,
                     FilterName=filter_name,
                 )
@@ -945,7 +942,7 @@ class Configuration:
             # list_publishing_destinations
 
             publishing_destinations[detector] = simple_misc_lookup(
-                source.utils.utils.utils.GUARDDUTY_CLIENT.list_publishing_destinations, 
+                source.utils.utils.GUARDDUTY_CLIENT.list_publishing_destinations, 
                 "NextToken", 
                 DetectorId=detector, 
                 MaxResults=100
@@ -953,11 +950,11 @@ class Configuration:
 
             # list_threat_intel_sets
 
-            threat_intel[detector] = simple_paginate(source.utils.utils.utils.GUARDDUTY_CLIENT, "list_threat_intel_sets", DetectorId=detector)
+            threat_intel[detector] = simple_paginate(source.utils.utils.GUARDDUTY_CLIENT, "list_threat_intel_sets", DetectorId=detector)
 
             # list_ip_sets
 
-            ip_sets[detector] = simple_paginate(source.utils.utils.utils.GUARDDUTY_CLIENT, "list_ip_sets", DetectorId=detector)
+            ip_sets[detector] = simple_paginate(source.utils.utils.GUARDDUTY_CLIENT, "list_ip_sets", DetectorId=detector)
            
 
         results = []
@@ -991,6 +988,7 @@ class Configuration:
         self.results["guardduty"] = results
         self.display_progress(len(results), "guardduty")
         return
+    
     '''
     Retrieve multiple elements of the configuration of the existing cloudwatch dashboards
     '''
@@ -998,7 +996,7 @@ class Configuration:
         cloudwatch_list = self.services["cloudwatch"]
 
         if cloudwatch_list["count"] == -1:
-            dashboards = paginate(source.utils.utils.utils.CLOUDWATCH_CLIENT, "list_dashboards", "DashboardEntries")
+            dashboards = paginate(source.utils.utils.CLOUDWATCH_CLIENT, "list_dashboards", "DashboardEntries")
 
             if len(dashboards) == 0:
                 self.display_progress(0, "cloudwatch")
@@ -1019,14 +1017,14 @@ class Configuration:
             # get_dashboard
 
             response = try_except(
-                source.utils.utils.utils.CLOUDWATCH_CLIENT.get_dashboard, DashboardName=dashboard_name
+                source.utils.utils.CLOUDWATCH_CLIENT.get_dashboard, DashboardName=dashboard_name
             )
             response.pop("ResponseMetadata", None)
             dashboards_data[dashboard_name] = fix_json(response)
 
         # list_metrics
 
-        metrics = simple_paginate(source.utils.utils.utils.CLOUDWATCH_CLIENT, "list_metrics")
+        metrics = simple_paginate(source.utils.utils.CLOUDWATCH_CLIENT, "list_metrics")
 
         results = []
         results.append(
@@ -1041,6 +1039,7 @@ class Configuration:
         self.results["cloudwatch"] = results
         self.display_progress(len(results), "cloudwatch")
         return
+    
     '''
     Retrieve multiple elements of the configuration of the existing macie buckets
     '''
@@ -1048,7 +1047,7 @@ class Configuration:
         macie_list = self.services["macie"]
 
         if macie_list["count"] == -1:
-            elements = paginate(source.utils.utils.utils.MACIE_CLIENT, "describe_buckets", "buckets")
+            elements = paginate(source.utils.utils.MACIE_CLIENT, "describe_buckets", "buckets")
 
             if len(elements) == 0:
                 self.display_progress(0, "macie")
@@ -1059,14 +1058,14 @@ class Configuration:
 
         # get_finding_statistics
 
-        response = try_except(source.utils.utils.utils.MACIE_CLIENT.get_finding_statistics, groupBy="type")
+        response = try_except(source.utils.utils.MACIE_CLIENT.get_finding_statistics, groupBy="type")
         response.pop("ResponseMetadata", None)
         statistics_severity = fix_json(response)
 
         # get_finding_statistics
 
         response = try_except(
-            source.utils.utils.utils.MACIE_CLIENT.get_finding_statistics, groupBy="severity.description"
+            source.utils.utils.MACIE_CLIENT.get_finding_statistics, groupBy="severity.description"
         )
         response.pop("ResponseMetadata", None)
         statistics_type = fix_json(response)
@@ -1087,6 +1086,7 @@ class Configuration:
         self.results["macie"] = results
         self.display_progress(len(results), "macie")
         return
+    
     '''
     Retrieve multiple elements of the configuration of the existing inspector coverages
     '''
@@ -1097,7 +1097,7 @@ class Configuration:
             self.display_progress(0, "inspector")
             return
         
-        coverage = paginate(source.utils.utils.utils.INSPECTOR_CLIENT, "list_coverage", "coveredResources")
+        coverage = paginate(source.utils.utils.INSPECTOR_CLIENT, "list_coverage", "coveredResources")
 
         if len(coverage) == 0:
             self.display_progress(0, "inspector")
@@ -1105,11 +1105,11 @@ class Configuration:
 
         # list_usage_totals
 
-        usage = simple_paginate(source.utils.utils.utils.INSPECTOR_CLIENT, "list_usage_totals")
+        usage = simple_paginate(source.utils.utils.INSPECTOR_CLIENT, "list_usage_totals")
 
         # list_account_permissions
 
-        permission = simple_paginate(source.utils.utils.utils.INSPECTOR_CLIENT, "list_account_permissions")
+        permission = simple_paginate(source.utils.utils.INSPECTOR_CLIENT, "list_account_permissions")
 
         results = []
         results.append(create_command("aws inspector2 list-coverage", coverage))
@@ -1120,6 +1120,7 @@ class Configuration:
 
         self.results["inspector"] = results
         self.display_progress(len(results), "inspector")
+    
     '''
     Retrieve multiple elements of the configuration of the existing detetive graphs
     '''
@@ -1127,7 +1128,7 @@ class Configuration:
         detective_list = self.services["detective"]
 
         if detective_list["count"] == -1:
-            graphs = misc_lookup(source.utils.utils.utils.DETECTIVE_CLIENT.list_graphs, "NextToken", "GraphList", MaxResults=100)
+            graphs = misc_lookup(source.utils.utils.DETECTIVE_CLIENT.list_graphs, "NextToken", "GraphList", MaxResults=100)
 
             if len(graphs) == 0:
                 self.display_progress(0, "detective")
@@ -1143,6 +1144,7 @@ class Configuration:
         self.results["detective"] = results
         self.display_progress(len(results), "detective")
         print("finito detectivo")
+    
     '''
     Retrieve multiple elements of the configuration of the existing cloudtrail trails
     '''
@@ -1150,7 +1152,7 @@ class Configuration:
         cloudtrail_list = self.services["cloudtrail"]
 
         if cloudtrail_list["count"] == -1:
-            trails = paginate(source.utils.utils.utils.CLOUDTRAIL_CLIENT, "list_trails", "Trails")
+            trails = paginate(source.utils.utils.CLOUDTRAIL_CLIENT, "list_trails", "Trails")
 
             if len(trails) == 0:
                 self.display_progress(0, "cloudtrail")
@@ -1169,9 +1171,9 @@ class Configuration:
                 continue
 
             home_region = trail.get("HomeRegion")
-            source.utils.utils.utils.CLOUDTRAIL_CLIENT = boto3.client("cloudtrail", region_name=home_region)
+            source.utils.utils.CLOUDTRAIL_CLIENT = boto3.client("cloudtrail", region_name=home_region)
 
-            response = try_except(source.utils.utils.utils.CLOUDTRAIL_CLIENT.get_trail, Name=trail_name)
+            response = try_except(source.utils.utils.CLOUDTRAIL_CLIENT.get_trail, Name=trail_name)
             response.pop("ResponseMetadata", None)
             trails_data[trail_name] = fix_json(response)
 

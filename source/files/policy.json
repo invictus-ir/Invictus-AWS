@@ -1,0 +1,25 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "VisualEditor0",
+            "Effect": "Allow",
+            "Action": [
+                "athena:*",
+                "glue:*"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "VisualEditor1",
+            "Effect": "Allow",
+            "Action": [
+                "s3:PutObject",
+                "s3:CreateBucket",
+                "s3:DeleteObject",
+                "s3:DeleteBucket"
+            ],
+            "Resource": "arn:aws:s3:::invictus-aws-*"
+        }
+    ]
+}

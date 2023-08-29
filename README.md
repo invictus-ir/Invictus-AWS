@@ -26,6 +26,10 @@ To run the script you will have to use the AWS CLI.
 
 Note: This requires the AWS Access Key ID for the account you use to run the script.
 
+The user running the script must have these 2 policies in order to have the necessary permissions :
+* The AWS managed - job function policy `ReadOnlyAccess`
+* The policy that you can find in `source/files/policy.json`
+
 ## How it works
 
 The tool is divided into 4 different steps :

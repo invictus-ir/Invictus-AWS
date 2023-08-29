@@ -157,7 +157,6 @@ def verify_all_regions(input_region):
         ACCOUNT_CLIENT.list_regions,
         RegionOptStatusContains=["ENABLED", "ENABLED_BY_DEFAULT"],
     )
-    response.pop("ResponseMetadata", None)
     regions = response["Regions"]
 
     region_names = []
@@ -212,6 +211,8 @@ region : Region to run the tool in
 '''
 def verify_steps(steps, source, output, catalog, database, table, region):
 
+    #Verifying steps inputs
+
     for step in steps:
         if step not in POSSIBLE_STEPS:
             print(
@@ -219,7 +220,7 @@ def verify_steps(steps, source, output, catalog, database, table, region):
             )
             sys.exit(-1)
 
-    #Verify Athena#
+    #Verifying Athena inputs
 
     new_db = False
     new_db = True
@@ -231,12 +232,15 @@ def verify_steps(steps, source, output, catalog, database, table, region):
         if catalog is None and database is None and table is None:
             pass
         elif catalog is not None and database is not None and table is not None:
-
+            
+            #Verifying catalog exists
             catalogs = athena.list_data_catalogs()
             if not any(cat['CatalogName'] == catalog for cat in catalogs['DataCatalogsSummary']):
                 print("invictus-aws.py: error: the data catalog you entered doesn't exist")
                 sys.exit(-1) 
 
+            #Verifying database.
+            #new_db means a new db has to be created by the tool
             new_db = True
             exist_db = False
             close_db = []
@@ -252,12 +256,13 @@ def verify_steps(steps, source, output, catalog, database, table, region):
 
             if not exist_db:
                 for db in close_db:
-                    print(db)
                     if not confirm(f'[!] The database you entered has a really close name to {db}. Do you still want to create {database} ?', default=True):
                         new_db = False
                         database = db
                         break         
 
+            #Verifying table
+            #new_table means a new table has to be created by the tool
             new_table = True
             exist_tb = False
             close_tb = []
@@ -312,17 +317,19 @@ def verify_steps(steps, source, output, catalog, database, table, region):
             print("invictus-aws.py: error: the following arguments are not asked: -b/--source-bucket, -o/--output-bucket")
             sys.exit(-1)
     
-    #Verify buckets#
+    #Verify buckets inputs
 
     if source != None:
         verify_bucket(source, "source")
-        source = f"s3://{source}"
+        if not source.startswith("s3://"):
+            source = f"s3://{source}"
 
     
     if output != None:
         verify_bucket(output, "output")
-        output = f"s3://{output}"
-
+        if not output.startswith("s3://"):
+            output = f"s3://{output}"
+            
     return steps, source, output, database, table
 
 '''
@@ -336,17 +343,15 @@ def verify_bucket(bucket, type):
     if not bucket.endswith("/"):
         bucket = bucket+"/"
 
-    bucket_content = bucket.split("/", 1)
-    name = bucket_content[0]
+    name, prefix = get_bucket_and_prefix(bucket)
 
     source_bucket = s3.Bucket(name)
     if not source_bucket.creation_date:
        print(f"invictus-aws.py: error: the {type} bucket you entered doesn't exists or is not written well. Please verify that the format is 's3-name/[potential-folders]/'")
        sys.exit(-1)
 
-    if len(bucket_content) > 1:   
-        path = bucket_content[1]
-        response = S3_CLIENT.list_objects_v2(Bucket=name, Prefix=path)
+    if prefix:   
+        response = S3_CLIENT.list_objects_v2(Bucket=name, Prefix=prefix)
         if 'Contents' not in response or len(response['Contents']) == 0:
             print(f"invictus-aws.py: error: the path of the {type} bucket you entered doesn't exists or is not written well. Please verify that the format is 's3-name/[potential-folders]/'")
             sys.exit(-1)

@@ -1,5 +1,5 @@
 import yaml, time, os
-from source.utils.utils import athena_query, S3_CLIENT, rename_file_s3, get_table, set_clients, date, get_bucket_and_prefix
+from source.utils.utils import athena_query, S3_CLIENT, rename_file_s3, get_table, set_clients, date, get_bucket_and_prefix, ENDC, OKGREEN
 import source.utils.utils
 import pandas as pd
 
@@ -35,6 +35,7 @@ class Analysis:
 
         self.output_bucket = f"{output_bucket}{date}/"
 
+        #True if not using tool default db and table
         notNone = False
         if (catalog != None and db != None and table != None):
             notNone = True 
@@ -45,7 +46,7 @@ class Analysis:
         self.init_athena(db, table)
 
         try:
-            with open('source/file/queries.yaml') as f:
+            with open('source/files/queries.yaml') as f:
                 queries = yaml.safe_load(f)
         except Exception as e:
             print(f"[!] Error : {str(e)}")
@@ -56,6 +57,8 @@ class Analysis:
             table = get_table(table, False)[0]
 
         for key, value in queries.items():
+
+            #replacing DATABASE and TABLE in each query
             value = value.replace("DATABASE", db)
             value = value.replace("TABLE", table)
             print(f"[+] Running Query : {key}")
@@ -128,10 +131,13 @@ class Analysis:
     
         number   = len(source.utils.utils.ATHENA_CLIENT.get_query_results(QueryExecutionId=id)["ResultSet"]["Rows"])
         if number == 2:
-            print(f"[+] {number-1} hit ! Find the results of this query in the file {self.output_bucket}{query}-output.csv")
+            print(f"[+] {OKGREEN}{number-1} hit !{ENDC} Find the results of this query in the file {self.output_bucket}{query}-output.csv")
+            self.results.append(f"{query}-output.csv")
+        elif number > 999:
+            print(f"[+] {OKGREEN}{number-1}+ hits !{ENDC} Find the results of this query in the file {self.output_bucket}{query}-output.csv")
             self.results.append(f"{query}-output.csv")
         elif number > 2:
-            print(f"[+] {number-1} hits ! Find the results of this query in the file {self.output_bucket}{query}-output.csv")
+            print(f"[+] {OKGREEN}{number-1} hits !{ENDC} Find the results of this query in the file {self.output_bucket}{query}-output.csv")
             self.results.append(f"{query}-output.csv")
         else:
             print(f"[+] {number-1} hit. You may have better luck next time my young padawan !")
@@ -151,8 +157,11 @@ class Analysis:
             S3_CLIENT.download_file(bucket_name, s3_file_name, local_file_name)
 
         for i, file in enumerate(self.results):
+            sheet = str(file)[:-4]
+            if len(sheet) > 31:
+                sheet = sheet[:24] + sheet[-7:]
             df = pd.read_csv(file, sep=",")
-            df.to_excel(writer, sheet_name=str(file))
+            df.to_excel(writer, sheet_name=sheet)
 
         writer.close()
 

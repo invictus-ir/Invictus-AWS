@@ -144,7 +144,6 @@ def run_s3_dl(bucket, path, prefix=""):
 
     for page in paginator.paginate(**operation_parameters):
         if 'Contents' in page:
-            #print(page)
             for s3_object in page['Contents']:
                 s3_key = s3_object['Key']
                 local_path = os.path.join(path, s3_key)
@@ -268,7 +267,7 @@ def athena_query(region, query, bucket):
     return response
 
 '''
-Rename a s3 file (well it copies it, changes the name, then delete the old one)
+Rename a s3 file (well it copies it, changes the name, then deletes the old one)
 bucket : Bucket where the file to rename is
 folder : Folder where the file to rename is
 new_key : New name of the file
@@ -300,6 +299,10 @@ def get_table(ddl, get_db):
             table = table.split(".")[1]
         return table, data
 
+'''
+Split bucket name and prefix of the given bucket
+bucket: Bucket to split up
+'''
 def get_bucket_and_prefix(bucket):
     if bucket.startswith("s3://"):
         bucket = bucket.replace("s3://", "")
@@ -325,7 +328,17 @@ LOGS_BUCKET = "invictus-aws-" + date + "-" + random_chars
 #########
 
 ROOT_FOLDER = "./results/"
-ROLE_JSON = "role.json"
+
+##########
+# COLORS #
+##########
+
+OKGREEN = '\033[92m'
+WARNING = '\033[93m'
+FAIL = '\033[91m'
+ENDC = '\033[0m'
+BOLD = '\033[1m'
+UNDERLINE = '\033[4m'
 
 ###########
 # CLIENTS #

@@ -1,7 +1,7 @@
 import boto3, os, time, requests, json
 
 import source.utils.utils
-from source.utils.utils import write_file, date, create_folder, copy_or_write_s3, create_command, writefile_s3, ROLE_JSON, LOGS_RESULTS, create_s3_if_not_exists, LOGS_BUCKET, ROOT_FOLDER, set_clients, write_or_dl, write_s3, athena_query
+from source.utils.utils import write_file, create_folder, copy_or_write_s3, create_command, writefile_s3, LOGS_RESULTS, create_s3_if_not_exists, LOGS_BUCKET, ROOT_FOLDER, set_clients, write_or_dl, write_s3, athena_query
 from source.utils.enum import *
 
 
@@ -55,9 +55,8 @@ class Logs:
         self.get_logs_elasticbeanstalk()
     
         self.get_logs_route53()
-        self.get_logs_ec2()
         self.get_logs_rds()
-    
+
         self.get_logs_cloudwatch()
         self.get_logs_guardduty()
         self.get_logs_inspector2()
@@ -88,9 +87,6 @@ class Logs:
         if self.results["cloudtrail-logs"]["results"]:
             res = self.results["cloudtrail-logs"]["results"]
 
-            ###
-            limit = 0
-
             for el in res:
 
                 trail = el["CloudTrailEvent"]
@@ -100,13 +96,9 @@ class Logs:
                     self.bucket,
                     f"{self.region}/logs/cloudtrail-logs/{obj['eventID']}.json",
                     dump,
-                )    
-                if limit == 750:
-                    break
+                ) 
 
-                ###
-                limit = limit + 1
-
+            print(f"[+] Logs extraction results stored in the bucket {self.bucket}")    
             source_bucket, output_bucket = self.init_athena()
 
             ret1 = source_bucket
@@ -114,8 +106,9 @@ class Logs:
         else:
             ret1 = "0"
             ret2 = "0"
+            print(f"[+] Logs extraction results stored in the bucket {self.bucket}")
+
         
-        print(f"[+] Logs extraction results stored in the bucket {self.bucket}")
         return ret1, ret2
         
         
@@ -495,297 +488,6 @@ class Logs:
         self.display_progress(len(results), "macie")
 
     '''
-    Create a role json
-    '''
-    def create_json(self):
-        file_json = {
-            "Version": "2012-10-17",
-            "Statement": {
-                "Effect": "Allow",
-                "Principal": {"Service": "ec2.amazonaws.com"},
-                "Action": "sts:AssumeRole",
-            },
-        }
-
-        with open(ROLE_JSON, "w") as f:
-            json.dump(file_json, f)
-        with open(ROLE_JSON, "r") as fr:
-            data = fr.read()
-
-        return data
-
-    '''
-    Create a ssm role
-    '''
-    def create_ssm_role(self):
-        data = self.create_json()
-        iam = source.utils.utils.IAM_CLIENT
-        role_name = "SSM_IR_Extraction01"
-        instance_name = "SSM_S3_IR_Extraction01"
-
-        try:
-            new_role = iam.create_role(
-                RoleName=role_name, Path="/./", AssumeRolePolicyDocument=data
-            )
-
-            policy_ssm = iam.attach_role_policy(
-                RoleName=role_name,
-                PolicyArn="arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore",
-            )
-
-            policy_s3 = iam.attach_role_policy(
-                RoleName=role_name,
-                PolicyArn="arn:aws:iam::aws:policy/AmazonS3FullAccess",
-            )
-        except Exception as e:
-            if "EntityAlreadyExists" in str(e):
-                pass
-        try:
-            create_instance_profile = iam.create_instance_profile(
-                InstanceProfileName=instance_name
-            )
-            attach_role = iam.add_role_to_instance_profile(
-                RoleName=role_name, InstanceProfileName=instance_name
-            )
-        except Exception as e:
-            if "EntityAlreadyExists" in str(e):
-                create_instance_profile = iam.get_instance_profile(
-                    InstanceProfileName=instance_name
-                )
-            else:
-                print(str(e))
-
-        profile_for_replace = {}
-        profile_for_replace["Arn"] = create_instance_profile["InstanceProfile"]["Arn"]
-        profile_for_replace["Name"] = create_instance_profile["InstanceProfile"][
-            "InstanceProfileName"
-        ]
-        os.remove(ROLE_JSON)
-
-        return profile_for_replace
-    '''
-    Create an associated profile
-    instanceid : Id of the instance to associate
-    instance_prof : profile of the instance
-    '''
-    def associate_role(self, instanceid, instance_prof):
-        associate_prof = source.utils.utils.EC2_CLIENT.associate_iam_instance_profile(
-            IamInstanceProfile={"Arn": instance_prof["Arn"], "Name": instance_prof["Name"]},
-            InstanceId=instanceid
-        )
-
-        print(associate_prof)
-
-    '''
-    Retrieve the role and id of each instances
-    '''
-    def extract_role_and_id(self):
-        list_instances_profiles = source.utils.utils.EC2_CLIENT.describe_iam_instance_profile_associations()
-        old_profiles = []
-        profile = {}
-        prof = {}
-
-        for instance in list_instances_profiles["IamInstanceProfileAssociations"]:
-            profile["instanceID"] = instance["InstanceId"]
-            prof["Arn"] = instance["IamInstanceProfile"]["Arn"]
-            prof["Name"] = instance["IamInstanceProfile"]["Arn"].split("/")[1].strip()
-            profile["profileARN"] = prof
-            profile["AssociatedID"] = instance["AssociationId"]
-            old_profiles.append(profile)
-            profile = {}
-            prof = {}
-
-        return old_profiles
-
-    '''
-    Update the profile
-    iam_profile : new IAM profile
-    associade_id : id associated to the IAM profile
-    '''
-    def replace_role(self, iam_profile, associate_id):
-        new_profile = source.utils.utils.EC2_CLIENT.replace_iam_instance_profile_association(
-            IamInstanceProfile=iam_profile, AssociationId=associate_id
-        )
-
-        return new_profile
-
-    '''
-    Get the list of every ssm instances
-    '''
-    def extract_list_ssm_instances(self):
-        ssm_instances = source.utils.utils.SSM_CLIENT.describe_instance_information()
-        total_ssm_instances = []
-
-        for instance in ssm_instances["InstanceInformationList"]:
-            total_ssm_instances.append(instance["InstanceId"])
-
-        return total_ssm_instances
-    
-    '''
-    Verify each 3 second if the command sent are finished or not
-    instance_name : name of the instance we're verifying
-    command_id : id of the sent command
-    '''
-    def wait_for_command_completion(self, instance_name, command_id):
-
-        stillInProgress = 0
-        worked = True
-
-        while True:
-            response = source.utils.utils.SSM_CLIENT.get_command_invocation(
-                InstanceId=instance_name,
-                CommandId=command_id,
-            )
-
-            status = response['Status']
-            print(status)
-            if status in ['Pending', 'InProgress']:
-                time.sleep(5)  # Wait before reverifying
-                stillInProgress = stillInProgress + 1
-            #elif stillInProgress == 12:
-            #    print(f"[!] Error : Logs collection of {instance_name} didn't work")
-            #    worked = False
-            #    break
-            else:
-                break
-        
-        return worked
-
-    '''
-    Extract logs of the defined log files.
-    '''
-    def extract_logs(self):
-        list_of_logs = [
-            "cat /var/log/syslog",
-            "cat /var/log/messages",
-            "cat /var/log/auth.log",
-            "cat /var/log/secure",
-            "cat /var/log/boot.log",
-            "cat /var/log/dmesg",
-            "cat /var/log/faillog",
-            "cat /var/log/cron",
-            "cat /var/log/kern.log",
-        ]
-
-        total_ssm_instances = self.extract_list_ssm_instances()
-
-        if self.dl:
-            create_folder(self.confs + "/ec2")
-            send_command = source.utils.utils.SSM_CLIENT.send_command(
-            InstanceIds=total_ssm_instances,
-            DocumentName="AWS-RunShellScript",
-            Parameters={"commands": list_of_logs},
-            )
-
-            command_id = send_command['Command']['CommandId']
-
-            time.sleep(3)
-
-            for instance in total_ssm_instances:
-
-                if self.wait_for_command_completion(instance, command_id):
-
-                    output = source.utils.utils.SSM_CLIENT.get_command_invocation(
-                        InstanceId=instance,
-                        CommandId=command_id,
-                    )['StandardOutputContent']
-
-                    write_file(
-                        self.confs + f"/ec2/{instance}_logs.json",
-                        "w",
-                        json.dumps(output, indent=4, default=str),
-                    )
-        else:
-            send_command = source.utils.utils.SSM_CLIENT.send_command(
-                InstanceIds=total_ssm_instances,
-                DocumentName="AWS-RunShellScript",
-                OutputS3BucketName=self.bucket,
-                OutputS3KeyPrefix="ec2",
-                Parameters={"commands": list_of_logs},
-            )
-
-    '''
-    Change the profiles of the instances
-    old_profiles : profiles to be changed
-    fields : list of the instances
-    IamInstanceProfile : new IAM instance profile
-    '''
-    def switch_profiles(self, old_profiles, fields, IamInstanceProfile):
-        for profile in old_profiles:
-            if fields["InstanceId"] == profile["instanceID"]:
-                self.replace_role(IamInstanceProfile, profile["AssociatedID"])
-
-    '''
-    Define if we change the profile or create a new one
-    profiles : list of the profiles to be changed
-    instances : list of the instances
-    IamInstanceProfile : new instance profile
-    '''
-    def new_profiles_instances(self, profiles, instances, IamInstanceProfile):
-            for instance in instances:
-                if "IamInstanceProfile" in instance:
-                    self.switch_profiles(profiles, instance, IamInstanceProfile)
-                else:
-                    self.associate_role(instance["InstanceId"], IamInstanceProfile)
-
-    '''
-    Reset the profiles to the ones at the beginning
-    old_profiles : old profiles to change
-    new_profiles : profiles that will replace the old ones
-    '''
-    def back_to_normal(self, old_profiles, new_profiles, created_role):
-        for old_profile in old_profiles:
-            for new_profile in new_profiles:
-                if old_profile["instanceID"] == new_profile["instanceID"]:
-                    self.replace_role(
-                        old_profile["profileARN"], new_profile["AssociatedID"]
-                    )
-        try:
-            source.utils.utils.IAM_CLIENT.delete_role(RoleName=created_role["Name"])
-        except Exception as e:
-            print(str(e))
-    
-    '''
-    Retrieve the logs of the configuration of the existing ec2 instances
-    '''
-    def get_logs_ec2(self):
-        ec2_list = self.services["ec2"] 
-
-        if ec2_list["count"] == -1:
-            instances = ec2_lookup()
-            
-            if len(instances) == 0:
-                self.display_progress(0, "ec2")
-                return
-
-        elif ec2_list["count"] == 0:
-            self.display_progress(0, "ec2")
-            return
-        else:
-            instances = ec2_list["elements"]
-
-        print("a")
-        profile_for_replace = self.create_ssm_role()
-
-        time.sleep(60)
-
-        print("b")
-        old_profiles = self.extract_role_and_id()
-        print('c')
-        self.new_profiles_instances(old_profiles, instances, profile_for_replace)
-
-        time.sleep(5)
-
-        print("d")
-        self.extract_logs()
-        print("e")
-        new_profiles = self.extract_role_and_id()
-        print("f")
-        self.back_to_normal(old_profiles, new_profiles, profile_for_replace)
-        print("g")
-        self.display_progress(1, "ec2")
-
-    '''
     "Download" the rds logs
     nameDB : name of the rds instance
     rds : RDS client
@@ -891,7 +593,7 @@ class Logs:
     def init_athena(self):
 
         source_bucket = f"s3://{self.bucket}/{self.region}/logs/cloudtrail-logs/"
-        output_bucket = f"s3://{self.bucket}/cloudtrail-analysis/{date}/"
+        output_bucket = f"s3://{self.bucket}/cloudtrail-analysis/"
 
         query_db = "create database if not exists `cloudtrailanalysis`;"
         athena_query(self.region, query_db, output_bucket)

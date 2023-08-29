@@ -1,6 +1,6 @@
 from source.utils.enum import *
-from source.utils import create_s3_if_not_exists, PREPARATION_BUCKET, ROOT_FOLDER, create_folder, set_clients, write_file, write_s3
-import source.utils
+from source.utils.utils import create_s3_if_not_exists, PREPARATION_BUCKET, ROOT_FOLDER, create_folder, set_clients, write_file, write_s3
+import source.utils.utils
 import json
 
 
@@ -80,6 +80,7 @@ class Enumeration:
                         json.dumps(value["elements"], indent=4, default=str),
                     )
             print(f"[+] Enumeration results stored in the bucket {self.bucket}")
+            
         return self.services
 
     '''

@@ -2,7 +2,7 @@ from source.main.Enumeration import Enumeration
 from source.main.Configuration import Configuration
 from source.main.Logs import Logs
 from source.main.Analysis import Analysis
-from source.utils import ENUMERATION_SERVICES, set_clients
+from source.utils.utils import ENUMERATION_SERVICES, BOLD, ENDC
 
 class IR:
     services = None
@@ -17,7 +17,7 @@ class IR:
     table = None
 
     def __init__(self, region, dl, steps, source=None, output=None, catalog=None, database=None, table=None):
-        print(f"\n[+] Working on region \033[1m{region}\033[0;0m")
+        print(f"\n[+] Working on region {BOLD}{region}{ENDC}")
 
         self.services = ENUMERATION_SERVICES
 
@@ -69,5 +69,8 @@ class IR:
             if self.output == None:
                 self.output = output
 
+    '''
+    Run the logs analysis main function
+    '''
     def execute_analysis(self):
         self.a.execute(self.source, self.output, self.catalog, self.database, self.table)

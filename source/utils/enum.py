@@ -21,7 +21,7 @@ The basic paginate function can't actually work
 
 def ec2_lookup():
     elements = []
-    paginator = source.utils.EC2_CLIENT.get_paginator("describe_instances")
+    paginator = source.utils.utils.EC2_CLIENT.get_paginator("describe_instances")
     
     try:
         for page in paginator.paginate():
@@ -71,7 +71,7 @@ def paginate(client, command, array, **kwargs):
             page = fix_json(page)
             elements.extend(page.get(array, []))
     except Exception as e:
-        if client != source.utils.MACIE_CLIENT and "Macie is not enabled" not in str(e):
+        if client != source.utils.utils.MACIE_CLIENT and "Macie is not enabled" not in str(e):
             print(f"[!] Error : {str(e)}")  
 
     return elements  
