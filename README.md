@@ -20,7 +20,7 @@ To run the script you will have to use the AWS CLI.
 
 - Install the AWS CLI package, you can simply follow the instructions here (https://aws.amazon.com/cli/) 
 - Install Python3 on your local system
-- Install the requirements with `$pip3 -r requirements.txt`
+- Install the requirements with `$pip3 install -r requirements.txt`
 - An account with permissions to access the AWS environment you want to acquire data from
 - Configure AWS account with `$aws configure`
 
