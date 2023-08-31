@@ -25,10 +25,10 @@ def set_args():
         "--write",
         nargs="?",
         type=str,
-        required=True,
+        default="cloud",
         const="cloud",
         choices=['cloud', 'local'],
-        help="[+] 'cloud' option if you want the results to be stored in a s3 bucket (automatically created). 'local' option if you want the results to be written down locally. Default is 'cloud'."
+        help="[+] 'cloud' option if you want the results to be stored in a S3 bucket (automatically created). 'local' option if you want the results to be written to local storage. The default option is 'cloud'. So if you want to use 'cloud' option, you can either write nothing, write only `-w` or write `-w cloud`."
     )
 
     group2 = parser.add_mutually_exclusive_group(required=True)
@@ -52,10 +52,9 @@ def set_args():
         "--step", 
         nargs='?', 
         type=str, 
-        required=True,
         default="1,2,3,4",
         const="1,2,3,4", 
-        help="[+] Comma separated list of the steps to run. 1 = Enumeration. 2 = Configuration. 3 = Logs Extraction. 4 = Log Analysis. Default is 1,2,3,4"
+        help="[+] Provide a comma-separated list of the steps to be executed. 1 = Enumeration. 2 = Configuration. 3 = Logs Extraction. 4 = Logs Analysis. The default option is all steps. So if you want to run all the four steps, you can either write nothing, write only `-s` or write `-s 1,2,3,4`."
     )
 
     parser.add_argument(

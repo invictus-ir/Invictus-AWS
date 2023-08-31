@@ -3,3 +3,4 @@ requests
 pyyaml
 pandas
 xlsxwriter
+click
