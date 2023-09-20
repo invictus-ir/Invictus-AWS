@@ -47,32 +47,39 @@ The script runs with a few parameters :
 * `-h` to print out the help menu.
 * `-w cloud` or `-w local`. 'cloud' option if you want the results to be stored in a S3 bucket (automatically created). 'local' option if you want the results to be written to local storage. The default option is 'cloud'. So if you want to use 'cloud' option, you can either write nothing, write only `-w` or write `-w cloud`.
 * `-r region` or `-a [region]`. Use the first option if you want the tool to analyze only the specified region. Use the second option if you want the tool to analyze all regions. You can also specify a region if you want to start with that one.
-* `-s [step,step]`. Provide a comma-separated list of the steps to be executed. 1 = Enumeration. 2 = Configuration. 3 = Logs Extraction. 4 = Logs Analysis. The default option is all steps. So if you want to run all the four steps, you can either write nothing, write only `-s` or write `-s 1,2,3,4`.
-> **_NOTE:_**  The next parameters only apply if you run step 4 without running step 3 at the same time. So basically if you already have CloudTrail logs and only want to use the tool for analysis. 
+* `-s [step,step]`. Provide a comma-separated list of the steps to be executed. 1 = Enumeration. 2 = Configuration. 3 = Logs Extraction. 4 = Logs Analysis. The default option is 1,2,3 as **step 4 has to be executed alone**. So if you want to run the three first steps, you can either write nothing, write only `-s` or write `-s 1,2,3`. If yyou want to run step 4, then write `-s 4`.
+* `-start YYYY-MM-DD`. Start date for the Cloudtrail logs collection. It is recommended to use it every time step 3 is executed as it will be extremely long to collect each logs. It has to be used with `-end` and must only be used with step 3.
+* `-end YYYY-MM-DD`. End date for the Cloudtrail logs collection. It is recommended to use it every time step 3 is executed as it will be extremely long to collect each logs. It has to be used with `-start` and must only be used with step 3.
+> **_NOTE:_**  The next parameters only apply if you run step 4. You have to collect the logs with step 3 on another execution or by your own means.
 
 * `-b`. Bucket containing the CloudTrail logs. Format is `bucket/subfolders/`.
-* `-o`. Bucket where the results of the queries will be stored. Must look like `bucket/subfolders/`.
+* `-o`. Bucket where the results of the queries will be stored. Must look like `bucket/[subfolders]/`.
 * `-c`. Catalog used by Athena.
-* `-d`. Database used by Athena. You can either input an existing database or a new one that will be created. If you want to use this, you must specify a database with a .ddl input file. 
-* `-t`. Table used by Athena. You can either input an existing table or input a .ddl file giving details about your new table. An example.ddl is available for you, just add the structure, modify the name of the table and the location of your logs.
+* `-d`. Database used by Athena. You can either input an existing database or a new one that will be created.
+* `-t`. Table used by Athena. You can either input an existing table, input a new one (that will have the same structure as the default one) or input a .ddl file giving details about your new table. An example.ddl is available for you, just add the structure, modify the name of the table and the location of your logs.
 
-Usage : `$python3 invictus-aws.py [-h] -w [{cloud,local}] (-r AWS_REGION | -A [ALL_REGIONS]) -s [STEP] [-b SOURCE_BUCKET] [-o OUTPUT_BUCKET][-c CATALOG] [-d DATABASE] [-t TABLE]`
+Usage : `$python3 invictus-aws.py [-h] -w [{cloud,local}] (-r AWS_REGION | -A [ALL_REGIONS]) -s [STEP] [-start YYYY-MM-DD] [-end YYYY-MM-DD] [-b SOURCE_BUCKET] [-o OUTPUT_BUCKET][-c CATALOG] [-d DATABASE] [-t TABLE]`
 
 ### Examples
 
 **Acquire data exclusively from the eu-wests-3 region, excluding the Configuration step and store the output locally.** :    
-`$python3 invictus-aws.py -r eu-west-3 -s 1,3,4 -w local`  
+`$python3 invictus-aws.py -r eu-west-3 -s 1,3 -w local`  
 *Mind that the CloudTrail logs, if existing, will be written both locally and in a S3 bucket as the analysis step needs the logs to be in a bucket.*
 
-**Acquire data from all region, beginning by eu-west-3, with all the steps and with results written in a S3 Bucket.** :   
+**Acquire data from all region, beginning by eu-west-3, with all the steps (1,2,3) and with results written in a S3 Bucket.** :   
 `$python3 invictus-aws.py -A eu-west-3`
 
-**Analyze CloudTrail logs using the tool default database and table.** :  
-`$python3 invictus-aws.py -r eu-west-3 -w -s 4 -s bucket/path-to-the-existing-logs/ -o bucket/path-to-existing-folder-to-store-the-results/`
+**Analyze CloudTrail logs using the tool default database and table, and store the output locally.** :  
+`$python3 invictus-aws.py -r eu-west-3 -w local -s 4 -b bucket/path-to-the-existing-logs/ -o bucket/path-to-existing-folder-to-store-the-results/`  
+*In this example, the -b option is needed the first time as the default database and table will be created. Then you don't need it anymore as the table is already initialized.*
 
-**Analyze CloudTrail logs using your existing database and table.** :  
-`$python3 invictus-aws.py -r eu-west-3 -s 4 -o bucket/path-to-existing-folder-where-to-put-the-results/ -c your-catalog, -d your-database -t your-table`
+**Analyze CloudTrail logs using either a new database or table (with the same structure as the default one)** :  
+`$python3 invictus-aws.py -r eu-west-3 -w -s 4 -b bucket/path-to-the-existing-logs/ -o bucket/path-to-existing-folder-to-store-the-results/ -c your-catalog -d your-database -t your-table`  
+*In this example, the -b option is needed the first time as the default database and table will be created. Then you don't need it anymore as the table is already initialized.*
 
-**Analyze CloudTrail logs using either a new database or a new table.** :  
+**Analyze CloudTrail logs using your existing database and table** :  
+`$python3 invictus-aws.py -r eu-west-3 -s 4 -o bucket/path-to-existing-folder-where-to-put-the-results/ -c your-catalog -d your-database -t your-table`
+
+**Analyze CloudTrail logs using a new table with your own structure.** :  
 `$python3 invictus-aws.py -a eu-west-3 -s 4 -s bucket/path-to-the-existing-logs/ -o bucket/path-to-existing-folder-where-to-put-the-results/ -c your-catalog -d your-database -t your-creation-table-file.ddl`  
 *You can find a example of ddl file in `source/files`. Just replace the name of the table by the one you want to create, the location by the location of your CloudTrail logs and add the structure of your table. The default table used by the tool is using the table explained here : https://docs.aws.amazon.com/athena/latest/ug/cloudtrail-logs.html*

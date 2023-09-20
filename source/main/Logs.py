@@ -1,4 +1,4 @@
-import boto3, os, time, requests, json
+import boto3, os, time, requests, json, datetime, sys
 
 import source.utils.utils
 from source.utils.utils import write_file, create_folder, copy_or_write_s3, create_command, writefile_s3, LOGS_RESULTS, create_s3_if_not_exists, LOGS_BUCKET, ROOT_FOLDER, set_clients, write_or_dl, write_s3, athena_query
@@ -36,7 +36,7 @@ class Logs:
     services : Array used to write the results of the different enumerations functions
     regionless : "not-all" if the tool is used on only one region. First region to run the tool on otherwise
     '''
-    def execute(self, services, regionless):
+    def execute(self, services, regionless, start, end):
         
         print(f"[+] Beginning Logs Extraction")
 
@@ -47,20 +47,20 @@ class Logs:
         output_bucket = ""
 
         if regionless == self.region or regionless == "not-all":
-            self.get_logs_s3()
-            self.get_logs_cloudtrail_logs()
+            #self.get_logs_s3()
+            self.get_logs_cloudtrail_logs(start, end)
 
-        self.get_logs_wafv2()
-        self.get_logs_vpc()
-        self.get_logs_elasticbeanstalk()
-    
-        self.get_logs_route53()
-        self.get_logs_rds()
-
-        self.get_logs_cloudwatch()
-        self.get_logs_guardduty()
-        self.get_logs_inspector2()
-        self.get_logs_maciev2()
+        #self.get_logs_wafv2()
+        #self.get_logs_vpc()
+        #self.get_logs_elasticbeanstalk()
+    #
+        #self.get_logs_route53()
+        #self.get_logs_rds()
+#
+        #self.get_logs_cloudwatch()
+        #self.get_logs_guardduty()
+        #self.get_logs_inspector2()
+        #self.get_logs_maciev2()
 
         if self.dl:
             for key, value in self.results.items():
@@ -97,20 +97,10 @@ class Logs:
                     f"{self.region}/logs/cloudtrail-logs/{obj['eventID']}.json",
                     dump,
                 ) 
+           
+        print(f"[+] Logs extraction results stored in the bucket {self.bucket}")
 
-            print(f"[+] Logs extraction results stored in the bucket {self.bucket}")    
-            source_bucket, output_bucket = self.init_athena()
-
-            ret1 = source_bucket
-            ret2 = output_bucket
-        else:
-            ret1 = "0"
-            ret2 = "0"
-            print(f"[+] Logs extraction results stored in the bucket {self.bucket}")
-
-        
-        return ret1, ret2
-        
+    
         
     '''
     Retrieve the logs of the existing guardduty detectors
@@ -169,9 +159,15 @@ class Logs:
     '''
     Retrieve the cloudtrail logs
     '''
-    def get_logs_cloudtrail_logs(self):
+    def get_logs_cloudtrail_logs(self, start, end):
 
-        logs = paginate(source.utils.utils.CLOUDTRAIL_CLIENT, "lookup_events", "Events")
+        start_date = start.split("-")
+        end_date = end.split("-")
+
+        datetime_start = datetime.datetime(int(start_date[0]), int(start_date[1]), int(start_date[2]))
+        datetime_end = datetime.datetime(int(end_date[0]), int(end_date[1]), int(end_date[2]))
+
+        logs = paginate(source.utils.utils.CLOUDTRAIL_CLIENT, "lookup_events", "Events", StartTime=datetime_start, EndTime=datetime_end)
 
         if len(logs) == 0:
             self.display_progress(0, "cloudtrail")
@@ -586,80 +582,6 @@ class Logs:
                 cnt += 1
                 
         self.display_progress(cnt, "route53")
-
-    '''
-    Initiates athena database and table for further analysis
-    '''
-    def init_athena(self):
-
-        source_bucket = f"s3://{self.bucket}/{self.region}/logs/cloudtrail-logs/"
-        output_bucket = f"s3://{self.bucket}/cloudtrail-analysis/"
-
-        query_db = "create database if not exists `cloudtrailanalysis`;"
-        athena_query(self.region, query_db, output_bucket)
-        print(f"[+] Database cloudtrailanalysis created")
-        
-        query_table = f"""
-            CREATE EXTERNAL TABLE IF NOT EXISTS cloudtrailAnalysis.logs (
-            eventversion STRING,
-            useridentity STRUCT<
-                           type:STRING,
-                           principalid:STRING,
-                           arn:STRING,
-                           accountid:STRING,
-                           invokedby:STRING,
-                           accesskeyid:STRING,
-                           userName:STRING,
-              sessioncontext:STRUCT<
-                attributes:STRUCT<
-                           mfaauthenticated:STRING,
-                           creationdate:STRING>,
-                sessionissuer:STRUCT<  
-                           type:STRING,
-                           principalId:STRING,
-                           arn:STRING, 
-                           accountId:STRING,
-                           userName:STRING>,
-                ec2RoleDelivery:string,
-                webIdFederationData:map<string,string>
-              >
-            >,
-            eventtime STRING,
-            eventsource STRING,
-            eventname STRING,
-            awsregion STRING,
-            sourceipaddress STRING,
-            useragent STRING,
-            errorcode STRING,
-            errormessage STRING,
-            requestparameters STRING,
-            responseelements STRING,
-            additionaleventdata STRING,
-            requestid STRING,
-            eventid STRING,
-            resources ARRAY<STRUCT<
-                           arn:STRING,
-                           accountid:STRING,
-                           type:STRING>>,
-            eventtype STRING,
-            apiversion STRING,
-            readonly STRING,
-            recipientaccountid STRING,
-            serviceeventdetails STRING,
-            sharedeventid STRING,
-            vpcendpointid STRING,
-            tlsDetails struct<
-              tlsVersion:string,
-              cipherSuite:string,
-              clientProvidedHostHeader:string>
-            )
-            ROW FORMAT SERDE 'org.openx.data.jsonserde.JsonSerDe'
-            LOCATION '{source_bucket}'  
-        """
-        athena_query(self.region, query_table, output_bucket)
-        print(f"[+] Table cloudtrailanalysis.logs created")
-
-        return source_bucket, output_bucket
 
     '''
     Diplays if the configuration of the given service worked
