@@ -1,5 +1,4 @@
 import argparse, sys
-from click import confirm
 from os import path
 import datetime
 
@@ -413,13 +412,8 @@ def verify_dates(start, end, steps):
             print("invictus-aws.py: error: End date in not defined.")
             sys.exit(-1)
         elif start == None and end == None:
-            if not confirm("[+] If you don't specify any start and end time, all your logs will be collected. Be aware it can take a very long time. Are you sure you want all your logs ?"):
-                start = input("[+] Enter your start date (YYYY-MM-DD): ")
-                end = input("[+] Enter your end date (YYYY-MM-DD): ")
-                if not start or not end:
-                    print("[!] Error : You didn't input any date")
-                    sys.exit(-1)
-                verify_dates(start, end)
+            print("invictus-aws.py: error: You have to specify start and end time.")
+            sys.exit(-1)
 
 
 '''

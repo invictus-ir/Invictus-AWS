@@ -1,4 +1,9 @@
-import boto3, os, time, requests, json, datetime, sys
+import datetime
+from sys import exit
+from json import loads, dumps
+from time import sleep
+from os import remove, rmdir
+from requests import get
 
 import source.utils.utils
 from source.utils.utils import write_file, create_folder, copy_or_write_s3, create_command, writefile_s3, LOGS_RESULTS, create_s3_if_not_exists, LOGS_BUCKET, ROOT_FOLDER, set_clients, write_or_dl, write_s3, athena_query
@@ -45,20 +50,20 @@ class Logs:
         self.services = services
 
         if regionless == self.region or regionless == "not-all":
-            #self.get_logs_s3()
+            self.get_logs_s3()
             self.get_logs_cloudtrail_logs(start, end)
 
-        #self.get_logs_wafv2()
-        #self.get_logs_vpc()
-        #self.get_logs_elasticbeanstalk()
-    #
-        #self.get_logs_route53()
-        #self.get_logs_rds()
-#
-        #self.get_logs_cloudwatch()
-        #self.get_logs_guardduty()
-        #self.get_logs_inspector2()
-        #self.get_logs_maciev2()
+        self.get_logs_wafv2()
+        self.get_logs_vpc()
+        self.get_logs_elasticbeanstalk()
+    
+        self.get_logs_route53()
+        self.get_logs_rds()
+
+        self.get_logs_cloudwatch()
+        self.get_logs_guardduty()
+        self.get_logs_inspector2()
+        self.get_logs_maciev2()
 
         if self.dl:
             for key, value in self.results.items():
@@ -67,8 +72,8 @@ class Logs:
                 elif key == "cloudtrail-logs":
                     for el in value["results"]:
                         trail = el["CloudTrailEvent"]
-                        obj = json.loads(trail)
-                        dump = json.dumps(obj, default=str)
+                        obj = loads(trail)
+                        dump = dumps(obj, default=str)
                         create_folder(f"{self.confs}/cloudtrail-logs/")
                         write_file(
                             f"{self.confs}/cloudtrail-logs/{obj['eventID']}.json",
@@ -88,8 +93,8 @@ class Logs:
             for el in res:
 
                 trail = el["CloudTrailEvent"]
-                obj = json.loads(trail)
-                dump = json.dumps(obj, default=str)
+                obj = loads(trail)
+                dump = dumps(obj, default=str)
                 write_s3(
                     self.bucket,
                     f"{self.region}/logs/cloudtrail-logs/{obj['eventID']}.json",
@@ -159,51 +164,55 @@ class Logs:
     '''
     def get_logs_cloudtrail_logs(self, start, end):
 
-        #trails_name = paginate(source.utils.utils.CLOUDTRAIL_CLIENT, "list_trails", "Trails")
-#
-        #if trails_name:
-        #    if len(trails_name) == 1:
-        #        print("jojo le haricot")
-        #    else:
-        #        results = {}
-        #        names = [name["TrailARN"] for name in trails_name]
-        #        for name in names:
-        #            total = 0
-        #            selectors = source.utils.utils.CLOUDTRAIL_CLIENT.get_event_selectors(TrailName=name)
-        #            #here we'll classify the elements of the selector to find which trail is best to use. the points are totally arbitrary
-        #            if selectors["EventSelectors"]:
-        #                if selectors["EventSelectors"]["ReadWriteType"] == "All":
-        #                    total += 1
-        #                if selectors["EventSelectors"]["IncludeManagementEvents"] == True:
-        #                    total += 2
-        #                if selectors["EventSelectors"]["DataResources"]:
-        #                    total += 1
-        #                if total == 4:
-        #                    total = 5
-        #                results[total] = name
-        #            else:
-        #                print('ek')
-#
-        #else:
-        #    print('op')
-        #sys.exit(-1)
+        trails_name = paginate(source.utils.utils.CLOUDTRAIL_CLIENT, "list_trails", "Trails")
+        if trails_name:
+            if len(trails_name) == 1:
+                response = source.utils.utils.CLOUDTRAIL_CLIENT.get_trail(Name=trails_name["TrailARN"])
+                bucket = response["Trail"]["S3BucketName"]
 
-        start_date = start.split("-")
-        end_date = end.split("-")
+                if "S3KeyPrefix" in response["Trail"]:
+                    prefix = response["Trail"]["S3KeyPrefix"]
+                else:
+                    prefix = ""
+                
+                all_bucket = f"{bucket}/{prefix}"
+                print(f"[+] You have an existing Cloudtrail trail. You can use the associated bucket {all_bucket} as source for the analysis. But don't forget to restrein the number of logs as much as possible by using the most precise subfolder.")
+            else:
+                buckets = []
+                for trail in trails_name:
+                    response =  source.utils.utils.CLOUDTRAIL_CLIENT.get_trail(Name=trail["TrailARN"])
+                    bucket = response["Trail"]["S3BucketName"]
+                    if "S3KeyPrefix" in response["Trail"]:
+                        prefix = response["Trail"]["S3KeyPrefix"]
+                    else:
+                        prefix = ""
 
-        datetime_start = datetime.datetime(int(start_date[0]), int(start_date[1]), int(start_date[2]))
-        datetime_end = datetime.datetime(int(end_date[0]), int(end_date[1]), int(end_date[2]))
+                    all_bucket = f"{bucket}/{prefix}"
+                    buckets.append(all_bucket)
 
-        logs = paginate(source.utils.utils.CLOUDTRAIL_CLIENT, "lookup_events", "Events", StartTime=datetime_start, EndTime=datetime_end)
+                print(f"[+] You have multiple existing Cloudtrail trails. You can use the associated buckets listed below as source for the analysis.\n[!] Warning :  If you do so, don't forget to restrein the number of logs as much as possible by using the most precise subfolder :")
+                for b in buckets:
+                    print(f"\u2022 {b}")
+                
 
-        if len(logs) == 0:
-            self.display_progress(0, "cloudtrail")
-            return
-        
-        self.results["cloudtrail-logs"]["action"] = 0
-        self.results["cloudtrail-logs"]["results"] = logs
-        
-        self.display_progress(1, "cloudtrail-logs")
+        else:
+
+            start_date = start.split("-")
+            end_date = end.split("-")
+
+            datetime_start = datetime.datetime(int(start_date[0]), int(start_date[1]), int(start_date[2]))
+            datetime_end = datetime.datetime(int(end_date[0]), int(end_date[1]), int(end_date[2]))
+
+            logs = paginate(source.utils.utils.CLOUDTRAIL_CLIENT, "lookup_events", "Events", StartTime=datetime_start, EndTime=datetime_end)
+
+            if len(logs) == 0:
+                self.display_progress(0, "cloudtrail")
+                return
+
+            self.results["cloudtrail-logs"]["action"] = 0
+            self.results["cloudtrail-logs"]["results"] = logs
+
+            self.display_progress(1, "cloudtrail-logs")
 
     '''
     Retrieve the logs of the existing waf web acls
@@ -283,7 +292,7 @@ class Logs:
     Retrieve the logs of the configuration of the existing elasticbeanstalk environments
     '''    
     def get_logs_elasticbeanstalk(self):
-        eb = boto3.client("elasticbeanstalk")
+        eb = source.utils.utils.EB_CLIENT 
 
         eb_list = self.services["elasticbeanstalk"]
 
@@ -314,7 +323,7 @@ class Logs:
             )
             response.pop("ResponseMetadata", None)
             response = fix_json(response)
-            time.sleep(60)
+            sleep(60)
 
             response = try_except(
                 eb.retrieve_environment_info, EnvironmentName=name, InfoType="bundle"
@@ -328,15 +337,15 @@ class Logs:
                 url = url["Message"]
 
             filename = path + name + ".zip"
-            r = requests.get(url)
+            r = get(url)
             with open(filename, "wb") as f:
                 f.write(r.content)
 
             if not self.dl:
                 key = "eb/" + name + ".zip"
                 writefile_s3(self.bucket, key, filename)
-                os.remove(filename)
-                os.rmdir(path)
+                remove(filename)
+                rmdir(path)
 
         self.display_progress(len(environments), "elasticbeanstalk")
     

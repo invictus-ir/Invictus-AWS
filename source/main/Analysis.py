@@ -1,7 +1,11 @@
-import yaml, time, os, datetime
+import yaml, datetime
 from source.utils.utils import athena_query, S3_CLIENT, rename_file_s3, get_table, set_clients, date, get_bucket_and_prefix, ENDC, OKGREEN, ROOT_FOLDER, create_folder
 import source.utils.utils
 import pandas as pd
+from sys import exit
+from os import remove, replace
+from time import sleep
+from click import confirm
 
 class Analysis:
     source_bucket = None
@@ -56,11 +60,14 @@ class Analysis:
         if (catalog != None and db != None and table != None):
             notNone = True 
         else:
+            catalog = "AwsDataCatalog"
             db = "cloudtrailAnalysis"
             table = "logs"
         
+        isTrail, source = self.is_trail_bucket(catalog, db, table)
+
         if not exists[0] or not exists[1]:
-            self.init_athena(db, table, self.source_bucket, self.output_bucket, exists)
+           self.init_athena(db, table, self.source_bucket, self.output_bucket, exists, isTrail)
 
         try:
             with open('source/files/queries.yaml') as f:
@@ -71,8 +78,9 @@ class Analysis:
         if not notNone:
             db = "cloudtrailAnalysis"
         elif table.endswith(".ddl"):
-            table = get_table(table, False)[0]
+            table = get_table(table, False)[0]      
 
+        #Running all the queries
         for key, value in queries.items():
 
             #replacing DATABASE and TABLE in each query
@@ -87,7 +95,7 @@ class Analysis:
             
             bucket, folder = get_bucket_and_prefix(self.output_bucket)
 
-            time.sleep(1)
+            sleep(1)
             done = True
 
             try:
@@ -97,7 +105,7 @@ class Analysis:
 
             while not done :
                 try:
-                    time.sleep(500/1000)
+                    sleep(500/1000)
                     rename_file_s3(bucket, folder, f"{key}-output.csv", f'{id}.csv')
                     done = True
                 except:
@@ -110,8 +118,12 @@ class Analysis:
     Initiates athena database and table for further analysis
     db : Database used
     table : Table used
+    source_bucket : Source bucket of the logs of the table
+    output_bucket : Bucket where to put the results of the queries
+    exists : If the given db and table already exists
+    isTrail : if the source bucket of the table is a bucket trail
     '''
-    def init_athena(self, db, table, source_bucket, output_bucket, exists):
+    def init_athena(self, db, table, source_bucket, output_bucket, exists, isTrail):
 
         # if db doesn't exists
         if not exists[0]:
@@ -127,71 +139,125 @@ class Analysis:
                     query_table = ddl.read()
                     athena_query(self.region, query_table, self.output_bucket)
                 print(f"[+] Table {tb} created")
+            elif not isTrail:
+                query_table = f"""
+                    CREATE EXTERNAL TABLE IF NOT EXISTS {db}.{table} (
+                    eventversion STRING,
+                    useridentity STRUCT<
+                        type:STRING,
+                        principalid:STRING,
+                        arn:STRING,
+                        accountid:STRING,
+                        invokedby:STRING,
+                        accesskeyid:STRING,
+                        userName:STRING,
+                        sessioncontext:STRUCT<
+                            attributes:STRUCT<
+                                mfaauthenticated:STRING,
+                                creationdate:STRING>,
+                            sessionissuer:STRUCT<  
+                                type:STRING,
+                                principalId:STRING,
+                                arn:STRING, 
+                                accountId:STRING,
+                                userName:STRING>,
+                            ec2RoleDelivery:string,
+                            webIdFederationData:map<string,string>
+                        >
+                    >,
+                    eventtime STRING,
+                    eventsource STRING,
+                    eventname STRING,
+                    awsregion STRING,
+                    sourceipaddress STRING,
+                    useragent STRING,
+                    errorcode STRING,
+                    errormessage STRING,
+                    requestparameters STRING,
+                    responseelements STRING,
+                    additionaleventdata STRING,
+                    requestid STRING,
+                    eventid STRING,
+                    resources ARRAY<STRUCT<
+                        arn:STRING,
+                        accountid:STRING,
+                        type:STRING>>,
+                    eventtype STRING,
+                    apiversion STRING,
+                    readonly STRING,
+                    recipientaccountid STRING,
+                    serviceeventdetails STRING,
+                    sharedeventid STRING,
+                    vpcendpointid STRING,
+                    tlsDetails struct<
+                      tlsVersion:string,
+                      cipherSuite:string,
+                      clientProvidedHostHeader:string>
+                    )
+                    ROW FORMAT SERDE 'org.apache.hive.hcatalog.data.JsonSerDe'
+                    LOCATION '{source_bucket}'   
+                """
             else:
                 query_table = f"""
-                CREATE EXTERNAL TABLE IF NOT EXISTS {db}.{table} (
-                eventversion STRING,
-                useridentity STRUCT<
-                    type:STRING,
-                    principalid:STRING,
-                    arn:STRING,
-                    accountid:STRING,
-                    invokedby:STRING,
-                    accesskeyid:STRING,
-                    userName:STRING,
-                    sessioncontext:STRUCT<
-                        attributes:STRUCT<
-                            mfaauthenticated:STRING,
-                            creationdate:STRING>,
-                        sessionissuer:STRUCT<  
-                            type:STRING,
-                            principalId:STRING,
-                            arn:STRING, 
-                            accountId:STRING,
-                            userName:STRING>,
-                        ec2RoleDelivery:string,
-                        webIdFederationData:map<string,string>
-                    >
-                >,
-                eventtime STRING,
-                eventsource STRING,
-                eventname STRING,
-                awsregion STRING,
-                sourceipaddress STRING,
-                useragent STRING,
-                errorcode STRING,
-                errormessage STRING,
-                requestparameters STRING,
-                responseelements STRING,
-                additionaleventdata STRING,
-                requestid STRING,
-                eventid STRING,
-                resources ARRAY<STRUCT<
-                    arn:STRING,
-                    accountid:STRING,
-                    type:STRING>>,
-                eventtype STRING,
-                apiversion STRING,
-                readonly STRING,
-                recipientaccountid STRING,
-                serviceeventdetails STRING,
-                sharedeventid STRING,
-                vpcendpointid STRING,
-                tlsDetails struct<
-                  tlsVersion:string,
-                  cipherSuite:string,
-                  clientProvidedHostHeader:string>
-                )
-                ROW FORMAT SERDE 'org.apache.hive.hcatalog.data.JsonSerDe'
-                LOCATION '{source_bucket}'   
-                
-        """
+                    CREATE EXTERNAL TABLE IF NOT EXISTS {db}.{table} (
+                    eventversion STRING,
+                    useridentity STRUCT<
+                        type:STRING,
+                        principalid:STRING,
+                        arn:STRING,
+                        accountid:STRING,
+                        invokedby:STRING,
+                        accesskeyid:STRING,
+                        userName:STRING,
+                        sessioncontext:STRUCT<
+                            attributes:STRUCT<
+                                mfaauthenticated:STRING,
+                                creationdate:STRING>,
+                            sessionissuer:STRUCT<  
+                                type:STRING,
+                                principalId:STRING,
+                                arn:STRING, 
+                                accountId:STRING,
+                                userName:STRING>,
+                            ec2RoleDelivery:string,
+                            webIdFederationData:map<string,string>
+                        >
+                    >,
+                    eventtime STRING,
+                    eventsource STRING,
+                    eventname STRING,
+                    awsregion STRING,
+                    sourceipaddress STRING,
+                    useragent STRING,
+                    errorcode STRING,
+                    errormessage STRING,
+                    requestparameters STRING,
+                    responseelements STRING,
+                    additionaleventdata STRING,
+                    requestid STRING,
+                    eventid STRING,
+                    resources ARRAY<STRUCT<
+                        arn:STRING,
+                        accountid:STRING,
+                        type:STRING>>,
+                    eventtype STRING,
+                    apiversion STRING,
+                    readonly STRING,
+                    recipientaccountid STRING,
+                    serviceeventdetails STRING,
+                    sharedeventid STRING,
+                    vpcendpointid STRING,
+                    tlsDetails struct<
+                      tlsVersion:string,
+                      cipherSuite:string,
+                      clientProvidedHostHeader:string>
+                    )
+                    ROW FORMAT SERDE 'org.apache.hive.hcatalog.data.JsonSerDe'
+                    STORED AS INPUTFORMAT 'com.amazon.emr.cloudtrail.CloudTrailInputFormat'
+                    OUTPUTFORMAT 'org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat'
+                    LOCATION '{source_bucket}'
+                """  
 
-            ##version for trail logs. not used rn as trail integration is not done.  
-            #ROW FORMAT SERDE 'org.apache.hive.hcatalog.data.JsonSerDe'
-            #STORED AS INPUTFORMAT 'com.amazon.emr.cloudtrail.CloudTrailInputFormat'
-            #OUTPUTFORMAT 'org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat'
-            #LOCATION '{source_bucket}'  
             athena_query(self.region, query_table, output_bucket)
             print(f"[+] Table {db}.{table} created")
         
@@ -260,9 +326,9 @@ class Analysis:
             if not self.dl:
 
                 S3_CLIENT.upload_file(writer, bucket_name, f'{prefix}{name_writer}')    
-                os.remove(name_writer)
+                remove(name_writer)
                 for local_file_name in self.results:
-                    os.remove(local_file_name)
+                    remove(local_file_name)
 
                 print(f"[+] Results stored in {self.output_bucket}")
                 print(f"[+] Merged results stored into {self.output_bucket}{name_writer}")
@@ -271,8 +337,8 @@ class Analysis:
 
             else:
                 for local_file_name in self.results:
-                    os.replace(local_file_name, f"{self.path}{local_file_name}")
-                os.replace(name_writer, f"{self.path}{name_writer}")
+                    replace(local_file_name, f"{self.path}{local_file_name}")
+                replace(name_writer, f"{self.path}{name_writer}")
                 print(f"[+] Results stored in {self.path}")
                 print(f"[+] Merged results stored into {self.path}{name_writer}")
         else:
@@ -280,6 +346,7 @@ class Analysis:
     
     '''
     Clear the results folder by removing the .txt, .metadata and also .csv files for queries without any results
+    dl : True if the user wants to download the results, False if he wants the results to be written in a s3 bucket
     '''
     def clear_folder(self, dl):
 
@@ -307,3 +374,41 @@ class Analysis:
                         Bucket=bucket,
                         Key=f"{el['Key']}"
                     )
+
+    '''
+    Verify if a table source bucket is a trail bucket
+    catalog : Catalog of the database and table
+    db : Database of the table
+    table : Table of the logs
+    '''
+    def is_trail_bucket(self, catalog, db, table):
+
+        isTrail = False
+        src = ""
+
+        if self.source_bucket != None:
+
+            response = source.utils.utils.CLOUDTRAIL_CLIENT.describe_trails()
+            if response['trailList']:
+                trails = response['trailList'] 
+
+                for trail in trails:
+                    logging_info = trail['S3BucketName']
+
+                    if logging_info and logging_info in self.source_bucket:
+                        isTrail = True
+                        src = self.source_bucket
+                        print("[!] Warning : You are using a trail bucket as source. Be aware these buckets can have millions of logs and so the tool can take a lot of time to process it all. Use the most precise subfolder available to be more efficient.")  
+                        break
+        else:
+            response = source.utils.utils.ATHENA_CLIENT.get_table_metadata(
+                CatalogName=catalog,
+                DatabaseName=db,
+                TableName=table
+            )
+
+            if response["TableMetadata"]["Parameters"]["inputformat"] == "com.amazon.emr.cloudtrail.CloudTrailInputFormat":
+                isTrail = True
+                src = response["TableMetadata"]["Parameters"]["location"]
+        
+        return isTrail, src
