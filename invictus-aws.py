@@ -1,5 +1,4 @@
 import argparse, sys
-from difflib import SequenceMatcher 
 from click import confirm
 from os import path
 import datetime
@@ -239,6 +238,12 @@ def verify_steps(steps, source, output, catalog, database, table, region):
         )
         sys.exit(-1)
 
+    if "4" not in steps and (source != None or output != None or catalog != None or database != None or table != None):
+        print(
+        "invictus-aws.py: error: You can't use -b, -o, -c, -d, -t with another step than the 4th."
+        )
+        sys.exit(-1)
+
     #if db and table already exists (the basic ones if no input was provided)
     db_exists = False
     table_exists = False
@@ -271,7 +276,7 @@ def verify_steps(steps, source, output, catalog, database, table, region):
             #Verifying catalog exists
             catalogs = athena.list_data_catalogs()
             if not any(cat['CatalogName'] == catalog for cat in catalogs['DataCatalogsSummary']):
-                print("invictus-aws.py: error: the data catalog you entered doesn't exist")
+                print("invictus-aws.py: error: the data catalog you entered doesn't exist.")
                 sys.exit(-1) 
 
             databases = athena.list_databases(CatalogName=catalog)
@@ -295,25 +300,25 @@ def verify_steps(steps, source, output, catalog, database, table, region):
                         table_exists = True
 
         else:
-            print("invictus-aws.py: error: all or none of these arguments are required: -c/--catalog, -d/--database, -t/--table")
+            print("invictus-aws.py: error: all or none of these arguments are required: -c/--catalog, -d/--database, -t/--table.")
             sys.exit(-1)
             
         if output == None:
-            print("invictus-aws.py: error: the following arguments are required: -o/--output-bucket")
+            print("invictus-aws.py: error: the following arguments are required: -o/--output-bucket.")
             sys.exit(-1)
 
         #if all athena args are none, the source is none but table doesn't exists
         if (catalog == None and database == None and table == None) and source == None and not table_exists: 
-            print("invictus-aws.py: error: the following arguments are required: -b/--source-bucket")
+            print("invictus-aws.py: error: the following arguments are required: -b/--source-bucket.")
             sys.exit(-1) 
         
         # if all athena args are set, db or table is not set and source is not set : we need to recreate a table so we need the source bucket (no need if .ddl file as the source bucket is hardcoded in)
         if (catalog != None and database != None and table != None) and (not db_exists or not table_exists) and source == None and not table.endswith(".ddl"):
-            print("invictus-aws.py: error: the following arguments are required: -b/--source-bucket")
+            print("invictus-aws.py: error: the following arguments are required: -b/--source-bucket.")
             sys.exit(-1) 
 
-        if (catalog != None and database != None and table != None) and (db_exists and table_exists) and source != None:
-            print("invictus-aws.py: error: the following arguments are not asked: -b/--source-bucket")
+        if (db_exists and table_exists) and source != None:
+            print("invictus-aws.py: error: the following arguments are not asked: -b/--source-bucket.\n[+] Don't forget do delete your table if you want to change the logs source.")
             sys.exit(-1) 
     
     #Verify buckets inputs
@@ -367,48 +372,54 @@ steps : Steps to run
 '''
 def verify_dates(start, end, steps):
 
-    if start != None and end != None:
-
-        if "3" not in steps:
-            print("invictus-aws.py: error: Only input dates with step 3")
-            sys.exit(-1)
-
-        present = datetime.datetime.now()
-
-        try:
-            start_date = datetime.datetime.strptime(start, "%Y-%m-%d")
-        except ValueError:
-            print("invictus-aws.py: error: Start date in not in a valid format.")
-            sys.exit(-1)
-
-        try:
-            end_date = datetime.datetime.strptime(end, "%Y-%m-%d")
-        except ValueError:
-            print("invictus-aws.py: error: End date in not in a valid format.")
-            sys.exit(-1)
-
-        if start_date > present:
-            print("invictus-aws.py: error: Start date can not be in the future.")
-            sys.exit(-1)
-        elif end_date > present:
-            print("invictus-aws.py: error: End date can not be in the future.")
-            sys.exit(-1)
-        elif start_date >= end_date:
-            print("invictus-aws.py: error: Start date can not be equal to or more recent than End date.")
-            sys.exit(-1)
-
-    elif start == None and end != None:
-        print("invictus-aws.py: error: Start date in not defined.")
+    if "3" not in steps and (start != None or end != None):
+        print("invictus-aws.py: error: Only input dates with step 3.")
         sys.exit(-1)
-    elif start != None and end == None:
-        print("invictus-aws.py: error: End date in not defined.")
-        sys.exit(-1)
-    elif start == None and end == None:
-        print("")
-        if not confirm("[+] If you don't specify any start and end time, all your logs will be collected. Be aware it can take a very long time. Are you sure you want all your logs ?"):
-            start = input("[+] Enter your start date (YYYY-MM-DD): ")
-            end = input("[+] Enter your end date (YYYY-MM-DD): ")
-            verify_dates(start, end)
+
+    elif "3" not in steps and (start == None or end == None):
+        pass
+
+    else:
+        if start != None and end != None:
+
+            present = datetime.datetime.now()
+
+            try:
+                start_date = datetime.datetime.strptime(start, "%Y-%m-%d")
+            except ValueError:
+                print("invictus-aws.py: error: Start date in not in a valid format.")
+                sys.exit(-1)
+
+            try:
+                end_date = datetime.datetime.strptime(end, "%Y-%m-%d")
+            except ValueError:
+                print("invictus-aws.py: error: End date in not in a valid format.")
+                sys.exit(-1)
+
+            if start_date > present:
+                print("invictus-aws.py: error: Start date can not be in the future.")
+                sys.exit(-1)
+            elif end_date > present:
+                print("invictus-aws.py: error: End date can not be in the future.")
+                sys.exit(-1)
+            elif start_date >= end_date:
+                print("invictus-aws.py: error: Start date can not be equal to or more recent than End date.")
+                sys.exit(-1)
+
+        elif start == None and end != None:
+            print("invictus-aws.py: error: Start date in not defined.")
+            sys.exit(-1)
+        elif start != None and end == None:
+            print("invictus-aws.py: error: End date in not defined.")
+            sys.exit(-1)
+        elif start == None and end == None:
+            if not confirm("[+] If you don't specify any start and end time, all your logs will be collected. Be aware it can take a very long time. Are you sure you want all your logs ?"):
+                start = input("[+] Enter your start date (YYYY-MM-DD): ")
+                end = input("[+] Enter your end date (YYYY-MM-DD): ")
+                if not start or not end:
+                    print("[!] Error : You didn't input any date")
+                    sys.exit(-1)
+                verify_dates(start, end)
 
 
 '''
@@ -426,7 +437,7 @@ def main():
                                                              
                                                              
      Copyright (c) 2023 Invictus Incident Response
-     Authors: Antonio Macovei & Rares Bratean & Benjamin Guillouzo
+     Authors: Antonio Macovei, Rares Bratean & Benjamin Guillouzo
     """
     )
 
@@ -466,4 +477,5 @@ def main():
 
 
 if __name__ == "__main__":
+    
     main()

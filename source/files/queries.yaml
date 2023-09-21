@@ -24,6 +24,7 @@
 #aws_securityhub_finding_evasion: SELECT * FROM DATABASE.TABLE WHERE (eventSource = 'securityhub.amazonaws.com' AND eventName IN ('BatchUpdateFindings', 'DeleteInsight', 'UpdateFindings', 'UpdateInsight'))
 #aws_snapshot_backup_exfiltration: SELECT * FROM DATABASE.TABLE WHERE (eventSource = 'ec2.amazonaws.com' AND eventName = 'ModifySnapshotAttribute')
 aws_sts_assumerole_misuse: SELECT * FROM DATABASE.TABLE WHERE (userIdentity.type = 'AssumedRole' AND userIdentity.sessionContext.sessionIssuer.type = 'Role')
+aws_test: SELECT * FROM DATABASE.TABLE
 #aws_sts_getsessiontoken_misuse: SELECT * FROM DATABASE.TABLE WHERE (eventSource = 'sts.amazonaws.com' AND eventName = 'GetSessionToken' AND userIdentity.type = 'IAMUser')
 #aws_susp_saml_activity: SELECT * FROM DATABASE.TABLE WHERE ((eventSource = 'sts.amazonaws.com' AND eventName = 'AssumeRoleWithSAML') OR (eventSource = 'iam.amazonaws.com' AND eventName = 'UpdateSAMLProvider'))
 #aws_update_login_profile: SELECT * FROM DATABASE.TABLE WHERE ((eventSource = 'iam.amazonaws.com' AND eventName = 'UpdateLoginProfile'))

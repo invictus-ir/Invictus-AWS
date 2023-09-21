@@ -43,8 +43,6 @@ class Logs:
         set_clients(self.region)
 
         self.services = services
-        source_bucket = ""
-        output_bucket = ""
 
         if regionless == self.region or regionless == "not-all":
             #self.get_logs_s3()
@@ -160,6 +158,35 @@ class Logs:
     Retrieve the cloudtrail logs
     '''
     def get_logs_cloudtrail_logs(self, start, end):
+
+        #trails_name = paginate(source.utils.utils.CLOUDTRAIL_CLIENT, "list_trails", "Trails")
+#
+        #if trails_name:
+        #    if len(trails_name) == 1:
+        #        print("jojo le haricot")
+        #    else:
+        #        results = {}
+        #        names = [name["TrailARN"] for name in trails_name]
+        #        for name in names:
+        #            total = 0
+        #            selectors = source.utils.utils.CLOUDTRAIL_CLIENT.get_event_selectors(TrailName=name)
+        #            #here we'll classify the elements of the selector to find which trail is best to use. the points are totally arbitrary
+        #            if selectors["EventSelectors"]:
+        #                if selectors["EventSelectors"]["ReadWriteType"] == "All":
+        #                    total += 1
+        #                if selectors["EventSelectors"]["IncludeManagementEvents"] == True:
+        #                    total += 2
+        #                if selectors["EventSelectors"]["DataResources"]:
+        #                    total += 1
+        #                if total == 4:
+        #                    total = 5
+        #                results[total] = name
+        #            else:
+        #                print('ek')
+#
+        #else:
+        #    print('op')
+        #sys.exit(-1)
 
         start_date = start.split("-")
         end_date = end.split("-")

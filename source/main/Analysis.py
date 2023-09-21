@@ -1,4 +1,4 @@
-import yaml, time, os, datetime, boto3
+import yaml, time, os, datetime
 from source.utils.utils import athena_query, S3_CLIENT, rename_file_s3, get_table, set_clients, date, get_bucket_and_prefix, ENDC, OKGREEN, ROOT_FOLDER, create_folder
 import source.utils.utils
 import pandas as pd
@@ -182,9 +182,16 @@ class Analysis:
                   cipherSuite:string,
                   clientProvidedHostHeader:string>
                 )
-                ROW FORMAT SERDE 'org.openx.data.jsonserde.JsonSerDe'
-                LOCATION '{source_bucket}'  
+                ROW FORMAT SERDE 'org.apache.hive.hcatalog.data.JsonSerDe'
+                LOCATION '{source_bucket}'   
+                
         """
+
+            ##version for trail logs. not used rn as trail integration is not done.  
+            #ROW FORMAT SERDE 'org.apache.hive.hcatalog.data.JsonSerDe'
+            #STORED AS INPUTFORMAT 'com.amazon.emr.cloudtrail.CloudTrailInputFormat'
+            #OUTPUTFORMAT 'org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat'
+            #LOCATION '{source_bucket}'  
             athena_query(self.region, query_table, output_bucket)
             print(f"[+] Table {db}.{table} created")
         
@@ -229,45 +236,48 @@ class Analysis:
     '''
     def merge_results(self):
 
-        bucket_name, prefix = get_bucket_and_prefix(self.output_bucket)
+        if self.results:
 
-        name_writer = f"merged_file.xlsx"
-        writer = pd.ExcelWriter(name_writer, engine='xlsxwriter')
+            bucket_name, prefix = get_bucket_and_prefix(self.output_bucket)
 
-        for local_file_name in self.results:
-            s3_file_name = prefix + local_file_name
-            S3_CLIENT.download_file(bucket_name, s3_file_name, local_file_name)
-            
+            name_writer = f"merged_file.xlsx"
+            writer = pd.ExcelWriter(name_writer, engine='xlsxwriter')
 
-        for i, file in enumerate(self.results):
-            sheet = str(file)[:-4]
-            if len(sheet) > 31:
-                sheet = sheet[:24] + sheet[-7:]
-            df = pd.read_csv(file, sep=",")
-            df.to_excel(writer, sheet_name=sheet)
-
-        writer.close()
-
-        if not self.dl:
-
-            S3_CLIENT.upload_file(writer, bucket_name, f'{prefix}{name_writer}')    
-            os.remove(name_writer)
             for local_file_name in self.results:
-                os.remove(local_file_name)
+                s3_file_name = prefix + local_file_name
+                S3_CLIENT.download_file(bucket_name, s3_file_name, local_file_name)
 
-            print(f"[+] Results stored in {self.output_bucket}")
-            print(f"[+] Merged results stored into {self.output_bucket}{name_writer}")
 
-            self.results.append(name_writer)
-        
+            for i, file in enumerate(self.results):
+                sheet = str(file)[:-4]
+                if len(sheet) > 31:
+                    sheet = sheet[:24] + sheet[-7:]
+                df = pd.read_csv(file, sep=",", dtype="string")
+                df.to_excel(writer, sheet_name=sheet)
+
+            writer.close()
+
+            if not self.dl:
+
+                S3_CLIENT.upload_file(writer, bucket_name, f'{prefix}{name_writer}')    
+                os.remove(name_writer)
+                for local_file_name in self.results:
+                    os.remove(local_file_name)
+
+                print(f"[+] Results stored in {self.output_bucket}")
+                print(f"[+] Merged results stored into {self.output_bucket}{name_writer}")
+
+                self.results.append(name_writer)
+
+            else:
+                for local_file_name in self.results:
+                    os.replace(local_file_name, f"{self.path}{local_file_name}")
+                os.replace(name_writer, f"{self.path}{name_writer}")
+                print(f"[+] Results stored in {self.path}")
+                print(f"[+] Merged results stored into {self.path}{name_writer}")
         else:
-            for local_file_name in self.results:
-                os.replace(local_file_name, f"{self.path}{local_file_name}")
-            os.replace(name_writer, f"{self.path}{name_writer}")
-            print(f"[+] Results stored in {self.path}")
-            print(f"[+] Merged results stored into {self.path}{name_writer}")
+            print(f"[+] No results at all were found")
     
-
     '''
     Clear the results folder by removing the .txt, .metadata and also .csv files for queries without any results
     '''
