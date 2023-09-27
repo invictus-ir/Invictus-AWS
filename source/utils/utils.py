@@ -1,13 +1,17 @@
 import boto3
 from botocore.exceptions import ClientError
-import json, datetime, string, random, sys, os
+import datetime, os
+from sys import exit
+from random import choices
+from string import ascii_lowercase, digits
+from json import dumps
 
 '''
 Generate random chars
 n : number of char to be generated
 '''
 def get_random_chars(n):
-    return "".join(random.choices(string.ascii_lowercase + string.digits, k=n))
+    return "".join(choices(ascii_lowercase + digits, k=n))
 
 '''
 try except function
@@ -23,7 +27,7 @@ Print content of json. Used for debug
 data : content of the json
 '''
 def print_json(data):
-    data = json.dumps(data, indent=4, default=str)
+    data = dumps(data, indent=4, default=str)
     print(data)
 
 '''
@@ -111,7 +115,7 @@ def create_s3_if_not_exists(region, bucket_name):
         response = s3.create_bucket(Bucket=bucket_name, **bucket_config)
     except ClientError as e:
         print(e)
-        sys.exit(-1)
+        exit(-1)
     return bucket_name
 
 '''
@@ -197,7 +201,7 @@ def copy_or_write_s3(key, value, dst_bucket, region):
         write_s3(
             dst_bucket,
             f"{region}/logs/{key}.json",
-            json.dumps(value["results"], indent=4, default=str),
+            dumps(value["results"], indent=4, default=str),
         )
     else:
         for src_bucket in value["results"]:
@@ -223,7 +227,7 @@ def write_or_dl(key, value, conf):
         write_file(
             conf + f"/{key}.json",
             "w",
-            json.dumps(value["results"], indent=4, default=str),
+            dumps(value["results"], indent=4, default=str),
         )
     else:
         for bucket in value["results"]:
@@ -262,7 +266,7 @@ def athena_query(region, query, bucket):
 
         if status == "FAILED" or status == "CANCELLED":
             print(f'[!] Error : {response["QueryExecution"]["Status"]["AthenaError"]["ErrorMessage"]}')
-            sys.exit(-1)    
+            exit(-1)    
     
     return response
 

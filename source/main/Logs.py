@@ -66,40 +66,49 @@ class Logs:
         self.get_logs_maciev2()
 
         if self.dl:
-            for key, value in self.results.items():
-                if value["results"] and key != "cloudtrail-logs":
-                    write_or_dl(key, value, self.confs)
-                elif key == "cloudtrail-logs":
-                    for el in value["results"]:
-                        trail = el["CloudTrailEvent"]
-                        obj = loads(trail)
-                        dump = dumps(obj, default=str)
-                        create_folder(f"{self.confs}/cloudtrail-logs/")
-                        write_file(
-                            f"{self.confs}/cloudtrail-logs/{obj['eventID']}.json",
-                            "w",
-                            dump,
-                        )
+            with tqdm(desc="[+] Writing results", leave=False, total = len(self.results)) as pbar:
+                for key, value in self.results.items():
+                    if value["results"] and key != "cloudtrail-logs":
+                        write_or_dl(key, value, self.confs)
+                    elif key == "cloudtrail-logs":
+                        for el in value["results"]:
+                            trail = el["CloudTrailEvent"]
+                            obj = loads(trail)
+                            dump = dumps(obj, default=str)
+                            create_folder(f"{self.confs}/cloudtrail-logs/")
+                            write_file(
+                                f"{self.confs}/cloudtrail-logs/{obj['eventID']}.json",
+                                "w",
+                                dump,
+                            )
+                    pbar.update() 
+                    sleep(0.1)
 
         else:
-            for key, value in self.results.items():
-                if value["results"] and key != "cloudtrail-logs":
-                    copy_or_write_s3(key, value, self.bucket, self.region)
+            with tqdm(desc="[+] Writing results", leave=False, total = len(self.results)) as pbar:
+                for key, value in self.results.items():
+                    if value["results"] and key != "cloudtrail-logs":
+                        copy_or_write_s3(key, value, self.bucket, self.region)
+                    pbar.update() 
+                    sleep(0.1)
 
         # cloudtrail-logs has to be done in any case for further analysis
         if self.results["cloudtrail-logs"]["results"]:
             res = self.results["cloudtrail-logs"]["results"]
 
-            for el in res:
+            with tqdm(desc="[+] Writing results", leave=False, total = len(self.results["cloudtrail-logs"]["results"])) as pbar:
+                for el in res:
 
-                trail = el["CloudTrailEvent"]
-                obj = loads(trail)
-                dump = dumps(obj, default=str)
-                write_s3(
-                    self.bucket,
-                    f"{self.region}/logs/cloudtrail-logs/{obj['eventID']}.json",
-                    dump,
-                ) 
+                    trail = el["CloudTrailEvent"]
+                    obj = loads(trail)
+                    dump = dumps(obj, default=str)
+                    write_s3(
+                        self.bucket,
+                        f"{self.region}/logs/cloudtrail-logs/{obj['eventID']}.json",
+                        dump,
+                    ) 
+                    pbar.update() 
+                    sleep(0.1)
            
         print(f"[+] Logs extraction results stored in the bucket {self.bucket}")
 
@@ -136,15 +145,17 @@ class Logs:
         '''
 
         findings_data = {}
-        for detector in detector_ids:
-            findings = paginate(source.utils.utils.GUARDDUTY_CLIENT, "list_findings", "FindingIds", DetectorId=detector)
+        with tqdm(desc="[+] Getting GUARDDUTY logs", leave=False, total = len(detector_ids)) as pbar:
+            for detector in detector_ids:
+                findings = paginate(source.utils.utils.GUARDDUTY_CLIENT, "list_findings", "FindingIds", DetectorId=detector)
 
-            response = try_except(
-                source.utils.utils.GUARDDUTY_CLIENT.get_findings, DetectorId=detector, FindingIds=findings
-            )
-            response.pop("ResponseMetadata", None)
-            response = fix_json(response)
-            findings_data[detector] = response
+                response = try_except(
+                    source.utils.utils.GUARDDUTY_CLIENT.get_findings, DetectorId=detector, FindingIds=findings
+                )
+                response.pop("ResponseMetadata", None)
+                response = fix_json(response)
+                findings_data[detector] = response
+                pbar.update()
 
         results = []
         results.append(
@@ -199,16 +210,15 @@ class Logs:
 
             start_date = start.split("-")
             end_date = end.split("-")
-
             datetime_start = datetime.datetime(int(start_date[0]), int(start_date[1]), int(start_date[2]))
             datetime_end = datetime.datetime(int(end_date[0]), int(end_date[1]), int(end_date[2]))
-
+            
             logs = paginate(source.utils.utils.CLOUDTRAIL_CLIENT, "lookup_events", "Events", StartTime=datetime_start, EndTime=datetime_end)
 
             if len(logs) == 0:
                 self.display_progress(0, "cloudtrail")
                 return
-
+            
             self.results["cloudtrail-logs"]["action"] = 0
             self.results["cloudtrail-logs"]["results"] = logs
 
@@ -242,18 +252,20 @@ class Logs:
 
         self.results["wafv2"]["action"] = 1
 
-        for arn in identifiers:
-            logging = try_except(source.utils.utils.WAF_CLIENT.get_logging_configuration, ResourceArn=arn)
-            if "LoggingConfiguration" in logging:
-                destinations = logging["LoggingConfiguration"]["LogDestinationConfigs"]
-                for destination in destinations:
-                    if "s3" in destination:
-                        bucket = destination.split(":")[-1]
-                        src_bucket = bucket.split("/")[0]
+        with tqdm(desc="[+] Getting WAF logs", leave=False, total = len(identifiers)) as pbar:
+            for arn in identifiers:
+                logging = try_except(source.utils.utils.WAF_CLIENT.get_logging_configuration, ResourceArn=arn)
+                if "LoggingConfiguration" in logging:
+                    destinations = logging["LoggingConfiguration"]["LogDestinationConfigs"]
+                    for destination in destinations:
+                        if "s3" in destination:
+                            bucket = destination.split(":")[-1]
+                            src_bucket = bucket.split("/")[0]
 
-                        self.results["wafv2"]["results"].append(src_bucket)
+                            self.results["wafv2"]["results"].append(src_bucket)
 
-                        cnt += 1
+                            cnt += 1
+                pbar.update()
 
         self.display_progress(cnt, "wafv2")
 
@@ -279,13 +291,15 @@ class Logs:
 
         self.results["vpc"]["action"] = 1
 
-        for flow_log in flow_logs:
-            if "s3" in flow_log["LogDestinationType"]:
-                bucket = flow_log["LogDestination"].split(":")[-1]
-                src_bucket = bucket.split("/")[0]
+        with tqdm(desc="[+] Getting VPC logs", leave=False, total = len(flow_logs)) as pbar:
+            for flow_log in flow_logs:
+                if "s3" in flow_log["LogDestinationType"]:
+                    bucket = flow_log["LogDestination"].split(":")[-1]
+                    src_bucket = bucket.split("/")[0]
 
-                self.results["vpc"]["results"].append(src_bucket)
-                cnt += 1
+                    self.results["vpc"]["results"].append(src_bucket)
+                    cnt += 1
+                pbar.update()
         self.display_progress(cnt, "vpc")
     
     '''
@@ -313,39 +327,41 @@ class Logs:
         path = self.confs + "elasticbeanstalk/"
         create_folder(path)
 
-        for environment in environments:
-            name = environment.get("EnvironmentName", "")
-            if name == "":
-                continue
+        with tqdm(desc="[+] Getting ELASTICBEANSTALK logs", leave=False, total = len(environments)) as pbar:
+            for environment in environments:
+                name = environment.get("EnvironmentName", "")
+                if name == "":
+                    continue
 
-            response = try_except(
-                eb.request_environment_info, EnvironmentName=name, InfoType="bundle"
-            )
-            response.pop("ResponseMetadata", None)
-            response = fix_json(response)
-            sleep(60)
+                response = try_except(
+                    eb.request_environment_info, EnvironmentName=name, InfoType="bundle"
+                )
+                response.pop("ResponseMetadata", None)
+                response = fix_json(response)
+                sleep(60)
 
-            response = try_except(
-                eb.retrieve_environment_info, EnvironmentName=name, InfoType="bundle"
-            )
-            response.pop("ResponseMetadata", None)
-            response = fix_json(response)
+                response = try_except(
+                    eb.retrieve_environment_info, EnvironmentName=name, InfoType="bundle"
+                )
+                response.pop("ResponseMetadata", None)
+                response = fix_json(response)
 
-            urls = response["EnvironmentInfo"]
-            if len(urls) > 0:
-                url = urls[-1]
-                url = url["Message"]
+                urls = response["EnvironmentInfo"]
+                if len(urls) > 0:
+                    url = urls[-1]
+                    url = url["Message"]
 
-            filename = path + name + ".zip"
-            r = get(url)
-            with open(filename, "wb") as f:
-                f.write(r.content)
+                filename = path + name + ".zip"
+                r = get(url)
+                with open(filename, "wb") as f:
+                    f.write(r.content)
 
-            if not self.dl:
-                key = "eb/" + name + ".zip"
-                writefile_s3(self.bucket, key, filename)
-                remove(filename)
-                rmdir(path)
+                if not self.dl:
+                    key = "eb/" + name + ".zip"
+                    writefile_s3(self.bucket, key, filename)
+                    remove(filename)
+                    rmdir(path)
+                pbar.update()
 
         self.display_progress(len(environments), "elasticbeanstalk")
     
@@ -369,15 +385,18 @@ class Logs:
             dashboards = cloudwatch_list["elements"]
 
         dashboards_data = {}
-        for dashboard in dashboards:
-            dashboard_name = dashboard.get("DashboardName", "")
-            if dashboard_name == "":
-                continue
-            response = try_except(
-                source.utils.utils.CLOUDWATCH_CLIENT.get_dashboard, DashboardName=dashboard_name
-            )
-            response.pop("ResponseMetadata", None)
-            dashboards_data[dashboard_name] = fix_json(response)
+
+        with tqdm(desc="[+] Getting CLOUDWATCH logs", leave=False, total = len(dashboards)) as pbar:
+            for dashboard in dashboards:
+                dashboard_name = dashboard.get("DashboardName", "")
+                if dashboard_name == "":
+                    continue
+                response = try_except(
+                    source.utils.utils.CLOUDWATCH_CLIENT.get_dashboard, DashboardName=dashboard_name
+                )
+                response.pop("ResponseMetadata", None)
+                dashboards_data[dashboard_name] = fix_json(response)
+                pbar.update()
 
         metrics = try_except(source.utils.utils.CLOUDWATCH_CLIENT, "list_metrics")
 
@@ -423,24 +442,26 @@ class Logs:
         self.results["s3"]["action"] = 1
         self.results["s3"]["results"] = []
         
-        for bucket in elements:
-         
-            name = bucket["Name"]
-
-            logging = try_except(S3_CLIENT.get_bucket_logging, Bucket=name)
+        with tqdm(desc="[+] Getting S3 logs", leave=False, total = len(elements)) as pbar:
+            for bucket in elements:
             
-            if "LoggingEnabled" in logging:
-                target = logging["LoggingEnabled"]["TargetBucket"]
-                bucket = target.split(":")[-1]
-                src_bucket = bucket.split("/")[0]
+                name = bucket["Name"]
 
-                if logging["LoggingEnabled"]["TargetPrefix"]:
-                    prefix = logging["LoggingEnabled"]["TargetPrefix"]
-                src_bucket = f"{src_bucket}|{prefix}"
+                logging = try_except(S3_CLIENT.get_bucket_logging, Bucket=name)
 
-                self.results["s3"]["results"].append(src_bucket)
-             
-                cnt += 1
+                if "LoggingEnabled" in logging:
+                    target = logging["LoggingEnabled"]["TargetBucket"]
+                    bucket = target.split(":")[-1]
+                    src_bucket = bucket.split("/")[0]
+
+                    if logging["LoggingEnabled"]["TargetPrefix"]:
+                        prefix = logging["LoggingEnabled"]["TargetPrefix"]
+                    src_bucket = f"{src_bucket}|{prefix}"
+
+                    self.results["s3"]["results"].append(src_bucket)
+
+                    cnt += 1
+                pbar.update()
        
         self.display_progress(cnt, "s3")
     
@@ -557,19 +578,21 @@ class Logs:
 
         total_logs = []
 
-        for db in list_of_dbs:
-            total_logs.append(
-                self.download_rds(
-                    db["DBInstanceIdentifier"],
-                    source.utils.utils.RDS_CLIENT,
-                    "external/mysql-external.log",
+        with tqdm(desc="[+] Getting RDS logs", leave=False, total = len(list_of_dbs)) as pbar:
+            for db in list_of_dbs:
+                total_logs.append(
+                    self.download_rds(
+                        db["DBInstanceIdentifier"],
+                        source.utils.utils.RDS_CLIENT,
+                        "external/mysql-external.log",
+                    )
                 )
-            )
-            total_logs.append(
-                self.download_rds(
-                    db["DBInstanceIdentifier"], source.utils.utils.RDS_CLIENT, "error/mysql-error.log"
+                total_logs.append(
+                    self.download_rds(
+                        db["DBInstanceIdentifier"], source.utils.utils.RDS_CLIENT, "error/mysql-error.log"
+                    )
                 )
-            )
+                pbar.update()
 
         self.results["rds"]["action"] = 0
         self.results["rds"]["results"] = total_logs
@@ -600,22 +623,24 @@ class Logs:
         self.results["route53"]["action"] = 1
         self.results["route53"]["results"] = []
 
-        for bucket_location in resolver_log_configs:
-            if "s3" in bucket_location["DestinationArn"]:
-                bucket = bucket_location["DestinationArn"].split(":")[-1]
+        with tqdm(desc="[+] Getting ROUTE53 logs", leave=False, total = len(resolver_log_configs)) as pbar:
+            for bucket_location in resolver_log_configs:
+                if "s3" in bucket_location["DestinationArn"]:
+                    bucket = bucket_location["DestinationArn"].split(":")[-1]
 
-                if "/" in bucket:
+                    if "/" in bucket:
 
-                    src_bucket = bucket.split("/")[0]
-                    prefix = bucket.split("/")[1]
-                    result = f"{src_bucket}|{prefix}"
-                
-                else :
-                    result = bucket
+                        src_bucket = bucket.split("/")[0]
+                        prefix = bucket.split("/")[1]
+                        result = f"{src_bucket}|{prefix}"
 
-                self.results["route53"]["results"].append(result)
+                    else :
+                        result = bucket
 
-                cnt += 1
+                    self.results["route53"]["results"].append(result)
+
+                    cnt += 1
+                pbar.update()
                 
         self.display_progress(cnt, "route53")
 

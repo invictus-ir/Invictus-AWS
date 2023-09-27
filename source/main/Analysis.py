@@ -2,10 +2,9 @@ import yaml, datetime
 from source.utils.utils import athena_query, S3_CLIENT, rename_file_s3, get_table, set_clients, date, get_bucket_and_prefix, ENDC, OKGREEN, ROOT_FOLDER, create_folder
 import source.utils.utils
 import pandas as pd
-from sys import exit
 from os import remove, replace
 from time import sleep
-from click import confirm
+from tqdm import tqdm
 
 class Analysis:
     source_bucket = None
@@ -81,6 +80,7 @@ class Analysis:
             table = get_table(table, False)[0]      
 
         #Running all the queries
+        
         for key, value in queries.items():
 
             #replacing DATABASE and TABLE in each query

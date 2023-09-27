@@ -2,6 +2,7 @@ from source.utils.enum import *
 from source.utils.utils import create_s3_if_not_exists, PREPARATION_BUCKET, ROOT_FOLDER, create_folder, set_clients, write_file, write_s3
 import source.utils.utils
 import json
+from time import sleep
 
 
 class Enumeration:
@@ -60,27 +61,34 @@ class Enumeration:
         self.enumerate_inspector2()
         self.enumerate_maciev2()
 
+        
         if self.dl:
             confs = ROOT_FOLDER + self.region + "/enumeration/"
             create_folder(confs)
-            for el in self.services:
-                if self.services[el]["count"] > 0:
-                    write_file(
-                        confs + f"{el}.json",
-                        "w",
-                        json.dumps(self.services[el]["elements"], indent=4, default=str),
-                    )
+            with tqdm(desc="[+] Writing results", leave=False, total = len(self.services)) as pbar:
+                for el in self.services:
+                    if self.services[el]["count"] > 0:
+                        write_file(
+                            confs + f"{el}.json",
+                            "w",
+                            json.dumps(self.services[el]["elements"], indent=4, default=str),
+                        )
+                    pbar.update() 
+                    sleep(0.1)
             print(f"[+] Enumeration results stored in the folder {ROOT_FOLDER}{self.region}/enumeration/")
         else:
-            for key, value in self.services.items():
-                if value["count"] > 0:
-                    write_s3(
-                        self.bucket,
-                        f"{self.region}/enumeration/{key}.json",
-                        json.dumps(value["elements"], indent=4, default=str),
-                    )
+            with tqdm(desc="[+] Writing results", leave=False, total = len(self.services)) as pbar:
+                for key, value in self.services.items():
+                    if value["count"] > 0:
+                        write_s3(
+                            self.bucket,
+                            f"{self.region}/enumeration/{key}.json",
+                            json.dumps(value["elements"], indent=4, default=str)
+                        )
+                    pbar.update() 
+                    sleep(0.1)
             print(f"[+] Enumeration results stored in the bucket {self.bucket}")
-            
+
         return self.services
 
     '''

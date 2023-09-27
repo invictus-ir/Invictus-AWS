@@ -2,6 +2,7 @@ from source.utils.utils import create_s3_if_not_exists, PREPARATION_BUCKET, ROOT
 import source.utils.utils
 from source.utils.enum import *
 import json, boto3
+from time import sleep
 
 
 class Configuration:
@@ -36,7 +37,7 @@ class Configuration:
         self.services = services
 
         if (regionless != "" and regionless == self.region) or regionless == "not-all":
-            self.get_configuration_s3()
+            #self.get_configuration_s3()
             self.get_configuration_iam()
             self.get_configuration_cloudtrail()
             self.get_configuration_route53()
@@ -59,21 +60,26 @@ class Configuration:
         if self.dl:
             confs = ROOT_FOLDER + self.region + "/configurations/"
             create_folder(confs)
-            for el in self.results:
-                write_file(
-                    confs + f"{el}.json",
-                    "w",
-                    json.dumps(self.results[el], indent=4, default=str),
-                )
+            with tqdm(desc="[+] Writing results", leave=False, total = len(self.results)) as pbar:
+                for el in self.results:
+                    write_file(
+                        confs + f"{el}.json",
+                        "w",
+                        json.dumps(self.results[el], indent=4, default=str),
+                    )
+                    pbar.update() 
+                    sleep(0.1)
             print(f"[+] Configuration results stored in the folder {confs}")
         else:
-            for el in self.results:
-                write_s3(
-                    self.bucket,
-                    f"{self.region}/configuration/{el}.json",
-                    json.dumps(self.results, indent=4, default=str),
-                )
-
+            with tqdm(desc="[+] Writing results", leave=False, total = len(self.results)) as pbar:
+                for el in self.results:
+                    write_s3(
+                        self.bucket,
+                        f"{self.region}/configuration/{el}.json",
+                        json.dumps(self.results, indent=4, default=str),
+                    )
+                    pbar.update() 
+                    sleep(0.1)
             print(f"[+] Configurations results stored in the bucket {self.bucket}")
 
     '''
@@ -90,7 +96,7 @@ class Configuration:
 
         if s3_list["count"] == -1:
             elements = s3_lookup()
-
+            
             if len(elements) == 0:
                 self.display_progress(0, "s3")
                 return
@@ -113,40 +119,42 @@ class Configuration:
         buckets_acl = {}
         buckets_location = {}
 
-        for bucket in elements:
-            bucket_name = bucket["Name"]
-            objects[bucket_name] = []
+        with tqdm(desc="[+] Getting S3 Configuration", leave=False, total = len(elements)) as pbar:
+            for bucket in elements:
+                bucket_name = bucket["Name"]
+                objects[bucket_name] = []
 
-            # list_objects_v2
-                
-            objects[bucket_name] = simple_paginate(S3_CLIENT, "list_objects_v2", Bucket=bucket_name)
-            
-            # get_bucket_logging
+                # list_objects_v2
 
-            response = try_except(S3_CLIENT.get_bucket_logging, Bucket=bucket_name)
-            if "LoggingEnabled" in response:
-                buckets_logging[bucket_name] = response
-            else:
-                buckets_logging[bucket_name] = {"LoggingEnabled": False}
-        
-            # get_bucket_policy
+                objects[bucket_name] = simple_paginate(S3_CLIENT, "list_objects_v2", Bucket=bucket_name)
 
-            response = try_except(S3_CLIENT.get_bucket_policy, Bucket=bucket_name)
-            buckets_policy[bucket_name] = json.loads(response.get("Policy", "{}"))
+                # get_bucket_logging
 
-            # get_bucket_acl
+                response = try_except(S3_CLIENT.get_bucket_logging, Bucket=bucket_name)
+                if "LoggingEnabled" in response:
+                    buckets_logging[bucket_name] = response
+                else:
+                    buckets_logging[bucket_name] = {"LoggingEnabled": False}
 
-            response = try_except(S3_CLIENT.get_bucket_acl, Bucket=bucket_name)
-            response.pop("ResponseMetadata", None)
-            response = fix_json(response)
-            buckets_acl[bucket_name] = response
-            
-            # get_bucket_location
+                # get_bucket_policy
 
-            response = try_except(S3_CLIENT.get_bucket_location, Bucket=bucket_name)
-            response.pop("ResponseMetadata", None)
-            response = fix_json(response)
-            buckets_location[bucket_name] = response
+                response = try_except(S3_CLIENT.get_bucket_policy, Bucket=bucket_name)
+                buckets_policy[bucket_name] = json.loads(response.get("Policy", "{}"))
+
+                # get_bucket_acl
+
+                response = try_except(S3_CLIENT.get_bucket_acl, Bucket=bucket_name)
+                response.pop("ResponseMetadata", None)
+                response = fix_json(response)
+                buckets_acl[bucket_name] = response
+
+                # get_bucket_location
+
+                response = try_except(S3_CLIENT.get_bucket_location, Bucket=bucket_name)
+                response.pop("ResponseMetadata", None)
+                response = fix_json(response)
+                buckets_location[bucket_name] = response
+                pbar.update()
           
         # Presenting the results properly
         results = []
@@ -181,7 +189,7 @@ class Configuration:
         waf_list = self.services["wafv2"]
 
         if waf_list["count"] == -1:
-            wafs = misc_lookup(source.utils.utils.WAF_CLIENT.list_web_acls, "NextMarker", "WebACLs", Scope="REGIONAL", Limit=100)
+            wafs = misc_lookup("WAF", source.utils.utils.WAF_CLIENT.list_web_acls, "NextMarker", "WebACLs", Scope="REGIONAL", Limit=100)
         
             identifiers = []
             for el in wafs:
@@ -203,37 +211,39 @@ class Configuration:
         ip_sets = {}
         resources = {}
 
-        for arn in identifiers:
+        with tqdm(desc="[+] Getting WAF configuration", leave=False, total = len(identifiers)) as pbar:
+            for arn in identifiers:
 
-            # get_logging_configuration
+                # get_logging_configuration
 
-            response = try_except(source.utils.utils.WAF_CLIENT.get_logging_configuration, ResourceArn=arn)
-            response.pop("ResponseMetadata", None)
-            response = fix_json(response)
-            if "WAFNonexistentItemException" in response["error"]:
-                response["error"] = "[!] Error: The Logging feature is not enabled for the selected Amazon WAF Web Access Control List (Web ACL)."
-            logging_config[arn] = response
+                response = try_except(source.utils.utils.WAF_CLIENT.get_logging_configuration, ResourceArn=arn)
+                response.pop("ResponseMetadata", None)
+                response = fix_json(response)
+                if "WAFNonexistentItemException" in response["error"]:
+                    response["error"] = "[!] Error: The Logging feature is not enabled for the selected Amazon WAF Web Access Control List (Web ACL)."
+                logging_config[arn] = response
 
-            # list_rules_groups
-            # Use of misc_lookup as not every results are listed at the first call if there are a lot
+                # list_rules_groups
+                # Use of misc_lookup as not every results are listed at the first call if there are a lot
 
-            rule_groups[arn] = simple_misc_lookup(source.utils.utils.WAF_CLIENT.list_rule_groups, "NextMarker", Scope="REGIONAL", Limit=100)
-           
+                rule_groups[arn] = simple_misc_lookup("WAF", source.utils.utils.WAF_CLIENT.list_rule_groups, "NextMarker", Scope="REGIONAL", Limit=100)
 
-            # list_managed_rule_sets
 
-            managed_rule_sets[arn] = simple_misc_lookup(source.utils.utils.WAF_CLIENT.list_managed_rule_sets, "NextMarker", Scope="REGIONAL", Limit=100)
+                # list_managed_rule_sets
 
-            # list_ip_sets
+                managed_rule_sets[arn] = simple_misc_lookup("WAF", source.utils.utils.WAF_CLIENT.list_managed_rule_sets, "NextMarker", Scope="REGIONAL", Limit=100)
 
-            ip_sets[arn] = simple_misc_lookup(source.utils.utils.WAF_CLIENT.list_ip_sets, "NextMarker", Scope="REGIONAL", Limit=100)
+                # list_ip_sets
 
-            #list_resources_for_web_acl
+                ip_sets[arn] = simple_misc_lookup("WAF", source.utils.utils.WAF_CLIENT.list_ip_sets, "NextMarker", Scope="REGIONAL", Limit=100)
 
-            response = try_except(source.utils.utils.WAF_CLIENT.list_resources_for_web_acl, WebACLArn=arn)
-            response.pop("ResponseMetadata", None)
-            response = fix_json(response)
-            resources[arn] = response
+                #list_resources_for_web_acl
+
+                response = try_except("WAF", source.utils.utils.WAF_CLIENT.list_resources_for_web_acl, WebACLArn=arn)
+                response.pop("ResponseMetadata", None)
+                response = fix_json(response)
+                resources[arn] = response
+                pbar.update()
 
         results = []
         results.append(
@@ -287,18 +297,20 @@ class Configuration:
 
         function_config = {}
 
-        for name in identifiers:
-            if name == "":
-                continue
+        with tqdm(desc="[+] Getting LAMBDA configuration", leave=False, total = len(identifiers)) as pbar:
+            for name in identifiers:
+                if name == "":
+                    continue
 
-            # get_function_configuration
+                # get_function_configuration
 
-            response = try_except(
-                source.utils.utils.LAMBDA_CLIENT.get_function_configuration, FunctionName=name
-            )
-            response.pop("ResponseMetadata", None)
-            response = fix_json(response)
-            function_config[name] = response
+                response = try_except(
+                    source.utils.utils.LAMBDA_CLIENT.get_function_configuration, FunctionName=name
+                )
+                response.pop("ResponseMetadata", None)
+                response = fix_json(response)
+                function_config[name] = response
+                pbar.update()
 
         # get_account_settings
 
@@ -357,31 +369,33 @@ class Configuration:
         dns_support = {}
         dns_hostnames = {}
 
-        for id in identifiers:
-            if id == "":
-                continue
+        with tqdm(desc="[+] Getting VPC configuration", leave=False, total = len(identifiers)) as pbar:
+            for id in identifiers:
+                if id == "":
+                    continue
 
-            # describe_vpc_attribute
+                # describe_vpc_attribute
 
-            response = try_except(
-                source.utils.utils.EC2_CLIENT.describe_vpc_attribute,
-                VpcId=id,
-                Attribute="enableDnsSupport",
-            )
-            response.pop("ResponseMetadata", None)
-            response = fix_json(response)
-            dns_support[id] = response
+                response = try_except(
+                    source.utils.utils.EC2_CLIENT.describe_vpc_attribute,
+                    VpcId=id,
+                    Attribute="enableDnsSupport",
+                )
+                response.pop("ResponseMetadata", None)
+                response = fix_json(response)
+                dns_support[id] = response
 
-            # describe_vpc_attribute
+                # describe_vpc_attribute
 
-            response = try_except(
-                source.utils.utils.EC2_CLIENT.describe_vpc_attribute,
-                VpcId=id,
-                Attribute="enableDnsHostnames",
-            )
-            response.pop("ResponseMetadata", None)
-            response = fix_json(response)
-            dns_hostnames[id] = response
+                response = try_except(
+                    source.utils.utils.EC2_CLIENT.describe_vpc_attribute,
+                    VpcId=id,
+                    Attribute="enableDnsHostnames",
+                )
+                response.pop("ResponseMetadata", None)
+                response = fix_json(response)
+                dns_hostnames[id] = response
+                pbar.update()
 
         # describe_flow_logs
 
@@ -490,39 +504,41 @@ class Configuration:
         managed_action_history = {}
         instances_health = {}
 
-        for id in identifiers:
-            if id == "":
-                continue
-            resources[id] = []
+        with tqdm(desc="[+] Getting ELASTICBEANSTALK configuration", leave=False, total = len(identifiers)) as pbar:
+            for id in identifiers:
+                if id == "":
+                    continue
+                resources[id] = []
 
-            # describe_environment_resources
+                # describe_environment_resources
 
-            response = try_except(
-                source.utils.utils.EB_CLIENT.describe_environment_resources, EnvironmentId=id
-            )
-            response.pop("ResponseMetadata", None)
-            response = fix_json(response)
-            resources[id] = response
+                response = try_except(
+                    source.utils.utils.EB_CLIENT.describe_environment_resources, EnvironmentId=id
+                )
+                response.pop("ResponseMetadata", None)
+                response = fix_json(response)
+                resources[id] = response
 
-           #  describe_environment_managed_actions
+               #  describe_environment_managed_actions
 
-            managed_actions[id] = []
-            response = try_except(
-                source.utils.utils.EB_CLIENT.describe_environment_managed_actions, EnvironmentId=id
-            )
-            response.pop("ResponseMetadata", None)
-            response = fix_json(response)
-            managed_actions[id] = response
+                managed_actions[id] = []
+                response = try_except(
+                    source.utils.utils.EB_CLIENT.describe_environment_managed_actions, EnvironmentId=id
+                )
+                response.pop("ResponseMetadata", None)
+                response = fix_json(response)
+                managed_actions[id] = response
 
-            # describe_environment_managed_action_history
+                # describe_environment_managed_action_history
 
-            managed_action_history[id] = []
-            managed_action_history[id] = simple_paginate(source.utils.utils.EB_CLIENT, "describe_environment_managed_action_history", EnvironmentId=id)
+                managed_action_history[id] = []
+                managed_action_history[id] = simple_paginate(source.utils.utils.EB_CLIENT, "describe_environment_managed_action_history", EnvironmentId=id)
 
-            # describe_instances_health
+                # describe_instances_health
 
-            instances_health[id] = []
-            instances_health[id] = simple_misc_lookup(source.utils.utils.EB_CLIENT.describe_instances_health, "NextToken", EnvironmentId=id)
+                instances_health[id] = []
+                instances_health[id] = simple_misc_lookup("ELASTICBEANSTALK", source.utils.utils.EB_CLIENT.describe_instances_health, "NextToken", EnvironmentId=id)
+                pbar.update()
 
         # describe_applications
 
@@ -622,11 +638,13 @@ class Configuration:
 
         # get_hosted_zone
 
-        for id in identifiers:
-            response = try_except(source.utils.utils.ROUTE53_CLIENT.get_hosted_zone, Id=id)
-            response.pop("ResponseMetadata", None)
-            response = fix_json(response)
-            get_zones.append(response)
+        with tqdm(desc="[+] Getting ROUTE53 configuration", leave=False, total = len(identifiers)) as pbar:
+            for id in identifiers:
+                response = try_except(source.utils.utils.ROUTE53_CLIENT.get_hosted_zone, Id=id)
+                response.pop("ResponseMetadata", None)
+                response = fix_json(response)
+                get_zones.append(response)
+                pbar.update()
 
         results.append(
             create_command("aws route53 list-traffic-policies", get_traffic_policies)
@@ -809,15 +827,17 @@ class Configuration:
 
         # list_exports
 
-        list_exports = misc_lookup(source.utils.utils.DYNAMODB_CLIENT.list_exports, "NextToken", "ExportSummaries", MaxResults=100)
+        list_exports = misc_lookup("DYNAMOBDB", source.utils.utils.DYNAMODB_CLIENT.list_exports, "NextToken", "ExportSummaries", MaxResults=100)
 
         # describe_table
 
-        for table in tables:
-            response = try_except(source.utils.utils.DYNAMODB_CLIENT.describe_table, TableName=table)
-            response.pop("ResponseMetadata", None)
-            get_table = fix_json(response)
-            tables_info.append(get_table)
+        with tqdm(desc="[+] Getting DYNAMODB configuration", leave=False, total = len(tables)) as pbar:
+            for table in tables:
+                response = try_except(source.utils.utils.DYNAMODB_CLIENT.describe_table, TableName=table)
+                response.pop("ResponseMetadata", None)
+                get_table = fix_json(response)
+                tables_info.append(get_table)
+                pbar.update()
 
         # describe_export
 
@@ -911,50 +931,54 @@ class Configuration:
         threat_intel = {}
         ip_sets = {}
 
-        for detector in detectors:
+        with tqdm(desc="[+] Getting GUARDDUTY configuration", leave=False, total = len(detectors)) as pbar:
+            for detector in detectors:
 
-            # get_detector
+                # get_detector
 
-            response = try_except(source.utils.utils.GUARDDUTY_CLIENT.get_detector, DetectorId=detector)
-            response.pop("ResponseMetadata", None)
-            detectors[detector] = response
-
-            # list_filters
-
-            filters[detector] = simple_paginate(source.utils.utils.GUARDDUTY_CLIENT, "list_filters", DetectorId=detector)
-            
-            filter_names = []
-            for el in filters[detector]:
-                filter_names.extend(el["FilterNames"])
-
-            # get_filter
-
-            for filter_name in filter_names:
-                filter_data[detector] = []
-                response = try_except(
-                    source.utils.utils.GUARDDUTY_CLIENT.get_filter,
-                    DetectorId=detector,
-                    FilterName=filter_name,
-                )
+                response = try_except(source.utils.utils.GUARDDUTY_CLIENT.get_detector, DetectorId=detector)
                 response.pop("ResponseMetadata", None)
-                filter_data[detector].extend(response)
+                detectors[detector] = response
 
-            # list_publishing_destinations
+                # list_filters
 
-            publishing_destinations[detector] = simple_misc_lookup(
-                source.utils.utils.GUARDDUTY_CLIENT.list_publishing_destinations, 
-                "NextToken", 
-                DetectorId=detector, 
-                MaxResults=100
-            )
+                filters[detector] = simple_paginate(source.utils.utils.GUARDDUTY_CLIENT, "list_filters", DetectorId=detector)
 
-            # list_threat_intel_sets
+                filter_names = []
+                for el in filters[detector]:
+                    filter_names.extend(el["FilterNames"])
 
-            threat_intel[detector] = simple_paginate(source.utils.utils.GUARDDUTY_CLIENT, "list_threat_intel_sets", DetectorId=detector)
+                # get_filter
 
-            # list_ip_sets
+                for filter_name in filter_names:
+                    filter_data[detector] = []
+                    response = try_except(
+                        source.utils.utils.GUARDDUTY_CLIENT.get_filter,
+                        DetectorId=detector,
+                        FilterName=filter_name,
+                    )
+                    response.pop("ResponseMetadata", None)
+                    filter_data[detector].extend(response)
 
-            ip_sets[detector] = simple_paginate(source.utils.utils.GUARDDUTY_CLIENT, "list_ip_sets", DetectorId=detector)
+                # list_publishing_destinations
+
+                publishing_destinations[detector] = simple_misc_lookup(
+                    "GUARDDUTY",
+                    source.utils.utils.GUARDDUTY_CLIENT.list_publishing_destinations, 
+                    "NextToken", 
+                    DetectorId=detector, 
+                    MaxResults=100
+                )
+
+                # list_threat_intel_sets
+
+                threat_intel[detector] = simple_paginate(source.utils.utils.GUARDDUTY_CLIENT, "list_threat_intel_sets", DetectorId=detector)
+
+                # list_ip_sets
+
+                ip_sets[detector] = simple_paginate(source.utils.utils.GUARDDUTY_CLIENT, "list_ip_sets", DetectorId=detector)
+
+                pbar.update()
            
 
         results = []
@@ -1009,18 +1033,20 @@ class Configuration:
             dashboards = cloudwatch_list["elements"]
 
         dashboards_data = {}
-        for dashboard in dashboards:
-            dashboard_name = dashboard["DashboardName"]
-            if dashboard_name == "":
-                continue
+        with tqdm(desc="[+] Getting CLOUDWATCH configuration", leave=False, total = len(dashboards)) as pbar:
+            for dashboard in dashboards:
+                dashboard_name = dashboard["DashboardName"]
+                if dashboard_name == "":
+                    continue
 
-            # get_dashboard
+                # get_dashboard
 
-            response = try_except(
-                source.utils.utils.CLOUDWATCH_CLIENT.get_dashboard, DashboardName=dashboard_name
-            )
-            response.pop("ResponseMetadata", None)
-            dashboards_data[dashboard_name] = fix_json(response)
+                response = try_except(
+                    source.utils.utils.CLOUDWATCH_CLIENT.get_dashboard, DashboardName=dashboard_name
+                )
+                response.pop("ResponseMetadata", None)
+                dashboards_data[dashboard_name] = fix_json(response)
+                pbar.update()
 
         # list_metrics
 
@@ -1128,7 +1154,7 @@ class Configuration:
         detective_list = self.services["detective"]
 
         if detective_list["count"] == -1:
-            graphs = misc_lookup(source.utils.utils.DETECTIVE_CLIENT.list_graphs, "NextToken", "GraphList", MaxResults=100)
+            graphs = misc_lookup("DETECTIVE", source.utils.utils.DETECTIVE_CLIENT.list_graphs, "NextToken", "GraphList", MaxResults=100)
 
             if len(graphs) == 0:
                 self.display_progress(0, "detective")
@@ -1165,17 +1191,19 @@ class Configuration:
             trails = cloudtrail_list["elements"]
 
         trails_data = {}
-        for trail in trails:
-            trail_name = trail.get("Name", "")
-            if trail_name == "":
-                continue
+        with tqdm(desc="[+] Getting CLOUDTRAIL configuration", leave=False, total = len(trails)) as pbar:
+            for trail in trails:
+                trail_name = trail.get("Name", "")
+                if trail_name == "":
+                    continue
 
-            home_region = trail.get("HomeRegion")
-            source.utils.utils.CLOUDTRAIL_CLIENT = boto3.client("cloudtrail", region_name=home_region)
+                home_region = trail.get("HomeRegion")
+                source.utils.utils.CLOUDTRAIL_CLIENT = boto3.client("cloudtrail", region_name=home_region)
 
-            response = try_except(source.utils.utils.CLOUDTRAIL_CLIENT.get_trail, Name=trail_name)
-            response.pop("ResponseMetadata", None)
-            trails_data[trail_name] = fix_json(response)
+                response = try_except(source.utils.utils.CLOUDTRAIL_CLIENT.get_trail, Name=trail_name)
+                response.pop("ResponseMetadata", None)
+                trails_data[trail_name] = fix_json(response)
+                pbar.update()
 
         results = []
         results.append(create_command("aws cloudtrail list-trails", trails))
