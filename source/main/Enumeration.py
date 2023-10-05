@@ -114,7 +114,7 @@ class Enumeration:
     '''
     def enumerate_wafv2(self):
 
-        elements = misc_lookup(source.utils.utils.WAF_CLIENT.list_web_acls, "NextMarker", "WebACLs", Scope="REGIONAL", Limit=100)
+        elements = misc_lookup("WAF", source.utils.utils.WAF_CLIENT.list_web_acls, "NextMarker", "WebACLs", Scope="REGIONAL", Limit=100)
 
         self.services["wafv2"]["count"] = len(elements)
         self.services["wafv2"]["elements"] = elements
@@ -418,7 +418,7 @@ class Enumeration:
     '''
     def enumerate_detective(self):
         
-        elements = misc_lookup(source.utils.utils.DETECTIVE_CLIENT.list_graphs, "NextToken", "GraphList", MaxResults=100)
+        elements = misc_lookup("DETECTIVE", source.utils.utils.DETECTIVE_CLIENT.list_graphs, "NextToken", "GraphList", MaxResults=100)
     
         self.services["detective"]["count"] = len(elements)
         self.services["detective"]["elements"] = elements

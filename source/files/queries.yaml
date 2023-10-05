@@ -23,6 +23,6 @@ aws_route_53_domain_transferred_to_another_account: SELECT * FROM DATABASE.TABLE
 aws_s3_data_management_tampering: SELECT * FROM DATABASE.TABLE WHERE (eventSource = 's3.amazonaws.com' AND eventName IN ('PutBucketLogging', 'PutBucketWebsite', 'PutEncryptionConfiguration', 'PutLifecycleConfiguration', 'PutReplicationConfiguration', 'ReplicateObject', 'RestoreObject'))
 aws_securityhub_finding_evasion: SELECT * FROM DATABASE.TABLE WHERE (eventSource = 'securityhub.amazonaws.com' AND eventName IN ('BatchUpdateFindings', 'DeleteInsight', 'UpdateFindings', 'UpdateInsight'))
 aws_snapshot_backup_exfiltration: SELECT * FROM DATABASE.TABLE WHERE (eventSource = 'ec2.amazonaws.com' AND eventName = 'ModifySnapshotAttribute')
-ws_sts_assumerole_misuse: SELECT * FROM DATABASE.TABLE WHERE (userIdentity.type = 'AssumedRole' AND userIdentity.sessionContext.sessionIssuer.type = 'Role')
+aws_sts_assumerole_misuse: SELECT * FROM DATABASE.TABLE WHERE (userIdentity.type = 'AssumedRole' AND userIdentity.sessionContext.sessionIssuer.type = 'Role')
 aws_sts_getsessiontoken_misuse: SELECT * FROM DATABASE.TABLE WHERE (eventSource = 'sts.amazonaws.com' AND eventName = 'GetSessionToken' AND userIdentity.type = 'IAMUser')
 #aws_update_login_profile: SELECT * FROM DATABASE.TABLE WHERE ((eventSource = 'iam.amazonaws.com' AND eventName = 'UpdateLoginProfile'))

@@ -37,7 +37,7 @@ class Configuration:
         self.services = services
 
         if (regionless != "" and regionless == self.region) or regionless == "not-all":
-            #self.get_configuration_s3()
+            self.get_configuration_s3()
             self.get_configuration_iam()
             self.get_configuration_cloudtrail()
             self.get_configuration_route53()

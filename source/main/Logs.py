@@ -231,7 +231,7 @@ class Logs:
         waf_list = self.services["wafv2"]
 
         if waf_list["count"] == -1:
-            wafs = misc_lookup(source.utils.utils.WAF_CLIENT.list_web_acls, "NextMarker", "WebACLs", Scope="REGIONAL", Limit=100)
+            wafs = misc_lookup("WAF", source.utils.utils.WAF_CLIENT.list_web_acls, "NextMarker", "WebACLs", Scope="REGIONAL", Limit=100)
 
             if len(wafs) == 0:
                 self.display_progress(0, "wafv2")
