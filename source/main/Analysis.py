@@ -1,5 +1,6 @@
 import yaml, datetime
-from source.utils.utils import athena_query, S3_CLIENT, rename_file_s3, get_table, set_clients, date, get_bucket_and_prefix, ENDC, OKGREEN, ROOT_FOLDER, create_folder
+from source.utils.utils import athena_query, S3_CLIENT, rename_file_s3, get_table, set_clients, date, get_bucket_and_prefix, ENDC, OKGREEN, ROOT_FOLDER, create_folder, create_tmp_bucket
+from source.utils.enum import paginate
 import source.utils.utils
 import pandas as pd
 from os import remove, replace
@@ -39,12 +40,17 @@ class Analysis:
     '''
     Main function of the class. 
     '''
-    def execute(self, source_bucket, output_bucket, catalog, db, table, exists):
+    def execute(self, source_bucket, output_bucket, catalog, db, table, queryfile, exists):
 
         print(f"[+] Beginning Logs Analysis")
 
         set_clients(self.region)
         self.source_bucket = source_bucket
+
+        if output_bucket == None:
+            tmp_bucket = "invictus-aws-tmp-results"
+            create_tmp_bucket(self.region, tmp_bucket)
+            output_bucket = f"s3://{tmp_bucket}/"
         
         bucket, prefix = get_bucket_and_prefix(output_bucket)
         if not prefix:
@@ -63,14 +69,15 @@ class Analysis:
             db = "cloudtrailAnalysis"
             table = "logs"
         
-        isTrail, source = self.is_trail_bucket(catalog, db, table)
+        isTrail = self.is_trail_bucket(catalog, db, table)
 
         if not exists[0] or not exists[1]:
            self.init_athena(db, table, self.source_bucket, self.output_bucket, exists, isTrail)
 
         try:
-            with open('source/files/queries.yaml') as f:
+            with open(queryfile) as f:
                 queries = yaml.safe_load(f)
+                print(f"[+] Using query file : {queryfile}")
         except Exception as e:
             print(f"[!] Error : {str(e)}")
 
@@ -345,7 +352,7 @@ class Analysis:
             print(f"[+] No results at all were found")
     
     '''
-    Clear the results folder by removing the .txt, .metadata and also .csv files for queries without any results
+    If results written locally, delete the tmp bucket created for the analysis. If results written in a bucket, clear the bucket so the .metadata and .txt are deleted
     dl : True if the user wants to download the results, False if he wants the results to be written in a s3 bucket
     '''
     def clear_folder(self, dl):
@@ -353,27 +360,30 @@ class Analysis:
         bucket, prefix = get_bucket_and_prefix(self.output_bucket)
 
         if dl:
-            S3_CLIENT.delete_object(Bucket=bucket, Key=prefix)
+            res = paginate(S3_CLIENT, "list_objects_v2", "Contents", Bucket=bucket)
 
-            objets = S3_CLIENT.list_objects_v2(Bucket=bucket, Prefix=prefix)
+            if res:
+                objects = [{'Key': obj['Key']} for obj in res]
+                S3_CLIENT.delete_objects(Bucket=bucket, Delete={'Objects': objects})
 
-            # Créez la liste des objets à supprimer
-            objets_a_supprimer = [{'Key': obj['Key']} for obj in objets.get('Contents', [])]
-
-            # Supprimez les objets en une seule requête
-            if objets_a_supprimer:
-                S3_CLIENT.delete_objects(Bucket=bucket, Delete={'Objects': objets_a_supprimer})
+            try:
+                S3_CLIENT.delete_bucket(
+                    Bucket=bucket
+                )
+            except Exception as e:
+                print(f"[!] Error : {str(e)}")
 
         else:
             
-            resp = S3_CLIENT.list_objects_v2(Bucket=bucket, Prefix=prefix)
+            res = paginate(S3_CLIENT, "list_objects_v2", "Contents", Bucket=bucket, Prefix=prefix)
 
-            for el in resp['Contents']:
-                if not el["Key"].split("/")[-1] in self.results:
-                    S3_CLIENT.delete_object(
-                        Bucket=bucket,
-                        Key=f"{el['Key']}"
-                    )
+            if res:
+                for el in res:
+                    if not el["Key"].split("/")[-1] in self.results:
+                        S3_CLIENT.delete_object(
+                            Bucket=bucket,
+                            Key=f"{el['Key']}"
+                        )
 
     '''
     Verify if a table source bucket is a trail bucket
@@ -412,3 +422,5 @@ class Analysis:
                 src = response["TableMetadata"]["Parameters"]["location"]
         
         return isTrail, src
+
+    

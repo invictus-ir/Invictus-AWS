@@ -67,5 +67,5 @@ class IR:
     '''
     Run the logs analysis main function
     '''
-    def execute_analysis(self, exists):
-        self.a.execute(self.source, self.output, self.catalog, self.database, self.table, exists)
+    def execute_analysis(self, queryfile, exists):
+        self.a.execute(self.source, self.output, self.catalog, self.database, self.table, queryfile, exists)

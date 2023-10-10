@@ -57,8 +57,9 @@ The script runs with a few parameters :
 * `-c`. Catalog used by Athena.
 * `-d`. Database used by Athena. You can either input an existing database or a new one that will be created.
 * `-t`. Table used by Athena. You can either input an existing table, input a new one (that will have the same structure as the default one) or input a .ddl file giving details about your new table. An example.ddl is available for you, just add the structure, modify the name of the table and the location of your logs.
+* `-f`. Your own file containing your queries for the analysis. If you don't want to use or modify the default file, you can use your own by specifying it with this option. The file has to already exist.  
 
-Usage : `$python3 invictus-aws.py [-h] -w [{cloud,local}] (-r AWS_REGION | -A [ALL_REGIONS]) -s [STEP] [-start YYYY-MM-DD] [-end YYYY-MM-DD] [-b SOURCE_BUCKET] [-o OUTPUT_BUCKET][-c CATALOG] [-d DATABASE] [-t TABLE]`
+Usage : `$python3 invictus-aws.py [-h] -w [{cloud,local}] (-r AWS_REGION | -A [ALL_REGIONS]) -s [STEP] [-start YYYY-MM-DD] [-end YYYY-MM-DD] [-b SOURCE_BUCKET] [-o OUTPUT_BUCKET][-c CATALOG] [-d DATABASE] [-t TABLE] [-f QUERY_FILE]`
 
 ### Examples
 
@@ -69,17 +70,23 @@ Usage : `$python3 invictus-aws.py [-h] -w [{cloud,local}] (-r AWS_REGION | -A [A
 **Acquire data from all region, beginning by eu-west-3, with all the steps (1,2,3) and with results written in a S3 Bucket.** :   
 `$python3 invictus-aws.py -A eu-west-3`
 
-**Analyze CloudTrail logs using the tool default database and table, and store the output locally.** :  
-`$python3 invictus-aws.py -r eu-west-3 -w local -s 4 -b bucket/path-to-the-existing-logs/ -o bucket/path-to-existing-folder-to-store-the-results/`  
-*In this example, the -b option is needed the first time as the default database and table will be created. Then you don't need it anymore as the table is already initialized.*
+**Analyze CloudTrail logs using the tool default database and table.** :  
+`$python3 invictus-aws.py -r eu-west-3 -s 4 -b bucket/path-to-the-existing-logs/ -o bucket/path-to-existing-folder-to-store-the-results/`  
+*In this example, the -b option is needed the first time as the default database and table will be created. Then you don't need it anymore as the table is already initialized.  
+But don't forget that if you modify your logs source and still want to use the default table, you need to delete it before.*
+
+**Analyze CloudTrail logs using the tool default database and table and write the results locally.** :  
+`$python3 invictus-aws.py -r eu-west-3 -s 4`  
+*In this example, the -b option is not written as explained above. The -o option is also not written as we don't need any output bucket as the results will be written locally.*
 
 **Analyze CloudTrail logs using either a new database or table (with the same structure as the default one)** :  
 `$python3 invictus-aws.py -r eu-west-3 -w -s 4 -b bucket/path-to-the-existing-logs/ -o bucket/path-to-existing-folder-to-store-the-results/ -c your-catalog -d your-database -t your-table`  
-*In this example, the -b option is needed the first time as the default database and table will be created. Then you don't need it anymore as the table is already initialized.*
+*In this example, the -b option is needed the first time as the default database and table will be created. Then you don't need it anymore as the table is already initialized.  
+But don't forget that if you modify your logs source and still want to use the default table, you need to delete it before.**
 
-**Analyze CloudTrail logs using your existing database and table** :  
-`$python3 invictus-aws.py -r eu-west-3 -s 4 -o bucket/path-to-existing-folder-where-to-put-the-results/ -c your-catalog -d your-database -t your-table`
+**Analyze CloudTrail logs using your existing database and table, using your own query file** :  
+`$python3 invictus-aws.py -r eu-west-3 -s 4 -o bucket/path-to-existing-folder-where-to-put-the-results/ -c your-catalog -d your-database -t your-table -f path-to-existing-query-file`  
 
 **Analyze CloudTrail logs using a new table with your own structure.** :  
 `$python3 invictus-aws.py -a eu-west-3 -s 4 -s bucket/path-to-the-existing-logs/ -o bucket/path-to-existing-folder-where-to-put-the-results/ -c your-catalog -d your-database -t your-creation-table-file.ddl`  
-*You can find a example of ddl file in `source/files`. Just replace the name of the table by the one you want to create, the location by the location of your CloudTrail logs and add the structure of your table. The default table used by the tool is using the table explained here : https://docs.aws.amazon.com/athena/latest/ug/cloudtrail-logs.html .*
+*You can find an example of ddl file in `source/files`. Just replace the name of the table by the one you want to create, the location by the location of your CloudTrail logs and add the structure of your table. The default table used by the tool is explained here : https://docs.aws.amazon.com/athena/latest/ug/cloudtrail-logs.html .*

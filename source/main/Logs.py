@@ -187,7 +187,7 @@ class Logs:
                     prefix = ""
                 
                 all_bucket = f"{bucket}/{prefix}"
-                print(f"[+] You have an existing Cloudtrail trail. You can use the associated bucket {all_bucket} as source for the analysis. But don't forget to restrein the number of logs as much as possible by using the most precise subfolder.")
+                print(f"[+] You have an existing Cloudtrail trail. You can use the associated bucket {all_bucket} as source for the analysis. But don't forget to restrain the number of logs as much as possible by using the most precise subfolder.")
             else:
                 buckets = []
                 for trail in trails_name:
@@ -201,7 +201,7 @@ class Logs:
                     all_bucket = f"{bucket}/{prefix}"
                     buckets.append(all_bucket)
 
-                print(f"[+] You have multiple existing Cloudtrail trails. You can use the associated buckets listed below as source for the analysis.\n[!] Warning :  If you do so, don't forget to restrein the number of logs as much as possible by using the most precise subfolder :")
+                print(f"[+] You have multiple existing Cloudtrail trails. You can use the associated buckets listed below as source for the analysis.\n[!] Warning :  If you do so, don't forget to restrain the number of logs as much as possible by using the most precise subfolder :")
                 for b in buckets:
                     print(f"\u2022 {b}")
                 

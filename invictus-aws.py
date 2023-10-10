@@ -100,7 +100,17 @@ def set_args():
         "-t",
         "--table",
         type=str,
-        help="[+]  Table used by Athena. You can either input an existing table or input a .ddl file giving details about your new table. An example.ddl is available for you, just add the structure, modify the name of the table and the location of your logs."
+        help="[+] Table used by Athena. You can either input an existing table or input a .ddl file giving details about your new table. An example.ddl is available for you, just add the structure, modify the name of the table and the location of your logs."
+    )
+
+    parser.add_argument(
+        "-f",
+        "--queryfile",
+        nargs='?', 
+        default="source/files/queries.yaml",
+        const="source/files/queries.yaml", 
+        type=str,
+        help="[+] Your own file containing your queries for the analysis. If you don't want to use or modify the default file, you can use your own by specifying it with this option. The file has to already exist."
     )
 
     return parser.parse_args()
@@ -118,9 +128,10 @@ output : Output bucket for the analysis part (4)
 catalog : Data catalog used with the database 
 database : Database containing the table for logs analytics
 table : Contains the sql requirements to query the logs
+queryfile : file containing the queries
 exists ([boolean, boolean]) : If the input db and table already exists
 '''
-def run_steps(dl, region, regionless, steps, start, end, source, output, catalog, database, table, exists):
+def run_steps(dl, region, regionless, steps, start, end, source, output, catalog, database, table, queryfile, exists):
 
     if dl:
         create_folder(ROOT_FOLDER + "/" + region)
@@ -134,7 +145,7 @@ def run_steps(dl, region, regionless, steps, start, end, source, output, catalog
 
     if "4" in steps:
         try:    
-            ir.execute_analysis(exists)
+            ir.execute_analysis(queryfile, exists)
         except Exception as e:     
             print(str(e))
     else:
@@ -219,8 +230,9 @@ catalog : Catalog used for the analysis part (4)
 database : Database used for the analysis part (4)
 table : Table used for the analysis part (4)
 region : Region to run the tool in
+dl : True if the users wants the results to be written locally
 '''
-def verify_steps(steps, source, output, catalog, database, table, region):
+def verify_steps(steps, source, output, catalog, database, table, region, dl):
 
     #Verifying steps inputs
 
@@ -302,8 +314,11 @@ def verify_steps(steps, source, output, catalog, database, table, region):
             print("invictus-aws.py: error: all or none of these arguments are required: -c/--catalog, -d/--database, -t/--table.")
             sys.exit(-1)
             
-        if output == None:
+        if output == None and dl == False:
             print("invictus-aws.py: error: the following arguments are required: -o/--output-bucket.")
+            sys.exit(-1)
+        elif output != None and dl == True: 
+            print("invictus-aws.py: error: the following arguments are not asked: -o/--output-bucket.")
             sys.exit(-1)
 
         #if all athena args are none, the source is none but table doesn't exists
@@ -415,6 +430,23 @@ def verify_dates(start, end, steps):
             print("invictus-aws.py: error: You have to specify start and end time.")
             sys.exit(-1)
 
+'''
+Verify if the query file input is correct
+queryfile : Yaml file containing the query
+steps : Steps to run
+'''
+def verify_file(queryfile, steps):
+
+    if "4" not in steps and queryfile != "source/files/queries.yaml":
+        print("invictus-aws.py: error: Only input queryfile with step 4.")
+        sys.exit(-1)
+
+    if not path.isfile(queryfile):
+        print(f"invictus-aws.py: error: {queryfile} does not exist.")
+        sys.exit(-1)
+    elif not queryfile.endswith(".yaml") and not queryfile.endswith(".yml"):
+        print(f"invictus-aws.py: error: Please provide a yaml file as your query file.")
+        sys.exit(-1)
 
 '''
 Main function of the tool
@@ -435,7 +467,7 @@ def main():
     """
     )
 
-    args = set_args()
+    args = set_args()   
 
     dl = True if args.write == 'local' else False
     region = args.aws_region
@@ -452,13 +484,15 @@ def main():
     database = args.database
     table = args.table
 
-    verify_dates(start, end, steps)
+    queryfile = args.queryfile
+
+    verify_file(queryfile, steps)
 
     if region:
 
         if verify_one_region(region):
-            steps, source, output, database, table, exists = verify_steps(steps, source, output, catalog, database, table, region)  
-            run_steps(dl, region, all_regions, steps, start, end, source, output, catalog, database, table, exists)
+            steps, source, output, database, table, exists = verify_steps(steps, source, output, catalog, database, table, region, dl)  
+            run_steps(dl, region, all_regions, steps, start, end, source, output, catalog, database, table, queryfile, exists)
 
     
     else:
@@ -466,10 +500,10 @@ def main():
         region_names, regionless = verify_all_regions(all_regions)
 
         for name in region_names:
-            steps, source, output, database, table, exists = verify_steps(steps, source, output, catalog, database, table, name)  
-            run_steps(dl, name, regionless, steps, start, end, source, output, catalog, database, table, exists)
+            steps, source, output, database, table, exists = verify_steps(steps, source, output, catalog, database, table, name, dl)  
+            run_steps(dl, name, regionless, steps, start, end, source, output, catalog, database, table, queryfile, exists)
 
 
 if __name__ == "__main__":
-    
+
     main()
