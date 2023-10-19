@@ -22,7 +22,7 @@ class IR:
         
         if "4" in steps:
             self.a = Analysis(region, dl)
-            if output != None:
+            if source != None:
                 self.source = source
             if output != None:
                 self.output = output
@@ -60,12 +60,17 @@ class IR:
     '''
     Run the logs extraction main function
     regionless : "not-all" if the tool is used on only one region. First region to run the tool on otherwise    
+    start : Start date of the logs collected
+    end : End date of the logs collected
     '''
     def execute_logs(self, regionless, start, end):
         self.l.execute(self.services, regionless, start, end)
 
     '''
     Run the logs analysis main function
+    queryfile : file containing the queries to run
+    exists : Array containing information about if the db and table exists
+    timeframe : Timeframe used in the query to filter results
     '''
-    def execute_analysis(self, queryfile, exists):
-        self.a.execute(self.source, self.output, self.catalog, self.database, self.table, queryfile, exists)
+    def execute_analysis(self, queryfile, exists, timeframe):
+        self.a.execute(self.source, self.output, self.catalog, self.database, self.table, queryfile, exists, timeframe)

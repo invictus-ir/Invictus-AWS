@@ -1,6 +1,7 @@
 import argparse, sys
 from os import path
 import datetime
+from re import match
 
 from source.main.IR import IR
 from source.utils.utils import *
@@ -113,6 +114,13 @@ def set_args():
         help="[+] Your own file containing your queries for the analysis. If you don't want to use or modify the default file, you can use your own by specifying it with this option. The file has to already exist."
     )
 
+    parser.add_argument(
+        "-x",
+        "--timeframe",
+        type=str,
+        help="[+] Used by the queries to filter their results. The timeframe sequence will automatically be added at the end of your queries if you specify a timeframe. You don't have to add it yourself to your queries."
+    )
+
     return parser.parse_args()
 
 '''
@@ -130,8 +138,9 @@ database : Database containing the table for logs analytics
 table : Contains the sql requirements to query the logs
 queryfile : file containing the queries
 exists ([boolean, boolean]) : If the input db and table already exists
+timeframe : Time filter for default queries
 '''
-def run_steps(dl, region, regionless, steps, start, end, source, output, catalog, database, table, queryfile, exists):
+def run_steps(dl, region, regionless, steps, start, end, source, output, catalog, database, table, queryfile, exists, timeframe):
 
     if dl:
         create_folder(ROOT_FOLDER + "/" + region)
@@ -145,7 +154,7 @@ def run_steps(dl, region, regionless, steps, start, end, source, output, catalog
 
     if "4" in steps:
         try:    
-            ir.execute_analysis(queryfile, exists)
+            ir.execute_analysis(queryfile, exists, timeframe)
         except Exception as e:     
             print(str(e))
     else:
@@ -288,6 +297,16 @@ def verify_steps(steps, source, output, catalog, database, table, region, dl):
             catalogs = athena.list_data_catalogs()
             if not any(cat['CatalogName'] == catalog for cat in catalogs['DataCatalogsSummary']):
                 print("invictus-aws.py: error: the data catalog you entered doesn't exist.")
+                sys.exit(-1) 
+
+            regex_pattern = r'^[a-zA-Z_]{1,255}$'
+
+            if not match(regex_pattern, database):
+                print("invictus-aws.py: error: Wrong database name format. Database name can only contains letters and `_`, up to 255 characters.")
+                sys.exit(-1) 
+            
+            if not match(regex_pattern, table):
+                print("invictus-aws.py: error: Wrong table name format. Table name can only contains letters and `_`, up to 255 characters.")
                 sys.exit(-1) 
 
             databases = athena.list_databases(CatalogName=catalog)
@@ -449,6 +468,23 @@ def verify_file(queryfile, steps):
         sys.exit(-1)
 
 '''
+Verify the input timeframe which is used to filter queries results
+timeframe : Input timeframe
+steps : Steps to run
+'''
+def verify_timeframe(timeframe, steps):
+
+    if timeframe != None:
+
+        if "4" not in steps:
+            print("invictus-aws.py: error: Only input queryfile with step 4.")
+            sys.exit(-1)
+    
+        if not timeframe.isdigit() or int(timeframe) <= 0:
+            print("invictus-aws.py: error: Only input valid number > 0")
+            sys.exit(-1)
+
+'''
 Main function of the tool
 '''
 def main():
@@ -485,14 +521,16 @@ def main():
     table = args.table
 
     queryfile = args.queryfile
-
     verify_file(queryfile, steps)
+
+    timeframe = args.timeframe
+    verify_timeframe(timeframe, steps)
 
     if region:
 
         if verify_one_region(region):
             steps, source, output, database, table, exists = verify_steps(steps, source, output, catalog, database, table, region, dl)  
-            run_steps(dl, region, all_regions, steps, start, end, source, output, catalog, database, table, queryfile, exists)
+            run_steps(dl, region, all_regions, steps, start, end, source, output, catalog, database, table, queryfile, exists, timeframe)
 
     
     else:
@@ -501,7 +539,7 @@ def main():
 
         for name in region_names:
             steps, source, output, database, table, exists = verify_steps(steps, source, output, catalog, database, table, name, dl)  
-            run_steps(dl, name, regionless, steps, start, end, source, output, catalog, database, table, queryfile, exists)
+            run_steps(dl, name, regionless, steps, start, end, source, output, catalog, database, table, queryfile, exists, timeframe)
 
 
 if __name__ == "__main__":

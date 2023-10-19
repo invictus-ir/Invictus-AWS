@@ -52,12 +52,13 @@ The script runs with a few parameters :
 * `-end YYYY-MM-DD`. End date for the Cloudtrail logs collection. It is recommended to use it every time step 3 is executed as it will be extremely long to collect each logs. It has to be used with `-start` and must only be used with step 3.
 > **_NOTE:_**  The next parameters only apply if you run step 4. You have to collect the logs with step 3 on another execution or by your own means.
 
-* `-b`. Bucket containing the CloudTrail logs. Format is `bucket/subfolders/`.
-* `-o`. Bucket where the results of the queries will be stored. Must look like `bucket/[subfolders]/`.
-* `-c`. Catalog used by Athena.
-* `-d`. Database used by Athena. You can either input an existing database or a new one that will be created.
-* `-t`. Table used by Athena. You can either input an existing table, input a new one (that will have the same structure as the default one) or input a .ddl file giving details about your new table. An example.ddl is available for you, just add the structure, modify the name of the table and the location of your logs.
-* `-f`. Your own file containing your queries for the analysis. If you don't want to use or modify the default file, you can use your own by specifying it with this option. The file has to already exist.  
+* `-b bucket`. Bucket containing the CloudTrail logs. Format is `bucket/subfolders/`.
+* `-o bucket`. Bucket where the results of the queries will be stored. Must look like `bucket/[subfolders]/`.
+* `-c catalog`. Catalog used by Athena.
+* `-d database`. Database used by Athena. You can either input an existing database or a new one that will be created.
+* `-t table`. Table used by Athena. You can either input an existing table, input a new one (that will have the same structure as the default one) or input a .ddl file giving details about your new table. An example.ddl is available for you, just add the structure, modify the name of the table and the location of your logs.
+* `-f file.yaml`. Your own file containing your queries for the analysis. If you don't want to use or modify the default file, you can use your own by specifying it with this option. The file has to already exist.  
+* `-x timeframe`. Used by the queries to filter their results. The query part with the timeframe will automatically be added at the end of your queries if you specify a timeframe. You don't have to add it yourself to your queries.
 
 Usage : `$python3 invictus-aws.py [-h] -w [{cloud,local}] (-r AWS_REGION | -A [ALL_REGIONS]) -s [STEP] [-start YYYY-MM-DD] [-end YYYY-MM-DD] [-b SOURCE_BUCKET] [-o OUTPUT_BUCKET][-c CATALOG] [-d DATABASE] [-t TABLE] [-f QUERY_FILE]`
 
@@ -75,8 +76,8 @@ Usage : `$python3 invictus-aws.py [-h] -w [{cloud,local}] (-r AWS_REGION | -A [A
 *In this example, the -b option is needed the first time as the default database and table will be created. Then you don't need it anymore as the table is already initialized.  
 But don't forget that if you modify your logs source and still want to use the default table, you need to delete it before.*
 
-**Analyze CloudTrail logs using the tool default database and table and write the results locally.** :  
-`$python3 invictus-aws.py -r eu-west-3 -s 4`  
+**Analyze CloudTrail logs using the tool default database and table, filter the results to the last 7 days and write the results locally.** :  
+`$python3 invictus-aws.py -r eu-west-3 -w local -s 4 -x 7`  
 *In this example, the -b option is not written as explained above. The -o option is also not written as we don't need any output bucket as the results will be written locally.*
 
 **Analyze CloudTrail logs using either a new database or table (with the same structure as the default one)** :  

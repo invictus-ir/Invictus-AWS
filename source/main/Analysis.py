@@ -5,7 +5,9 @@ import source.utils.utils
 import pandas as pd
 from os import remove, replace
 from time import sleep
-from tqdm import tqdm
+
+
+import sys
 
 class Analysis:
     source_bucket = None
@@ -40,7 +42,7 @@ class Analysis:
     '''
     Main function of the class. 
     '''
-    def execute(self, source_bucket, output_bucket, catalog, db, table, queryfile, exists):
+    def execute(self, source_bucket, output_bucket, catalog, db, table, queryfile, exists, timeframe):
 
         print(f"[+] Beginning Logs Analysis")
 
@@ -51,7 +53,7 @@ class Analysis:
             tmp_bucket = "invictus-aws-tmp-results"
             create_tmp_bucket(self.region, tmp_bucket)
             output_bucket = f"s3://{tmp_bucket}/"
-        
+    
         bucket, prefix = get_bucket_and_prefix(output_bucket)
         if not prefix:
             prefix = "queries-results/"
@@ -90,10 +92,17 @@ class Analysis:
         
         for key, value in queries.items():
 
+            if timeframe != None:
+                if value[-1] == ";":
+                    value = value.replace(value[-1], f" AND date_diff('day', from_iso8601_timestamp(eventtime), current_timestamp) <= {timeframe};")
+                else:
+                    value = value + f" AND date_diff('day', from_iso8601_timestamp(eventtime), current_timestamp) <= {timeframe};"
+          
+            print(f"[+] Running Query : {key}")
             #replacing DATABASE and TABLE in each query
             value = value.replace("DATABASE", db)
             value = value.replace("TABLE", table)
-            print(f"[+] Running Query : {key}")
+            print(f"[+] Running Query : {value}")
             
             result = athena_query(self.region, value, self.output_bucket)
 
