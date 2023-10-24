@@ -443,6 +443,8 @@ class Logs:
         self.results["s3"]["results"] = []
         
         with tqdm(desc="[+] Getting S3 logs", leave=False, total = len(elements)) as pbar:
+            
+            # Simulez une action quelconque.
             for bucket in elements:
             
                 name = bucket["Name"]

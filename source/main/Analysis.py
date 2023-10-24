@@ -7,8 +7,6 @@ from os import remove, replace
 from time import sleep
 
 
-import sys
-
 class Analysis:
     source_bucket = None
     output_bucket = None
@@ -102,7 +100,6 @@ class Analysis:
             #replacing DATABASE and TABLE in each query
             value = value.replace("DATABASE", db)
             value = value.replace("TABLE", table)
-            print(f"[+] Running Query : {value}")
             
             result = athena_query(self.region, value, self.output_bucket)
 
