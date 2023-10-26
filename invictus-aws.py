@@ -6,10 +6,9 @@ from re import match
 from source.main.IR import IR
 from source.utils.utils import *
 
-'''
-Define the arguments used when calling the tool
-'''
 def set_args():
+    """Define the arguments used when calling the tool
+    """
     parser = argparse.ArgumentParser(add_help=False)
 
     parser.add_argument(
@@ -123,24 +122,40 @@ def set_args():
 
     return parser.parse_args()
 
-'''
-Run the steps of the tool (enum, config, logs extraction) 
-dl : True if the user wants to download the results, False if he wants the results to be written in a s3 bucket
-region : Region to run the tool in
-regionless : "not-all" if the tool is used on only one region. First region to run the tool on otherwise
-steps : Steps to run (1 for enum, 2 for config, 3 for logs extraction)
-start: Start time for logs collection
-end : End time for logs collection
-source : Source bucket for the analysis part (4)
-output : Output bucket for the analysis part (4)
-catalog : Data catalog used with the database 
-database : Database containing the table for logs analytics
-table : Contains the sql requirements to query the logs
-queryfile : file containing the queries
-exists ([boolean, boolean]) : If the input db and table already exists
-timeframe : Time filter for default queries
-'''
 def run_steps(dl, region, regionless, steps, start, end, source, output, catalog, database, table, queryfile, exists, timeframe):
+    """Run the steps of the tool (enum, config, logs extraction, logs analysis)
+
+    Parameters
+    ----------
+    dl : bool
+        True if the user wants to download the results, False if he wants the results to be written in a s3 bucket
+    region : str
+        Region in which the tool is executed
+    regionless : str
+        "not-all" if the tool is used on only one region. First region to run the tool on otherwise
+    steps : list of str
+        Steps to run (1 for enum, 2 for config, 3 for logs extraction, 4 for analysis)
+    start : str
+        Start time for logs collection
+    end : str  
+        End time for logs collection
+    source :  str
+        Source bucket for the analysis part (4)
+    output : str
+        Output bucket for the analysis part (4)
+    catalog : str
+        Data catalog used with the database 
+    database : str 
+        Database containing the table for logs analytics
+    table : str
+        Contains the sql requirements to query the logs
+    queryfile : str
+        File containing the queries
+    exists : tuple of bool
+        If the input db and table already exists
+    timeframe : str
+        Time filter for default queries
+    """
 
     if dl:
         create_folder(ROOT_FOLDER + "/" + region)
@@ -178,11 +193,14 @@ def run_steps(dl, region, regionless, steps, start, end, source, output, catalog
             except Exception as e: 
                 print(str(e))
 
-'''
-Search for all enabled regions and verify that the fivent region exists (region that the tool will begin with)
-input_region : If we're in this function, the used decided to run the tool on all enabled functions. This given region is the first one that the tool will analyze.
-'''
 def verify_all_regions(input_region):
+    """Search for all enabled regions and verify that the given region exists (region that the tool will begin with)
+    
+    Parameters
+    ----------
+    input_region : str
+        If we're in this function, the used decided to run the tool on all enabled functions. This given region is the first one that the tool will analyze.
+    """
 
     response = try_except(
         ACCOUNT_CLIENT.list_regions,
@@ -208,12 +226,20 @@ def verify_all_regions(input_region):
         )
         sys.exit(-1)
 
-'''
-Verify the region inputs and run the steps of the tool for one region
-dl : True if the user wants to download the results, False if he wants the results to be written in a s3 bucket
-region : Region to run the tool in
-'''
 def verify_one_region(region):
+    """Verify the region inputs and run the steps of the tool for one region
+    
+    Parameters
+    ----------
+    region : str
+        Region to run the tool in
+        
+    Returns
+    -------
+    good : bool
+        True if the region is enabled
+    """
+
     good = False
 
     try:
@@ -230,18 +256,43 @@ def verify_one_region(region):
 
     return good
 
-'''
-Verify that the steps entered are correct
-steps : Steps to verify
-source : Source bucket for the analysis part (4)
-output : Output bucket for the analysis part (4)
-catalog : Catalog used for the analysis part (4)
-database : Database used for the analysis part (4)
-table : Table used for the analysis part (4)
-region : Region to run the tool in
-dl : True if the users wants the results to be written locally
-'''
 def verify_steps(steps, source, output, catalog, database, table, region, dl):
+    """Verify that the steps entered are correct
+
+    Parameters
+    ----------
+    steps : list of str
+        Steps to run (1 for enum, 2 for config, 3 for logs extraction, 4 for analysis)
+    source :  str
+        Source bucket for the analysis part (4)
+    output : str
+        Output bucket for the analysis part (4)
+    catalog : str
+        Data catalog used with the database 
+    database : str 
+        Database containing the table for logs analytics
+    table : str
+        Contains the sql requirements to query the logs
+    region : str
+        Region in which the tool is executed
+    dl : bool
+        True if the user wants to download the results, False if he wants the results to be written in a s3 bucket
+
+    Returns
+    -------
+    steps : list of str
+        Steps to run (1 for enum, 2 for config, 3 for logs extraction, 4 for analysis)
+    source :  str
+        Source bucket for the analysis part (4)
+    output : str
+        Output bucket for the analysis part (4)
+    database : str 
+        Database containing the table for logs analytics
+    table : str
+        Contains the sql requirements to query the logs
+    exists : tuple of bool
+        If the input db and table already exists
+    """
 
     #Verifying steps inputs
 
@@ -371,12 +422,22 @@ def verify_steps(steps, source, output, catalog, database, table, region, dl):
             
     return steps, source, output, database, table, exists
 
-'''
-Verify that the user inputs regarding the buckets logs are correct
-bucket : Bucket we verify it exists
-type : Source or output bucket (for log analysis)
-'''
 def verify_bucket(bucket, type):
+    """Verify that the user inputs regarding the buckets logs are correct
+
+    Parameters
+    ----------
+    bucket : str
+        Bucket we verify it exists
+    type : str
+        Source or output bucket (for log analysis)
+
+    Returns
+    -------
+    bucket : str
+        Bucket we verify it exists
+    """
+
     s3 = boto3.resource('s3')
 
     if not bucket.endswith("/"):
@@ -397,13 +458,18 @@ def verify_bucket(bucket, type):
     
     return bucket
 
-'''
-Verify if the date inputs are correct
-start : Start time
-end : End time
-steps : Steps to run
-'''
 def verify_dates(start, end, steps):
+    """Verify if the date inputs are correct
+    
+    Parameters
+    ----------
+    start : str
+        Start time
+    end : str
+        End time
+    steps : list of str
+        Steps to run
+    """
 
     if "3" not in steps and (start != None or end != None):
         print("invictus-aws.py: error: Only input dates with step 3.")
@@ -449,12 +515,16 @@ def verify_dates(start, end, steps):
             print("invictus-aws.py: error: You have to specify start and end time.")
             sys.exit(-1)
 
-'''
-Verify if the query file input is correct
-queryfile : Yaml file containing the query
-steps : Steps to run
-'''
 def verify_file(queryfile, steps):
+    """Verify if the query file input is correct
+    
+    Parameters
+    ----------
+    queryfile : str
+        Yaml file containing the query
+    steps : list of str
+        Steps to run
+    """
 
     if "4" not in steps and queryfile != "source/files/queries.yaml":
         print("invictus-aws.py: error: Only input queryfile with step 4.")
@@ -467,12 +537,16 @@ def verify_file(queryfile, steps):
         print(f"invictus-aws.py: error: Please provide a yaml file as your query file.")
         sys.exit(-1)
 
-'''
-Verify the input timeframe which is used to filter queries results
-timeframe : Input timeframe
-steps : Steps to run
-'''
 def verify_timeframe(timeframe, steps):
+    """Verify the input timeframe which is used to filter queries results
+
+    Parameters
+    ----------
+    timeframe : str
+        Input timeframe
+    steps : list of str
+        Steps to run
+    """
 
     if timeframe != None:
 
@@ -484,13 +558,9 @@ def verify_timeframe(timeframe, steps):
             print("invictus-aws.py: error: Only input valid number > 0")
             sys.exit(-1)
 
-
-
-
-'''
-Main function of the tool
-'''
 def main():
+    """Main function of the tool. Gets the arguments and run the appropriate functions.
+    """
 
     print(
         """
@@ -544,7 +614,6 @@ def main():
         for name in region_names:
             steps, source, output, database, table, exists = verify_steps(steps, source, output, catalog, database, table, name, dl)  
             run_steps(dl, name, regionless, steps, start, end, source, output, catalog, database, table, queryfile, exists, timeframe)
-
 
 if __name__ == "__main__":
 

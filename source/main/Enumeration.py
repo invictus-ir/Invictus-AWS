@@ -6,30 +6,110 @@ from time import sleep
 
 
 class Enumeration:
+    """Enumeration Class that runs the differents functions needed
+
+    Attributes
+    ----------
+    services : object
+        Object where the results of the functions are written
+    bucket : str
+        Bucket where the results are written
+    region : str, optional
+        Region in which the tool is executed
+    dl : bool
+        True if the user wants to download the results, False if he wants the results to be written in a s3 bucket
+
+    Methods
+    -------
+    execute(services, regionless)
+    enumerate_s3()
+        numerate the s3 buckets available
+    enumerate_wafv2()
+        numerate the waf web acls available
+    enumerate_lambda()
+        numerate the lambdas available
+    enumerate_vpc()
+        numerate the vpcs available
+    enumerate_elasticbeanstalk(self)
+        numerate the elasticbeanstalk environments available
+    enumerate_routes53()
+        numerate the routes53 hosted zones available
+    enumerate_ec2()
+        numerate the ec2 instances available
+    enumerate_iam()
+        numerate the IAM users available
+    enumerate_dynamodb()
+        numerate the dynamodb tables available
+    enumerate_rds()
+        numerate the rds instances available
+    enumerate_eks()
+        numerate the eks clusters available
+    enumerate_elasticsearch()
+        numerate the elasticsearch domains available
+    enumerate_secrets()
+        numerate the secretsmanager secrets available
+    enumerate_kinesis()
+        numerate the kinesis streams available
+    enumerate_cloudwatch()
+        numerate the cloudwatch dashboards available
+    enumerate_cloudtrail_trails()
+        numerate the cloudtrail trails available
+    enumerate_guardduty()
+        numerate the guardduty detectors available
+    enumerate_inspector2()
+        numerate the inspector coverage available
+    enumerate_detective()
+        numerate the detective graphs available
+    enumerate_macie()
+        numerate the macie buckets available
+    display_progress(ids, name, no_list=False)
+        Display the progress and the content of the service
+    """
+
     services = {}
     bucket = ""
     region = None
     dl = None
 
     def __init__(self, region, dl):
+        """Constructor of the Enumeration class
+        
+        Parameters
+        ----------
+        region : str
+            Region in which to tool is executed
+        dl : bool
+            True if the user wants to download the results, False if he wants the results to be written in a s3 bucket
+        """
+
         self.dl = dl
         self.region = region
 
         if not self.dl:
             self.bucket = create_s3_if_not_exists(self.region, PREPARATION_BUCKET)
 
-    '''
-    Test function
-    '''
     def self_test(self):
+        """Test function
+        """
+        
         print("[+] Enumeration test passed")
 
-    '''
-    Main function of the class. Run every enumeration function and then write the results where asked
-    services : Array used to write the results of the different enumerations functions
-    regionless : "not-all" if the tool is used on only one region. First region to run the tool on otherwise
-    '''
     def execute(self, services, regionless):
+        """Main function of the class. Run every enumeration function and then write the results where asked
+        
+        Parameters
+        ---------
+        services : list
+            Array used to write the results of the different enumerations functions
+        regionless : str
+            "not-all" if the tool is used on only one region. First region to run the tool on otherwise
+
+        Returns
+        -------
+        self.services : object
+            Object where the results of the functions are written
+        """
+
         print(f"[+] Beginning Enumeration of Services")
 
         set_clients(self.region)
@@ -91,10 +171,9 @@ class Enumeration:
 
         return self.services
 
-    '''
-    Enumerate the s3 buckets available
-    '''
     def enumerate_s3(self):
+        """Enumerate the s3 buckets available
+        """
         
         elements  = s3_lookup()
 
@@ -108,11 +187,10 @@ class Enumeration:
         self.services["s3"]["ids"] = identifiers
 
         self.display_progress(self.services["s3"]["ids"], "s3", True)
-    
-    '''
-    Enumerate the waf web acls available
-    '''
+   
     def enumerate_wafv2(self):
+        """Enumerate the waf web acls available
+        """
 
         elements = misc_lookup("WAF", source.utils.utils.WAF_CLIENT.list_web_acls, "NextMarker", "WebACLs", Scope="REGIONAL", Limit=100)
 
@@ -127,10 +205,9 @@ class Enumeration:
 
         self.display_progress(self.services["wafv2"]["ids"], "wafv2", True)
     
-    '''
-    Enumerate the lambdas available
-    '''   
     def enumerate_lambda(self):
+        """Enumerate the lambdas available
+        """
 
         elements = paginate(source.utils.utils.LAMBDA_CLIENT, "list_functions", "Functions")
 
@@ -145,10 +222,9 @@ class Enumeration:
 
         self.display_progress(self.services["lambda"]["ids"], "lambda", True)
     
-    '''
-    Enumerate the vpcs available
-    '''
     def enumerate_vpc(self):
+        """Enumerate the vpcs available
+        """
 
         elements = paginate(source.utils.utils.EC2_CLIENT, "describe_vpcs", "Vpcs")
 
@@ -163,10 +239,9 @@ class Enumeration:
 
         self.display_progress(self.services["vpc"]["ids"], "vpc", True)
 
-    '''
-    Enumerate the elasticbeanstalk environments available
-    '''
     def enumerate_elasticbeanstalk(self):
+        """Enumerate the elasticbeanstalk environments available
+        """
 
         elements = paginate(source.utils.utils.EB_CLIENT, "describe_environments", "Environments")
         
@@ -182,11 +257,10 @@ class Enumeration:
         self.display_progress(
             self.services["elasticbeanstalk"]["ids"], "elasticbeanstalk", True
         )
-    
-    '''
-    Enumerate the routes53 hosted zones available
-    '''
+   
     def enumerate_route53(self):
+        """Enumerate the routes53 hosted zones available
+        """
 
         elements = paginate(source.utils.utils.ROUTE53_CLIENT, "list_hosted_zones", "HostedZones")
 
@@ -200,11 +274,10 @@ class Enumeration:
         self.services["route53"]["ids"] = identifiers
 
         self.display_progress(self.services["route53"]["ids"], "route53", True)
-    
-    '''
-    Enumerate the ec2 instances available
-    '''
+  
     def enumerate_ec2(self):
+        """Enumerate the ec2 instances available
+        """
 
         elements = ec2_lookup()
         
@@ -219,11 +292,10 @@ class Enumeration:
         self.services["ec2"]["ids"] = identifiers
      
         self.display_progress(self.services["ec2"]["ids"], "ec2", True)
-    
-    '''
-    Enumerate the IAM users available
-    '''
+   
     def enumerate_iam(self):
+        """Enumerate the IAM users available
+        """
 
         elements = paginate(source.utils.utils.IAM_CLIENT, "list_users", "Users")
 
@@ -238,10 +310,9 @@ class Enumeration:
 
         self.display_progress(self.services["iam"]["ids"], "iam", True)
     
-    '''
-    Enumerate the dynamodb tables available
-    '''
     def enumerate_dynamodb(self):
+        """Enumerate the dynamodb tables available
+        """
 
         elements = paginate(source.utils.utils.DYNAMODB_CLIENT, "list_tables", "TableNames")
 
@@ -253,11 +324,10 @@ class Enumeration:
         self.services["dynamodb"]["ids"] = identifiers
 
         self.display_progress(self.services["dynamodb"]["ids"], "dynamodb", True)
-    
-    '''
-    Enumerate the rds instances available
-    '''
+  
     def enumerate_rds(self):
+        """Enumerate the rds instances available
+        """
 
         elements = paginate(source.utils.utils.RDS_CLIENT, "describe_db_instances", "DBInstances")
 
@@ -272,10 +342,9 @@ class Enumeration:
 
         self.display_progress(self.services["rds"]["ids"], "rds", True)
     
-    '''
-    Enumerate the eks clusters available
-    '''
     def enumerate_eks(self):
+        """Enumerate the eks clusters available
+        """
 
         elements = paginate(source.utils.utils.EKS_CLIENT, "list_clusters", "clusters")
 
@@ -290,10 +359,9 @@ class Enumeration:
 
         self.display_progress(self.services["eks"]["ids"], "eks", True)
     
-    '''
-    Enumerate the elasticsearch domains available
-    '''
     def enumerate_elasticsearch(self):
+        """Enumerate the elasticsearch domains available
+        """
 
         response = try_except(source.utils.utils.ELS_CLIENT.list_domain_names)
         response.pop("ResponseMetadata", None)
@@ -311,10 +379,9 @@ class Enumeration:
 
         self.display_progress(self.services["els"]["ids"], "els", True)
     
-    '''
-    Enumerate the secretsmanager secrets available
-    '''
     def enumerate_secrets(self):
+        """Enumerate the secretsmanager secrets available
+        """
 
         elements = paginate(source.utils.utils.SECRETS_CLIENT, "list_secrets", "SecretList")
             
@@ -329,10 +396,9 @@ class Enumeration:
 
         self.display_progress(self.services["secrets"]["ids"], "secrets", True)
     
-    '''
-    Enumerate the kinesis streams available
-    '''
     def enumerate_kinesis(self):
+        """Enumerate the kinesis streams available
+        """
 
         elements = paginate(source.utils.utils.KINESIS_CLIENT, "list_streams", "StreamNames")
                     
@@ -342,11 +408,10 @@ class Enumeration:
         self.services["kinesis"]["ids"] = elements
 
         self.display_progress(self.services["kinesis"]["ids"], "kinesis", True)
-    
-    '''
-    Enumerate the cloudwatch dashboards available
-    '''
+   
     def enumerate_cloudwatch(self):
+        """Enumerate the cloudwatch dashboards available
+        """
 
         elements = paginate(source.utils.utils.CLOUDWATCH_CLIENT, "list_dashboards", "DashboardEntries")
 
@@ -360,11 +425,10 @@ class Enumeration:
         self.services["cloudwatch"]["ids"] = identifiers
 
         self.display_progress(self.services["cloudwatch"]["ids"], "cloudwatch", True)
-    
-    '''
-    Enumerate the cloudtrail trails available
-    '''
+   
     def enumerate_cloudtrail_trails(self):
+        """Enumerate the cloudtrail trails available
+        """
 
         elements = paginate(source.utils.utils.CLOUDTRAIL_CLIENT, "list_trails", "Trails")
 
@@ -379,10 +443,9 @@ class Enumeration:
 
         self.display_progress(self.services["cloudtrail"]["ids"], "cloudtrail", True)
     
-    '''
-    Enumerate the guardduty detectors available
-    '''
     def enumerate_guardduty(self):
+        """Enumerate the guardduty detectors available
+        """
 
         elements = paginate(source.utils.utils.GUARDDUTY_CLIENT, "list_detectors", "DetectorIds")
 
@@ -395,10 +458,9 @@ class Enumeration:
 
         self.display_progress(self.services["guardduty"]["ids"], "guardduty", True)
     
-    '''
-    Enumerate the inspector coverages available
-    '''
     def enumerate_inspector2(self):
+        """Enumerate the inspector coverages available
+        """
 
         elements = paginate(source.utils.utils.INSPECTOR_CLIENT, "list_coverage", "coveredResources")
  
@@ -413,10 +475,9 @@ class Enumeration:
 
         self.display_progress(self.services["inspector"]["ids"], "inspector", False)
     
-    '''
-    Enumerate the detective graphs available
-    '''
     def enumerate_detective(self):
+        """Enumerate the detective graphs available
+        """
         
         elements = misc_lookup("DETECTIVE", source.utils.utils.DETECTIVE_CLIENT.list_graphs, "NextToken", "GraphList", MaxResults=100)
     
@@ -431,10 +492,9 @@ class Enumeration:
 
         self.display_progress(self.services["detective"]["ids"], "detective", True)
     
-    '''
-    Enumerate the macie buckets available
-    '''
     def enumerate_maciev2(self):
+        """Enumerate the macie buckets available
+        """
 
         elements = paginate(source.utils.utils.MACIE_CLIENT, "describe_buckets", "buckets")
 
@@ -448,14 +508,20 @@ class Enumeration:
         self.services["macie"]["ids"] = identifiers
 
         self.display_progress(self.services["macie"]["ids"], "macie", True)
-    
-    '''
-    Display the progress and the content of the service
-    ids : Identifiers of the elements of the service
-    name : name of the service
-    no_list : True if we don't want the name of each identifiers to be printed out. False otherwise
-    '''
+ 
     def display_progress(self, ids, name, no_list=False):
+        """Display the progress and the content of the service
+
+        Parameters
+        ----------
+        ids : list of str
+            Identifiers of the elements of the service
+        name : str
+            Name of the service
+        no_list : bool
+            True if we don't want the name of each identifiers to be printed out. False otherwise
+        """
+
         if len(ids) != 0:
             if no_list:
                 print("\t\u2705 " + name.upper() + "\033[1m" + " - Available")
