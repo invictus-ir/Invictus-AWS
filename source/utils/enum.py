@@ -2,10 +2,14 @@ from source.utils.utils import fix_json, try_except, S3_CLIENT
 import source.utils.utils
 from tqdm import tqdm
 
-'''
-Used to return all buckets
-'''
 def s3_lookup():
+    """Used to return all existing buckets
+    
+    Returns
+    -------
+    elements : list
+        List of the existing buckets
+    """
      
     response = try_except(S3_CLIENT.list_buckets)
     buckets = fix_json(response)
@@ -15,12 +19,15 @@ def s3_lookup():
 
     return elements
 
-'''
-Used to return all ec2 instances
-The basic paginate function can't actually work
-'''
-
 def ec2_lookup():
+    """Used to return all ec2 instances
+
+    Returns
+    -------
+    elements : list
+        List of the existing ec2 instances
+
+    """
     elements = []
     paginator = source.utils.utils.EC2_CLIENT.get_paginator("describe_instances")
     
@@ -37,12 +44,24 @@ def ec2_lookup():
 
     return elements  
 
-'''
-Return all the results of the command, no matter the number of results 
-client : Client used to call the command
-command : Command executed
-'''
 def simple_paginate(client, command, **kwargs):
+    """Return all the results of the command, no matter the number of results 
+    
+    Parameters
+    ----------
+    client : str
+        Name of the client used to call the request (S3, LAMBDA, etc)
+    command : str
+        Command executed
+    **kwargs : list, optional
+        List of parameters to add to the command.
+
+    Returns
+    -------
+    elements : list
+        List of the results of the command
+    """
+
     elements = []
    
     paginator = client.get_paginator(command)
@@ -59,13 +78,26 @@ def simple_paginate(client, command, **kwargs):
 
     return elements  
 
-'''
-Same as the previous function, but we can then filter the results on a specific part of the response 
-client : Client used to call the command
-command : Command executed
-array : Specific array of the response to return 
-'''
 def paginate(client, command, array, **kwargs):
+    """Same as the previous function, but we can then filter the results on a specific part of the response 
+
+    Parameters
+    ----------
+    client : str
+        Name of the client used to call the request (S3, LAMBDA, etc)
+    command : str
+        Command executed
+    array : str
+        Filter added to get a specific part of the results
+    **kwargs : list, optional
+        List of parameters to add to the command.
+
+    Returns
+    -------
+    elements : list
+        List of the results of the command
+    """
+
     elements = []
     paginator = client.get_paginator(command)
     
@@ -82,13 +114,25 @@ def paginate(client, command, array, **kwargs):
 
     return elements  
 
-'''
-Return all the results of the command, no matter the number of results. Used by functions not usable by paginate.
-Useful for the commands that had to possible pagination (verifyable with client.can_paginate(command))
-function : Concatenation of the client and the command (CLIENT.COMMAND)
-name_token : Name of the token to get to search for remaining results
-'''
 def simple_misc_lookup(client, function, name_token, **kwargs):
+    """Return all the results of the command, no matter the number of results. Used by functions not usable by paginate.
+
+    Parameters
+    ----------
+    client : str
+        Name of the client (S3, LAMBDA, etc) only used for the progress bar
+    function : str
+        Concatenation of the client and the command (CLIENT.COMMAND)
+    name_token : str
+        Name of the token used by the command to get the other pages of results.    
+    **kwargs : list, optional
+        List of parameters to add to the command.
+
+    Returns
+    -------
+    elements : list
+        List of the results of the command
+    """
 
     tokens = []
 
@@ -120,13 +164,27 @@ def simple_misc_lookup(client, function, name_token, **kwargs):
 
     return elements
 
-'''
-Same as the previous function, but we can then filter the results on a specific part of the response. Used by functions not usable by paginate.
-function : Concatenation of the client and the command (CLIENT.COMMAND)
-name_token : Name of the token to get to search for remaining results
-array : Specific array of the response to return 
-'''
 def misc_lookup(client, function, name_token, array, **kwargs):
+    """Same as the previous function, but we can then filter the results on a specific part of the response. Used by functions not usable by paginate.
+
+    Parameters
+    ----------
+    client : str
+        Name of the client (S3, LAMBDA, etc) only used for the progress bar
+    function : str
+        Concatenation of the client and the command (CLIENT.COMMAND)
+    name_token : str
+        Name of the token used by the command to get the other pages of results.   
+    array : str
+        Filter added to get a specific part of the results 
+    **kwargs : list, optional
+        List of parameters to add to the command.
+
+    Returns
+    -------
+    elements : list
+        List of the results of the command
+    """
 
     tokens = []
 
@@ -159,11 +217,20 @@ def misc_lookup(client, function, name_token, array, **kwargs):
 
     return elements
 
-'''
-Get all the results of the list_traffic_policies command of the route53 client
-function : Concatenation of the client and the command
-'''
 def list_traffic_policies_lookup(function):
+    """Get all the results of the list_traffic_policies command of the route53 client
+
+    Parameters
+    ----------
+    function : str
+        Concatenation of the client and the command
+
+    Returns
+    -------
+    elements : list
+        List of the results of the command
+    """
+
     elements  = []
     response = try_except(function, MaxItems="100")
     response.pop("ResponseMetadata", None)

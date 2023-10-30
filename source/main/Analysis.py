@@ -8,6 +8,45 @@ from time import sleep
 
 
 class Analysis:
+    """Analysis Class that runs the differents functions needed
+
+    Attributes
+    ----------
+    source_bucket :  str
+        Source bucket of the logs
+    output_bucket : str
+        Output bucket of the results
+    region : str
+        Region in which the tool is executed
+    results : dict
+        Object where the results of the functions are written   
+    dl : bool
+        True if the user wants to download the results, False if he wants the results to be written in a s3 bucket
+    path : str
+        Where to write the results locally
+    time : str
+        Time when the class were executed (to add to the path)
+
+    Methods
+    -------
+    self_test()
+        Test function
+    execute(services, regionless)
+        Main function of the class
+    init_athena(db, table, source_bucket, output_bucket, exists, isTrail)
+        Initiates athena database and table for further analysis
+    set_table(ddl, db)
+        Replace the table name of the ddl file by database.table
+    results_query(id, query)
+        Print the results of the query and where they are written
+    merge_results()
+        Merge the results csv files in one single xlsx file
+    clear_folder(dl)
+        If results written locally, delete the tmp bucket created for the analysis. If results written in a bucket, clear the bucket so the .metadata and .txt are deleted
+    is_trail_bucket(catalog, db, table)
+        Verify if a table source bucket is a trail bucket
+    """
+
     source_bucket = None
     output_bucket = None
     region = None
@@ -17,6 +56,15 @@ class Analysis:
     time = None
 
     def __init__(self, region, dl):
+        """Constructor of the Analysis class
+        
+        Parameters
+        ----------
+        region : str
+            Region in which to tool is executed
+        dl : bool
+            True if the user wants to download the results, False if he wants the results to be written in a s3 bucket
+        """
 
         self.region = region
         self.results = []
@@ -31,16 +79,34 @@ class Analysis:
             self.path = f"{self.path}{date}/{self.time}/" 
             create_folder(self.path)
         
-    '''
-    Test function
-    '''
     def self_test(self):
+        """Test function
+        """
+         
         print("[+] Logs Analysis test passed\n")
 
-    '''
-    Main function of the class. 
-    '''
     def execute(self, source_bucket, output_bucket, catalog, db, table, queryfile, exists, timeframe):
+        """Main function of the class
+        
+        Parameters
+        ----------
+        source_bucket :  str
+            Source bucket
+        output_bucket : str
+            Output bucket
+        catalog : str
+            Data catalog used with the database 
+        db : str 
+            Database containing the table for logs analytics
+        table : str
+            Contains the sql requirements to query the logs
+        queryfile : str
+            File containing the queries
+        exists : tuple of bool
+            If the input db and table already exists
+        timeframe : str
+            Time filter for default queries
+        """
 
         print(f"[+] Beginning Logs Analysis")
 
@@ -127,16 +193,24 @@ class Analysis:
         self.merge_results()
         self.clear_folder(self.dl)
     
-    '''
-    Initiates athena database and table for further analysis
-    db : Database used
-    table : Table used
-    source_bucket : Source bucket of the logs of the table
-    output_bucket : Bucket where to put the results of the queries
-    exists : If the given db and table already exists
-    isTrail : if the source bucket of the table is a bucket trail
-    '''
     def init_athena(self, db, table, source_bucket, output_bucket, exists, isTrail):
+        """Initiates athena database and table for further analysis
+
+        Parameters
+        ----------
+        db : str
+            Database used
+        table : str
+            Table used
+        source_bucket : str
+            Source bucket of the logs of the table
+        output_bucket : str
+            Bucket where to put the results of the queries
+        exists : bool
+            If the given db and table already exists
+        isTrail : bool
+            if the source bucket of the table is a bucket trail
+        """
 
         # if db doesn't exists
         if not exists[0]:
@@ -273,13 +347,23 @@ class Analysis:
 
             athena_query(self.region, query_table, output_bucket)
             print(f"[+] Table {db}.{table} created")
-        
-    '''
-    Replace the table name of the ddl file by database.table
-    ddl: Ddl file
-    db : Name of the db
-    '''
+   
     def set_table(self, ddl, db):
+        """Replace the table name of the ddl file by database.table
+
+        Parameters
+        ----------
+        ddl : str
+            Ddl file
+        db : str
+            Name of the db
+
+        Returns 
+        -------
+        table : str
+            Name of the table
+        """
+        
         table, data = get_table(ddl, True)
 
         if not "." in table:
@@ -290,12 +374,16 @@ class Analysis:
                 f.close()
         return table
 
-    '''
-    Print the results of the query and where they are written
-    id : Id of the query
-    query : Run query
-    '''
     def results_query(self, id, query):
+        """Print the results of the query and where they are written
+        
+        Parameters
+        ----------
+        id : str
+            Id of the query
+        query : str
+        Query run
+        """
     
         number   = len(source.utils.utils.ATHENA_CLIENT.get_query_results(QueryExecutionId=id)["ResultSet"]["Rows"])
         if number == 2:
@@ -310,10 +398,9 @@ class Analysis:
         else:
             print(f"[+] {number-1} hit. You may have better luck next time my young padawan !")
 
-    '''
-    Merge the results csv files in one single xlsx file
-    '''
     def merge_results(self):
+        """Merge the results csv files in one single xlsx file
+        """
 
         if self.results:
 
@@ -357,11 +444,14 @@ class Analysis:
         else:
             print(f"[+] No results at all were found")
     
-    '''
-    If results written locally, delete the tmp bucket created for the analysis. If results written in a bucket, clear the bucket so the .metadata and .txt are deleted
-    dl : True if the user wants to download the results, False if he wants the results to be written in a s3 bucket
-    '''
     def clear_folder(self, dl):
+        """If results written locally, delete the tmp bucket created for the analysis. If results written in a bucket, clear the bucket so the .metadata and .txt are deleted
+
+        Parameters
+        ----------
+        dl : bool
+            True if the user wants to download the results, False if he wants the results to be written in a s3 bucket
+        """
 
         bucket, prefix = get_bucket_and_prefix(self.output_bucket)
 
@@ -391,16 +481,25 @@ class Analysis:
                             Key=f"{el['Key']}"
                         )
 
-    '''
-    Verify if a table source bucket is a trail bucket
-    catalog : Catalog of the database and table
-    db : Database of the table
-    table : Table of the logs
-    '''
     def is_trail_bucket(self, catalog, db, table):
+        """Verify if a table source bucket is a trail bucket
+        
+        Parameters
+        ----------
+        catalog : str
+            Catalog of the database and table
+        db : str
+            Database of the table
+        table : str
+            Table of the logs
+
+        Returns
+        -------
+        isTrail : bool
+            if the trail has a specified bucket
+        """
 
         isTrail = False
-        src = ""
 
         if self.source_bucket != None:
 
@@ -425,8 +524,7 @@ class Analysis:
 
             if response["TableMetadata"]["Parameters"]["inputformat"] == "com.amazon.emr.cloudtrail.CloudTrailInputFormat":
                 isTrail = True
-                src = response["TableMetadata"]["Parameters"]["location"]
         
-        return isTrail, src
+        return isTrail
 
     

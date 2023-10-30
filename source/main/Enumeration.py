@@ -10,58 +10,61 @@ class Enumeration:
 
     Attributes
     ----------
-    services : object
+    services : dict
         Object where the results of the functions are written
     bucket : str
         Bucket where the results are written
-    region : str, optional
+    region : str
         Region in which the tool is executed
     dl : bool
         True if the user wants to download the results, False if he wants the results to be written in a s3 bucket
 
     Methods
     -------
+    self_test()
+        Test function
     execute(services, regionless)
+        Main function of the class. Run every enumeration function and then write the results where asked
     enumerate_s3()
-        numerate the s3 buckets available
+        Enumerate the s3 buckets available
     enumerate_wafv2()
-        numerate the waf web acls available
+        Enumerate the waf web acls available
     enumerate_lambda()
-        numerate the lambdas available
+        Enumerate the lambdas available
     enumerate_vpc()
-        numerate the vpcs available
+        Enumerate the vpcs available
     enumerate_elasticbeanstalk(self)
-        numerate the elasticbeanstalk environments available
+        Enumerate the elasticbeanstalk environments available
     enumerate_routes53()
-        numerate the routes53 hosted zones available
+        Enumerate the routes53 hosted zones available
     enumerate_ec2()
-        numerate the ec2 instances available
+        Enumerate the ec2 instances available
     enumerate_iam()
-        numerate the IAM users available
+        Enumerate the IAM users available
     enumerate_dynamodb()
-        numerate the dynamodb tables available
+        Enumerate the dynamodb tables available
     enumerate_rds()
-        numerate the rds instances available
+        Enumerate the rds instances available
     enumerate_eks()
-        numerate the eks clusters available
+        Enumerate the eks clusters available
     enumerate_elasticsearch()
-        numerate the elasticsearch domains available
+        Enumerate the elasticsearch domains available
     enumerate_secrets()
-        numerate the secretsmanager secrets available
+        Enumerate the secretsmanager secrets available
     enumerate_kinesis()
-        numerate the kinesis streams available
+        Enumerate the kinesis streams available
     enumerate_cloudwatch()
-        numerate the cloudwatch dashboards available
+        Enumerate the cloudwatch dashboards available
     enumerate_cloudtrail_trails()
-        numerate the cloudtrail trails available
+        Enumerate the cloudtrail trails available
     enumerate_guardduty()
-        numerate the guardduty detectors available
+        Enumerate the guardduty detectors available
     enumerate_inspector2()
-        numerate the inspector coverage available
+        Enumerate the inspector coverage available
     enumerate_detective()
-        numerate the detective graphs available
+        Enumerate the detective graphs available
     enumerate_macie()
-        numerate the macie buckets available
+        Enumerate the macie buckets available
     display_progress(ids, name, no_list=False)
         Display the progress and the content of the service
     """

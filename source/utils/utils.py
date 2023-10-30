@@ -6,95 +6,105 @@ from random import choices
 from string import ascii_lowercase, digits
 from json import dumps
 
-'''
-Generate random chars
-n : number of char to be generated
-'''
+
 def get_random_chars(n):
-    return "".join(choices(ascii_lowercase + digits, k=n))
+    """Generate random str
 
-'''
-try except function
-'''
+    Parameters
+    ----------
+    n : int
+        Number of char to be generated
+    
+    Returns
+    -------
+    ret : str
+        Random str of n chars
+    """
+
+    ret = "".join(choices(ascii_lowercase + digits, k=n))
+    return ret
+
 def try_except(func, *args, **kwargs):
+    """Try except function
+
+    Parameters
+    ----------
+    func : str
+        Function tried
+    *args : list
+        List of args, optional
+    **kwargs : list
+        List of key pairs args, optional
+
+    Returns
+    -------
+    ret : str
+        Either the execution of the function, either an object
+    """
+
     try:
-        return func(*args, **kwargs)
+        ret = func(*args, **kwargs)
     except Exception as e:
-        return {"count": 0, "error": str(e)}
+        ret = {"count": 0, "error": str(e)}
+    return ret
 
-'''
-Print content of json. Used for debug
-data : content of the json
-'''
-def print_json(data):
-    data = dumps(data, indent=4, default=str)
-    print(data)
-
-'''
-Verify if the given data are a list
-list_data : List to verify
-'''
-def is_list(list_data):
-    for data in list_data:
-        if isinstance(data, datetime.datetime):
-            data = str(data)
-        if isinstance(data, list):
-            is_list(data)
-        if isinstance(data, dict):
-            is_dict(data)
-
-'''
-Verify if the given data are a dictionary
-data_dict : Dictionary to verify
-'''
-def is_dict(data_dict):
-    for data in data_dict:
-        if isinstance(data_dict[data], datetime.datetime):
-            data_dict[data] = str(data_dict[data])
-        if isinstance(data_dict[data], list):
-            is_list(data_dict[data])
-        if isinstance(data_dict[data], dict):
-            is_dict(data_dict[data])
-
-'''
-Used to correct json format
-response : Usually the response of a request (boto3, requests)
-'''
-def fix_json(response):
-    if isinstance(response, dict):
-        is_dict(response)
-
-    return response
-
-'''
-Merge the command and its results
-command : command made
-output : output of the command
-I imagine you guessed it already :)
-'''
 def create_command(command, output):
+    """Merge the command and its results
+
+    Parameters
+    ----------
+    command : str
+        Command made
+    output : dict
+        Output of the command
+
+    Returns
+    -------
+    command_output : dict
+        Command and its results
+    """
+
     command_output = {}
     command_output["command"] = command
     command_output["output"] = output
     return command_output
 
-'''
-Write a local file to a s3 bucket
-bucket : Bucket in which the file is uploaded
-key : Path where the file is uploaded
-filename : file to be uploaded
-'''
 def writefile_s3(bucket, key, filename):
+    """Write a local file to a s3 bucket
+
+    Parameters
+    ----------
+    bucket : str
+        Bucket in which the file is uploaded
+    key : str
+        Path where the file is uploaded
+    filename : str
+        File to be uploaded
+
+    Returns
+    -------
+    response : dict
+        Response of the request made
+    """
+
     response = S3_CLIENT.meta.client.upload_file(filename, bucket, key)
     return response
 
-'''
-Create a s3 bucket if needed during the investigation
-region : Region where to create the s3
-bucket_name : Name of the new bucket
-'''
 def create_s3_if_not_exists(region, bucket_name):
-    """
+    """Create a s3 bucket if needed during the investigation
+
+    Parameters
+    ----------
+    region : str
+        Region where to create the s3
+    bucket_name : str
+        Name of the new bucket
+
+    Returns
+    -------
+    bucket_name : str
+        Name of the newly created bucket
+
     Note that for region=us-east-1, AWS necessitates that you leave LocationConstraint blank
     https://docs.aws.amazon.com/AmazonS3/latest/API/API_CreateBucket.html#API_CreateBucket_RequestBody
     """
@@ -118,30 +128,45 @@ def create_s3_if_not_exists(region, bucket_name):
         exit(-1)
     return bucket_name
 
-'''
-Write content to a new file
-file : File to be filled 
-mode : Opening mode of the file (w, a, etc)
-content : Content to be written in the file
-'''
 def write_file(file, mode, content):
+    """Write content to a new file
+
+    Parameters
+    ----------
+    file : str
+        File to be filled 
+    mode : str
+        Opening mode of the file (w, a, etc)
+    content : str
+        Content to be written in the file
+    """
+
     with open(file, mode) as f:
         f.write(content)
 
-'''
-Create a folder 
-path : Path of the folder to be created
-'''
 def create_folder(path):
-        os.makedirs(path, exist_ok=True)
+    """Create a folder
+    
+    Parameters
+    ----------
+    path : str
+        Path of the folder to be created
+    """
 
-'''
-Handle the steps of the content's download of a s3 bucket
-bucket : Bucket being copied
-path : Local path where to paste the content of the bucket
-prefix : Specific folder in the bucket to download
-'''
+    os.makedirs(path, exist_ok=True)
+
 def run_s3_dl(bucket, path, prefix=""):
+    """Handle the steps of the content's download of a s3 bucket
+    
+    Parameters
+    ----------
+    bucket : str
+        Bucket being copied
+    path : str
+        Local path where to paste the content of the bucket
+    prefix : str, optional
+        Specific folder in the bucket to download
+    """
 
     paginator = S3_CLIENT.get_paginator('list_objects_v2')
     operation_parameters = {"Bucket": bucket, "Prefix": prefix}
@@ -158,25 +183,44 @@ def run_s3_dl(bucket, path, prefix=""):
                 if not local_path.endswith("/"): 
                     S3_CLIENT.download_file(bucket, s3_key, local_path)
 
-'''
-Write content to s3 bucket
-bucket : Name of the bucket in which we put data
-key : Path in the bucket
-content : Data to be put
-'''
 def write_s3(bucket, key, content):
+    """Write content to s3 bucket
+
+    Parameters
+    ----------
+    bucket : str
+        Name of the bucket in which we put data
+    key : str
+        Path in the bucket
+    content : str
+        Data to be put
+
+    Returns
+    -------
+    response : dict
+        Results of the request made
+    """
+
     response = S3_CLIENT.put_object(Bucket=bucket, Key=key, Body=content)
     return response
 
-"""
-Copy the content at a specific path of a s3 bucket to another
-src_bucket : bucket where all the logs of the corresponding service are stored
-dst_bucket : bucket used in incident response
-service : Service of which the logs are copied (s3, ec2, etc)
-region : Region where the serice is scanned
-prefix : Path of the data to copy to reduce the amount of data
-"""
 def copy_s3_bucket(src_bucket, dst_bucket, service, region, prefix=""):
+    """Copy the content at a specific path of a s3 bucket to another
+
+    Parameters
+    ----------
+    src_bucket : str
+        Bucket where all the logs of the corresponding service are stored
+    dst_bucket : str
+        Bucket used in incident response
+    service : str
+        Service of which the logs are copied (s3, ec2, etc)
+    region : str
+        Region where the service is scanned
+    prefix : str, optional
+        Path of the data to copy to reduce the amount of data
+    """
+
     s3res = boto3.resource("s3")
 
     paginator = S3_CLIENT.get_paginator('list_objects_v2')
@@ -189,14 +233,21 @@ def copy_s3_bucket(src_bucket, dst_bucket, service, region, prefix=""):
                 new_key = f"{region}/logs/{service}/{src_bucket}/{key['Key']}"
                 try_except(s3res.meta.client.copy, copy_source, dst_bucket, new_key)
 
-'''
-Depending on the action content of value (0 or 1), write the data to our s3 bucket, or copy the data to the source bucket to our bucket
-key : Name of the service
-value : Either logs of the service or the buckets where the logs are stored, based on the const LOGS_RESULTS
-dst_bucket : Bucket where to put the data
-region : Region where the serice is scanned
-'''
 def copy_or_write_s3(key, value, dst_bucket, region):
+    """Depending on the action content of value (0 or 1), write the data to our s3 bucket, or copy the data to the source bucket to our bucket
+
+    Parameters
+    ----------
+    key : str
+        Name of the service
+    value : dict
+        Either logs of the service or the buckets where the logs are stored, based on the const LOGS_RESULTS
+    dst_bucket : str
+        Bucket where to put the data
+    region : str
+        Region where the serice is scanned
+    """
+
     if value["action"] == 0:
         write_s3(
             dst_bucket,
@@ -216,13 +267,19 @@ def copy_or_write_s3(key, value, dst_bucket, region):
 
             copy_s3_bucket(bucket, dst_bucket, key, region, prefix)
 
-'''
-Depending on the action content of value (0 or 1), write the data to a single json file, or download the content of a s3 bucket
-key : Name of the service
-value : Either logs of the service or the buckets where the logs are stored, based on the const LOGS_RESULTS
-conf : Path to write the results
-'''
 def write_or_dl(key, value, conf):
+    """Depending on the action content of value (0 or 1), write the data to a single json file, or download the content of a s3 bucket
+
+    Parameters
+    ----------
+    key : str
+        Name of the service
+    value : str
+        Either logs of the service or the buckets where the logs are stored, based on the const LOGS_RESULTS
+    conf : str
+        Path to write the results
+    """
+
     if value["action"] == 0:
         write_file(
             conf + f"/{key}.json",
@@ -241,14 +298,21 @@ def write_or_dl(key, value, conf):
                 prefix = split[1]
             run_s3_dl(bucket, path, prefix)
 
-'''
-Runs an athena query and verifies it worked
-region: Region where the query is made
-query : Query to be run
-bucket : bucket where the results are written
-
-'''
 def athena_query(region, query, bucket):
+    """Runs an athena query and verifies it worked
+
+    region: str
+        Region where the query is made
+    query : str
+        Query to be run
+    bucket : str
+        bucket where the results are written
+
+    Returns
+    -------
+    response : dict
+        Results of the response
+    """
 
     athena = boto3.client("athena", region_name=region)
 
@@ -270,14 +334,21 @@ def athena_query(region, query, bucket):
     
     return response
 
-'''
-Rename a s3 file (well it copies it, changes the name, then deletes the old one)
-bucket : Bucket where the file to rename is
-folder : Folder where the file to rename is
-new_key : New name of the file
-old_key : Old name of the file
-'''
 def rename_file_s3(bucket, folder, new_key, old_key):
+    """Rename a s3 file (well it copies it, changes the name, then deletes the old one)
+
+    Parameters
+    ----------
+    bucket : str
+        Bucket where the file to rename is
+    folder : str
+        Folder where the file to rename is
+    new_key : str
+        New name of the file
+    old_key : str
+        Old name of the file
+    """
+
     S3_CLIENT.copy_object(
         Bucket=bucket,
         Key=f'{folder}{new_key}',
@@ -289,12 +360,24 @@ def rename_file_s3(bucket, folder, new_key, old_key):
         Key=f"{folder}{old_key}"
     )
 
-'''
-Get the table name out of a ddl file
-ddl : Ddl file 
-get_db : False if you only want the table name. True if you also want the db name that can be present just before the table name.
-'''
 def get_table(ddl, get_db):
+    """Get the table name out of a ddl file
+
+    Parameters
+    ----------
+    ddl : str
+        Ddl file 
+    get_db : bool
+        False if you only want the table name. True if you also want the db name that can be present just before the table name.
+
+    Returns
+    -------
+    table : str
+        Name of the table
+    data : str
+        Content of the ddl file
+    """
+
     with open(ddl, "rt") as ddl:
         data = ddl.read()
         table_content = data.split("(", 1)
@@ -303,11 +386,22 @@ def get_table(ddl, get_db):
             table = table.split(".")[1]
         return table, data
 
-'''
-Split bucket name and prefix of the given bucket
-bucket: Bucket to split up
-'''
 def get_bucket_and_prefix(bucket):
+    """Split bucket name and prefix of the given bucket
+
+    Parameters
+    ----------
+    bucket : str
+        Bucket to split up
+
+    Returns
+    -------
+    bucket_name : str
+        Name of the bucket
+    prefix : str
+        Path in the bucket
+    """
+
     if bucket.startswith("s3://"):
         bucket = bucket.replace("s3://", "")
     
@@ -318,7 +412,15 @@ def get_bucket_and_prefix(bucket):
     return bucket_name, prefix
 
 def create_tmp_bucket(region, bucket_name):
-    """
+    """Create a tmp bucket (only when the local flag is present for the logs analysis)
+
+    Parameters
+    ----------
+    region : str
+        Name of the region where the analysis is done
+    bucket_name :
+        Name of the tmp bucket
+
     Note that for region=us-east-1, AWS necessitates that you leave LocationConstraint blank
     https://docs.aws.amazon.com/AmazonS3/latest/API/API_CreateBucket.html#API_CreateBucket_RequestBody
     """
@@ -389,11 +491,14 @@ MACIE_CLIENT = None
 SSM_CLIENT = None
 ATHENA_CLIENT = None
 
-'''
-Set the clients to the given region.
-region : Region where the client will be used
-'''
 def set_clients(region):
+    """Set the clients to the given region.
+
+    Parameters
+    ----------
+    region : str
+        Region where the client will be used
+    """
     global LAMBDA_CLIENT
     global WAF_CLIENT
     global EC2_CLIENT
