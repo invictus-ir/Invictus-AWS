@@ -1,12 +1,52 @@
 import yaml, datetime
-from source.utils.utils import athena_query, S3_CLIENT, rename_file_s3, get_table, set_clients, date, get_bucket_and_prefix, ENDC, OKGREEN, ROOT_FOLDER, create_folder
+from source.utils.utils import athena_query, S3_CLIENT, rename_file_s3, get_table, set_clients, date, get_bucket_and_prefix, ENDC, OKGREEN, ROOT_FOLDER, create_folder, create_tmp_bucket
+from source.utils.enum import paginate
 import source.utils.utils
 import pandas as pd
 from os import remove, replace
 from time import sleep
-from tqdm import tqdm
+
 
 class Analysis:
+    """Analysis Class that runs the differents functions needed
+
+    Attributes
+    ----------
+    source_bucket :  str
+        Source bucket of the logs
+    output_bucket : str
+        Output bucket of the results
+    region : str
+        Region in which the tool is executed
+    results : dict
+        Object where the results of the functions are written   
+    dl : bool
+        True if the user wants to download the results, False if he wants the results to be written in a s3 bucket
+    path : str
+        Where to write the results locally
+    time : str
+        Time when the class were executed (to add to the path)
+
+    Methods
+    -------
+    self_test()
+        Test function
+    execute(services, regionless)
+        Main function of the class
+    init_athena(db, table, source_bucket, output_bucket, exists, isTrail)
+        Initiates athena database and table for further analysis
+    set_table(ddl, db)
+        Replace the table name of the ddl file by database.table
+    results_query(id, query)
+        Print the results of the query and where they are written
+    merge_results()
+        Merge the results csv files in one single xlsx file
+    clear_folder(dl)
+        If results written locally, delete the tmp bucket created for the analysis. If results written in a bucket, clear the bucket so the .metadata and .txt are deleted
+    is_trail_bucket(catalog, db, table)
+        Verify if a table source bucket is a trail bucket
+    """
+
     source_bucket = None
     output_bucket = None
     region = None
@@ -16,6 +56,15 @@ class Analysis:
     time = None
 
     def __init__(self, region, dl):
+        """Constructor of the Analysis class
+        
+        Parameters
+        ----------
+        region : str
+            Region in which to tool is executed
+        dl : bool
+            True if the user wants to download the results, False if he wants the results to be written in a s3 bucket
+        """
 
         self.region = region
         self.results = []
@@ -30,22 +79,45 @@ class Analysis:
             self.path = f"{self.path}{date}/{self.time}/" 
             create_folder(self.path)
         
-    '''
-    Test function
-    '''
     def self_test(self):
+        """Test function
+        """
+         
         print("[+] Logs Analysis test passed\n")
 
-    '''
-    Main function of the class. 
-    '''
-    def execute(self, source_bucket, output_bucket, catalog, db, table, exists):
+    def execute(self, source_bucket, output_bucket, catalog, db, table, queryfile, exists, timeframe):
+        """Main function of the class
+        
+        Parameters
+        ----------
+        source_bucket :  str
+            Source bucket
+        output_bucket : str
+            Output bucket
+        catalog : str
+            Data catalog used with the database 
+        db : str 
+            Database containing the table for logs analytics
+        table : str
+            Contains the sql requirements to query the logs
+        queryfile : str
+            File containing the queries
+        exists : tuple of bool
+            If the input db and table already exists
+        timeframe : str
+            Time filter for default queries
+        """
 
         print(f"[+] Beginning Logs Analysis")
 
         set_clients(self.region)
         self.source_bucket = source_bucket
-        
+
+        if output_bucket == None:
+            tmp_bucket = "invictus-aws-tmp-results"
+            create_tmp_bucket(self.region, tmp_bucket)
+            output_bucket = f"s3://{tmp_bucket}/"
+    
         bucket, prefix = get_bucket_and_prefix(output_bucket)
         if not prefix:
             prefix = "queries-results/"
@@ -63,14 +135,15 @@ class Analysis:
             db = "cloudtrailAnalysis"
             table = "logs"
         
-        isTrail, source = self.is_trail_bucket(catalog, db, table)
+        isTrail = self.is_trail_bucket(catalog, db, table)
 
         if not exists[0] or not exists[1]:
            self.init_athena(db, table, self.source_bucket, self.output_bucket, exists, isTrail)
 
         try:
-            with open('source/files/queries.yaml') as f:
+            with open(queryfile) as f:
                 queries = yaml.safe_load(f)
+                print(f"[+] Using query file : {queryfile}")
         except Exception as e:
             print(f"[!] Error : {str(e)}")
 
@@ -83,11 +156,20 @@ class Analysis:
         
         for key, value in queries.items():
 
+            if timeframe != None:
+                link = "AND"
+                if "WHERE" not in value:
+                    link = "WHERE"
+                if value[-1] == ";":
+                    value = value.replace(value[-1], f" {link} date_diff('day', from_iso8601_timestamp(eventtime), current_timestamp) <= {timeframe};")
+                else:
+                    value = value + f" {link} date_diff('day', from_iso8601_timestamp(eventtime), current_timestamp) <= {timeframe};"
+          
+            print(f"[+] Running Query : {key}")
             #replacing DATABASE and TABLE in each query
             value = value.replace("DATABASE", db)
             value = value.replace("TABLE", table)
-            print(f"[+] Running Query : {key}")
-            
+
             result = athena_query(self.region, value, self.output_bucket)
 
             id = result["QueryExecution"]["QueryExecutionId"]
@@ -114,16 +196,24 @@ class Analysis:
         self.merge_results()
         self.clear_folder(self.dl)
     
-    '''
-    Initiates athena database and table for further analysis
-    db : Database used
-    table : Table used
-    source_bucket : Source bucket of the logs of the table
-    output_bucket : Bucket where to put the results of the queries
-    exists : If the given db and table already exists
-    isTrail : if the source bucket of the table is a bucket trail
-    '''
     def init_athena(self, db, table, source_bucket, output_bucket, exists, isTrail):
+        """Initiates athena database and table for further analysis
+
+        Parameters
+        ----------
+        db : str
+            Database used
+        table : str
+            Table used
+        source_bucket : str
+            Source bucket of the logs of the table
+        output_bucket : str
+            Bucket where to put the results of the queries
+        exists : bool
+            If the given db and table already exists
+        isTrail : bool
+            if the source bucket of the table is a bucket trail
+        """
 
         # if db doesn't exists
         if not exists[0]:
@@ -260,13 +350,23 @@ class Analysis:
 
             athena_query(self.region, query_table, output_bucket)
             print(f"[+] Table {db}.{table} created")
-        
-    '''
-    Replace the table name of the ddl file by database.table
-    ddl: Ddl file
-    db : Name of the db
-    '''
+   
     def set_table(self, ddl, db):
+        """Replace the table name of the ddl file by database.table
+
+        Parameters
+        ----------
+        ddl : str
+            Ddl file
+        db : str
+            Name of the db
+
+        Returns 
+        -------
+        table : str
+            Name of the table
+        """
+        
         table, data = get_table(ddl, True)
 
         if not "." in table:
@@ -277,12 +377,16 @@ class Analysis:
                 f.close()
         return table
 
-    '''
-    Print the results of the query and where they are written
-    id : Id of the query
-    query : Run query
-    '''
     def results_query(self, id, query):
+        """Print the results of the query and where they are written
+        
+        Parameters
+        ----------
+        id : str
+            Id of the query
+        query : str
+        Query run
+        """
     
         number   = len(source.utils.utils.ATHENA_CLIENT.get_query_results(QueryExecutionId=id)["ResultSet"]["Rows"])
         if number == 2:
@@ -297,10 +401,9 @@ class Analysis:
         else:
             print(f"[+] {number-1} hit. You may have better luck next time my young padawan !")
 
-    '''
-    Merge the results csv files in one single xlsx file
-    '''
     def merge_results(self):
+        """Merge the results csv files in one single xlsx file
+        """
 
         if self.results:
 
@@ -344,47 +447,62 @@ class Analysis:
         else:
             print(f"[+] No results at all were found")
     
-    '''
-    Clear the results folder by removing the .txt, .metadata and also .csv files for queries without any results
-    dl : True if the user wants to download the results, False if he wants the results to be written in a s3 bucket
-    '''
     def clear_folder(self, dl):
+        """If results written locally, delete the tmp bucket created for the analysis. If results written in a bucket, clear the bucket so the .metadata and .txt are deleted
+
+        Parameters
+        ----------
+        dl : bool
+            True if the user wants to download the results, False if he wants the results to be written in a s3 bucket
+        """
 
         bucket, prefix = get_bucket_and_prefix(self.output_bucket)
 
         if dl:
-            S3_CLIENT.delete_object(Bucket=bucket, Key=prefix)
+            res = paginate(S3_CLIENT, "list_objects_v2", "Contents", Bucket=bucket)
 
-            objets = S3_CLIENT.list_objects_v2(Bucket=bucket, Prefix=prefix)
+            if res:
+                objects = [{'Key': obj['Key']} for obj in res]
+                S3_CLIENT.delete_objects(Bucket=bucket, Delete={'Objects': objects})
 
-            # Créez la liste des objets à supprimer
-            objets_a_supprimer = [{'Key': obj['Key']} for obj in objets.get('Contents', [])]
-
-            # Supprimez les objets en une seule requête
-            if objets_a_supprimer:
-                S3_CLIENT.delete_objects(Bucket=bucket, Delete={'Objects': objets_a_supprimer})
+            try:
+                S3_CLIENT.delete_bucket(
+                    Bucket=bucket
+                )
+            except Exception as e:
+                print(f"[!] Error : {str(e)}")
 
         else:
             
-            resp = S3_CLIENT.list_objects_v2(Bucket=bucket, Prefix=prefix)
+            res = paginate(S3_CLIENT, "list_objects_v2", "Contents", Bucket=bucket, Prefix=prefix)
 
-            for el in resp['Contents']:
-                if not el["Key"].split("/")[-1] in self.results:
-                    S3_CLIENT.delete_object(
-                        Bucket=bucket,
-                        Key=f"{el['Key']}"
-                    )
+            if res:
+                for el in res:
+                    if not el["Key"].split("/")[-1] in self.results:
+                        S3_CLIENT.delete_object(
+                            Bucket=bucket,
+                            Key=f"{el['Key']}"
+                        )
 
-    '''
-    Verify if a table source bucket is a trail bucket
-    catalog : Catalog of the database and table
-    db : Database of the table
-    table : Table of the logs
-    '''
     def is_trail_bucket(self, catalog, db, table):
+        """Verify if a table source bucket is a trail bucket
+        
+        Parameters
+        ----------
+        catalog : str
+            Catalog of the database and table
+        db : str
+            Database of the table
+        table : str
+            Table of the logs
+
+        Returns
+        -------
+        isTrail : bool
+            if the trail has a specified bucket
+        """
 
         isTrail = False
-        src = ""
 
         if self.source_bucket != None:
 
@@ -409,6 +527,7 @@ class Analysis:
 
             if response["TableMetadata"]["Parameters"]["inputformat"] == "com.amazon.emr.cloudtrail.CloudTrailInputFormat":
                 isTrail = True
-                src = response["TableMetadata"]["Parameters"]["location"]
         
-        return isTrail, src
+        return isTrail
+
+    
