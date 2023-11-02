@@ -24,6 +24,58 @@ def get_random_chars(n):
     ret = "".join(choices(ascii_lowercase + digits, k=n))
     return ret
 
+def is_list(list_data):
+    """Verify if the given data are a list
+
+    list_data : list
+        List to verify
+    """
+
+    for data in list_data:
+        if isinstance(data, datetime.datetime):
+            data = str(data)
+        if isinstance(data, list):
+            is_list(data)
+        if isinstance(data, dict):
+            is_dict(data)
+
+def is_dict(data_dict):
+    """Verify if the given data are a dictionary
+
+    Parameters
+    ----------
+    data_dict : dict
+        Dictionary to verify
+    """
+
+    for data in data_dict:
+        if isinstance(data_dict[data], datetime.datetime):
+            data_dict[data] = str(data_dict[data])
+        if isinstance(data_dict[data], list):
+            is_list(data_dict[data])
+        if isinstance(data_dict[data], dict):
+            is_dict(data_dict[data])
+
+
+def fix_json(response):
+    """Used to correct json format
+    
+    Parameters
+    ----------
+    response : json
+        Usually the response of a request (boto3, requests)
+        
+    Returns 
+    -------
+    response : json
+        Fixed response
+    """
+
+    if isinstance(response, dict):
+        is_dict(response)
+
+    return response
+
 def try_except(func, *args, **kwargs):
     """Try except function
 

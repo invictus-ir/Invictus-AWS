@@ -157,16 +157,19 @@ class Analysis:
         for key, value in queries.items():
 
             if timeframe != None:
+                link = "AND"
+                if "WHERE" not in value:
+                    link = "WHERE"
                 if value[-1] == ";":
-                    value = value.replace(value[-1], f" AND date_diff('day', from_iso8601_timestamp(eventtime), current_timestamp) <= {timeframe};")
+                    value = value.replace(value[-1], f" {link} date_diff('day', from_iso8601_timestamp(eventtime), current_timestamp) <= {timeframe};")
                 else:
-                    value = value + f" AND date_diff('day', from_iso8601_timestamp(eventtime), current_timestamp) <= {timeframe};"
+                    value = value + f" {link} date_diff('day', from_iso8601_timestamp(eventtime), current_timestamp) <= {timeframe};"
           
             print(f"[+] Running Query : {key}")
             #replacing DATABASE and TABLE in each query
             value = value.replace("DATABASE", db)
             value = value.replace("TABLE", table)
-            
+
             result = athena_query(self.region, value, self.output_bucket)
 
             id = result["QueryExecution"]["QueryExecutionId"]

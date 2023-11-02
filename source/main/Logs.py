@@ -29,19 +29,27 @@ class Logs:
 
         if self.dl:
             create_folder(self.confs)
-        
-    '''
-    Test function
-    '''
+     
     def self_test(self):
+        """Test function
+        """
+
         print("[+] Logs Extraction test passed\n")
 
-    '''
-    Main function of the class. Run every logs extraction function and then write the results where asked
-    services : Array used to write the results of the different enumerations functions
-    regionless : "not-all" if the tool is used on only one region. First region to run the tool on otherwise
-    '''
     def execute(self, services, regionless, start, end):
+        """Main function of the class. Run every logs extraction function and then write the results where asked
+
+        Parameters
+        ----------
+        services : list
+            Array used to write the results of the different configuration functions
+        regionless : str
+            "not-all" if the tool is used on only one region. First region to run the tool on otherwise
+        start : str
+            Start time for logs collection
+        end : str  
+            End time for logs collection
+        """
         
         print(f"[+] Beginning Logs Extraction")
 
@@ -111,13 +119,11 @@ class Logs:
                     sleep(0.1)
            
         print(f"[+] Logs extraction results stored in the bucket {self.bucket}")
-
-    
-        
-    '''
-    Retrieve the logs of the existing guardduty detectors
-    '''
+  
     def get_logs_guardduty(self):
+        """Retrieve the logs of the existing guardduty detectors
+        """
+
         guardduty_list = self.services["guardduty"]
 
         '''
@@ -170,10 +176,16 @@ class Logs:
 
         self.display_progress(len(results), "guardduty")
 
-    '''
-    Retrieve the cloudtrail logs
-    '''
     def get_logs_cloudtrail_logs(self, start, end):
+        """Retrieve the cloudtrail logs
+
+        Parameters
+        ----------
+        start : str
+            Start time for logs collection
+        end : str  
+            End time for logs collection
+        """
 
         trails_name = paginate(source.utils.utils.CLOUDTRAIL_CLIENT, "list_trails", "Trails")
         if trails_name:
@@ -224,10 +236,10 @@ class Logs:
 
             self.display_progress(1, "cloudtrail-logs")
 
-    '''
-    Retrieve the logs of the existing waf web acls
-    '''
     def get_logs_wafv2(self):
+        """Retrieve the logs of the existing waf web acls
+        """
+
         waf_list = self.services["wafv2"]
 
         if waf_list["count"] == -1:
@@ -269,10 +281,10 @@ class Logs:
 
         self.display_progress(cnt, "wafv2")
 
-    '''
-    Retrieve the logs of the existing vpcs
-    '''
     def get_logs_vpc(self):
+        """Retrieve the logs of the existing vpcs
+        """
+
         vpc_list = self.services["vpc"]
 
         if vpc_list["count"] == -1:
@@ -302,10 +314,10 @@ class Logs:
                 pbar.update()
         self.display_progress(cnt, "vpc")
     
-    '''
-    Retrieve the logs of the configuration of the existing elasticbeanstalk environments
-    '''    
     def get_logs_elasticbeanstalk(self):
+        """Retrieve the logs of the configuration of the existing elasticbeanstalk environments
+        """
+
         eb = source.utils.utils.EB_CLIENT 
 
         eb_list = self.services["elasticbeanstalk"]
@@ -364,11 +376,11 @@ class Logs:
                 pbar.update()
 
         self.display_progress(len(environments), "elasticbeanstalk")
-    
-    '''
-    Retrieve the logs of the configuration of the existing cloudwatch dashboards
-    '''
+  
     def get_logs_cloudwatch(self):
+        """Retrieve the logs of the configuration of the existing cloudwatch dashboards
+        """
+
         cloudwatch_list = self.services["cloudwatch"]
 
         if cloudwatch_list["count"] == -1:
@@ -416,10 +428,10 @@ class Logs:
 
         self.display_progress(len(results), "cloudwatch")
     
-    '''
-    Retrieve the logs of the configuration of the existing s3 buckets
-    '''
     def get_logs_s3(self):
+        """Retrieve the logs of the configuration of the existing s3 buckets
+        """
+
         s3_list = self.services["s3"]
 
         if s3_list["count"] == -1:
@@ -466,11 +478,11 @@ class Logs:
                 pbar.update()
        
         self.display_progress(cnt, "s3")
-    
-    '''
-    Retrieve the logs of the configuration of the existing inspector coverages
-    '''      
+       
     def get_logs_inspector2(self):
+        """Retrieve the logs of the configuration of the existing inspector coverages
+        """
+
         inspector_list = self.services["inspector"]
 
         if inspector_list["count"] == -1:
@@ -505,10 +517,10 @@ class Logs:
 
         self.display_progress(len(results), "inspector")
     
-    '''
-    Retrieve the logs of the configuration of the existing macie buckets
-    '''
     def get_logs_maciev2(self):
+        """Retrieve the logs of the configuration of the existing macie buckets
+        """
+
         macie_list = self.services["macie"]
 
         if macie_list["count"] == -1:
@@ -542,13 +554,24 @@ class Logs:
 
         self.display_progress(len(results), "macie")
 
-    '''
-    "Download" the rds logs
-    nameDB : name of the rds instance
-    rds : RDS client
-    logname : name of the logfile to get
-    '''
     def download_rds(self, nameDB, rds, logname):
+        """'Download' the rds logs
+
+        Parameters
+        ----------
+        nameDB : str
+            name of the rds instance
+        rds : object
+            RDS client
+        logname : str
+            name of the logfile to get
+
+        Returns
+        -------
+        ret : dict
+            Part of the response
+        """
+
         response = try_except(
             rds.download_db_log_file_portion,
             DBInstanceIdentifier=nameDB,
@@ -556,12 +579,13 @@ class Logs:
             Marker="0",
         )
 
-        return response.get("LogFileData", "")
+        ret = response.get("LogFileData", "")
+        return ret
     
-    '''
-    Retrieve the logs of the configuration of the existing rds instances
-    '''
     def get_logs_rds(self):
+        """Retrieve the logs of the configuration of the existing rds instances
+        """
+
         rds_list = self.services["rds"]
 
         if rds_list["count"] == -1:
@@ -601,10 +625,10 @@ class Logs:
 
         self.display_progress(len(list_of_dbs), "rds")
     
-    '''
-    Retrieve the logs of the configuration of the existing routes53 hosted zones
-    '''
     def get_logs_route53(self):
+        """Retrieve the logs of the configuration of the existing routes53 hosted zones
+        """
+
         route53_list = self.services["route53"]
 
         if route53_list["count"] == -1:
@@ -646,12 +670,17 @@ class Logs:
                 
         self.display_progress(cnt, "route53")
 
-    '''
-    Diplays if the configuration of the given service worked
-    count : != 0 a configuration file was created. 0 otherwise
-    name : Name of the service
-    '''
     def display_progress(self, count, name):
+        """Diplays if the configuration of the given service worked
+
+        Parameters
+        ----------
+        count : int
+            != 0 a configuration file was created. 0 otherwise
+        name : str
+            Name of the service
+        """
+
         if count != 0:
             print(
                 "         \u2705 "
