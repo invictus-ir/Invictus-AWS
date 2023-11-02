@@ -56,7 +56,6 @@ def is_dict(data_dict):
         if isinstance(data_dict[data], dict):
             is_dict(data_dict[data])
 
-
 def fix_json(response):
     """Used to correct json format
     
@@ -551,6 +550,7 @@ def set_clients(region):
     region : str
         Region where the client will be used
     """
+    
     global LAMBDA_CLIENT
     global WAF_CLIENT
     global EC2_CLIENT
