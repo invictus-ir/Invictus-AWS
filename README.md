@@ -60,7 +60,7 @@ The script runs with a few parameters :
 * `-f file.yaml`. Your own file containing your queries for the analysis. If you don't want to use or modify the default file, you can use your own by specifying it with this option. The file has to already exist.  
 * `-x timeframe`. Used by the queries to filter their results. The query part with the timeframe will automatically be added at the end of your queries if you specify a timeframe. You don't have to add it yourself to your queries.
 
-Usage : `$python3 invictus-aws.py [-h] -w [{cloud,local}] (-r AWS_REGION | -A [ALL_REGIONS]) -s [STEP] [-start YYYY-MM-DD] [-end YYYY-MM-DD] [-b SOURCE_BUCKET] [-o OUTPUT_BUCKET][-c CATALOG] [-d DATABASE] [-t TABLE] [-f QUERY_FILE]`
+Usage : `$python3 invictus-aws.py [-h] -w [{cloud,local}] (-r AWS_REGION | -A [ALL_REGIONS]) -s [STEP] [-start YYYY-MM-DD] [-end YYYY-MM-DD] [-b SOURCE_BUCKET] [-o OUTPUT_BUCKET][-c CATALOG] [-d DATABASE] [-t TABLE] [-f QUERY_FILE] [-x TIMEFRAME]`
 
 ### Examples
 

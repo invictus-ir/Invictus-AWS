@@ -1,16 +1,17 @@
+"""File containg all the aws enumeration function used to get data."""
+
 from source.utils.utils import fix_json, try_except, S3_CLIENT
 import source.utils.utils
 from tqdm import tqdm
 
 def s3_lookup():
-    """Used to return all existing buckets
+    """Return all existing buckets.
     
     Returns
     -------
     elements : list
         List of the existing buckets
     """
-     
     response = try_except(S3_CLIENT.list_buckets)
     buckets = fix_json(response)
 
@@ -20,7 +21,7 @@ def s3_lookup():
     return elements
 
 def ec2_lookup():
-    """Used to return all ec2 instances
+    """Return all ec2 instances.
 
     Returns
     -------
@@ -45,7 +46,7 @@ def ec2_lookup():
     return elements  
 
 def simple_paginate(client, command, **kwargs):
-    """Return all the results of the command, no matter the number of results 
+    """Return all the results of the command, no matter the number of results.
     
     Parameters
     ----------
@@ -61,7 +62,6 @@ def simple_paginate(client, command, **kwargs):
     elements : list
         List of the results of the command
     """
-
     elements = []
    
     paginator = client.get_paginator(command)
@@ -79,7 +79,7 @@ def simple_paginate(client, command, **kwargs):
     return elements  
 
 def paginate(client, command, array, **kwargs):
-    """Same as the previous function, but we can then filter the results on a specific part of the response 
+    """Do the same as the previous function, but we can then filter the results on a specific part of the response.
 
     Parameters
     ----------
@@ -97,7 +97,6 @@ def paginate(client, command, array, **kwargs):
     elements : list
         List of the results of the command
     """
-
     elements = []
     paginator = client.get_paginator(command)
     
@@ -133,7 +132,6 @@ def simple_misc_lookup(client, function, name_token, **kwargs):
     elements : list
         List of the results of the command
     """
-
     tokens = []
 
     elements  = []
@@ -165,7 +163,7 @@ def simple_misc_lookup(client, function, name_token, **kwargs):
     return elements
 
 def misc_lookup(client, function, name_token, array, **kwargs):
-    """Same as the previous function, but we can then filter the results on a specific part of the response. Used by functions not usable by paginate.
+    """Do the same as the previous function, but we can then filter the results on a specific part of the response. Used by functions not usable by paginate.
 
     Parameters
     ----------
@@ -185,7 +183,6 @@ def misc_lookup(client, function, name_token, array, **kwargs):
     elements : list
         List of the results of the command
     """
-
     tokens = []
 
     elements  = []
@@ -218,7 +215,7 @@ def misc_lookup(client, function, name_token, array, **kwargs):
     return elements
 
 def list_traffic_policies_lookup(function):
-    """Get all the results of the list_traffic_policies command of the route53 client
+    """Get all the results of the list_traffic_policies command of the route53 client.
 
     Parameters
     ----------
@@ -230,7 +227,6 @@ def list_traffic_policies_lookup(function):
     elements : list
         List of the results of the command
     """
-
     elements  = []
     response = try_except(function, MaxItems="100")
     response.pop("ResponseMetadata", None)

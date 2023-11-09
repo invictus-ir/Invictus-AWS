@@ -1,3 +1,5 @@
+"""File used for the configuration collection."""
+
 from source.utils.utils import create_s3_if_not_exists, PREPARATION_BUCKET, ROOT_FOLDER, create_command, create_folder, write_file, write_s3, set_clients
 import source.utils.utils
 from source.utils.enum import *
@@ -6,7 +8,7 @@ from time import sleep
 
 
 class Configuration:
-    """Configuration Class that runs the differents functions needed
+    """Configuration Class that runs the differents functions needed.
 
     Attributes
     ----------
@@ -70,7 +72,7 @@ class Configuration:
     dl = None
 
     def __init__(self, region, dl):
-        """Constructor of the Configuration class
+        """Handle the constructor of the Configuration class.
         
         Parameters
         ----------
@@ -79,20 +81,17 @@ class Configuration:
         dl : bool
             True if the user wants to download the results, False if he wants the results to be written in a s3 bucket
         """
-
         self.region = region
         self.dl = dl
         if not self.dl:
             self.bucket = create_s3_if_not_exists(self.region, PREPARATION_BUCKET)
 
     def self_test(self):
-        """Test function
-        """
-
+        """Test function."""
         print("[+] Configuration test passed")
 
     def execute(self, services, regionless):
-        """Main function of the class. Run every configuration function and then write the results where asked
+        """Handle the main function of the class. Run every configuration function and then write the results where asked.
         
         Parameters
         ---------
@@ -101,7 +100,6 @@ class Configuration:
         regionless : str
             "not-all" if the tool is used on only one region. First region to run the tool on otherwise
         """
-
         print(f"[+] Beginning Configuration Extraction")
 
         set_clients(self.region)
@@ -155,9 +153,7 @@ class Configuration:
             print(f"[+] Configurations results stored in the bucket {self.bucket}")
 
     def get_configuration_s3(self):
-        """Retrieve multiple elements of the configuration of the existing s3 buckets
-        """ 
-
+        """Retrieve multiple elements of the configuration of the existing s3 buckets.""" 
         s3_list = self.services["s3"]
 
         '''
@@ -255,9 +251,7 @@ class Configuration:
         self.display_progress(len(results), "s3")
 
     def get_configuration_wafv2(self):
-        """Retrieve multiple elements of the configuration of the existing web acls
-        """ 
-
+        """Retrieve multiple elements of the configuration of the existing web acls.""" 
         waf_list = self.services["wafv2"]
 
         if waf_list["count"] == -1:
@@ -345,9 +339,7 @@ class Configuration:
         self.display_progress(len(results), "wafv2")
 
     def get_configuration_lambda(self):
-        """Retrieve multiple elements of the configuration of the existing lambdas
-        """ 
-
+        """Retrieve multiple elements of the configuration of the existing lambdas.""" 
         lambda_list = self.services["lambda"]
 
         if lambda_list["count"] == -1:
@@ -415,9 +407,7 @@ class Configuration:
         self.display_progress(len(results), "lambda")
    
     def get_configuration_vpc(self):
-        """Retrieve multiple elements of the configuration of the existing vpcs
-        """ 
-
+        """Retrieve multiple elements of the configuration of the existing vpcs.""" 
         vpc_list = self.services["vpc"]
 
         if vpc_list["count"] == -1:
@@ -546,9 +536,7 @@ class Configuration:
         self.display_progress(len(results), "vpc")
     
     def get_configuration_elasticbeanstalk(self):
-        """Retrieve multiple elements of the configuration of the existing elasticbeanstalk environments
-        """ 
-
+        """Retrieve multiple elements of the configuration of the existing elasticbeanstalk environments."""
         eb_list = self.services["elasticbeanstalk"]
 
         if eb_list["count"] == -1:
@@ -667,9 +655,7 @@ class Configuration:
         self.display_progress(len(results), "elasticbeanstalk")
     
     def get_configuration_route53(self):
-        """Retrieve multiple elements of the configuration of the existing routes53 hosted zones
-        """ 
-
+        """Retrieve multiple elements of the configuration of the existing routes53 hosted zones.""" 
         route53_list = self.services["route53"]
 
         if route53_list["count"] == -1:
@@ -746,9 +732,7 @@ class Configuration:
         return
     
     def get_configuration_ec2(self):
-        """Retrieve multiple elements of the configuration of the existing ec2 instances
-        """ 
-
+        """Retrieve multiple elements of the configuration of the existing ec2 instances.""" 
         ec2_list = self.services["ec2"]
 
         if ec2_list["count"] == -1:
@@ -821,9 +805,7 @@ class Configuration:
         self.display_progress(len(results), "ec2")
    
     def get_configuration_iam(self):
-        """Retrieve multiple elements of the configuration of the existing iam users
-        """ 
-
+        """Retrieve multiple elements of the configuration of the existing iam users.""" 
         iam_list = self.services["iam"]
 
         if iam_list["count"] == -1:
@@ -872,9 +854,7 @@ class Configuration:
         return
     
     def get_configuration_dynamodb(self):
-        """Retrieve multiple elements of the configuration of the existing dynamodb tables
-        """ 
-
+        """Retrieve multiple elements of the configuration of the existing dynamodb tables.""" 
         dynamodb_list = self.services["s3"]
 
         if dynamodb_list["count"] == -1:
@@ -940,9 +920,7 @@ class Configuration:
         return
     
     def get_configuration_rds(self):
-        """Retrieve multiple elements of the configuration of the existing rds instances
-        """ 
-
+        """Retrieve multiple elements of the configuration of the existing rds instances.""" 
         rds_list = self.services["rds"]
 
         if rds_list["count"] == -1:
@@ -978,9 +956,7 @@ class Configuration:
         return
     
     def get_configuration_guardduty(self):
-        """Retrieve multiple elements of the configuration of the existing guardduty detectors
-        """ 
-
+        """Retrieve multiple elements of the configuration of the existing guardduty detectors.""" 
         guardduty_list = self.services["guardduty"]
 
         if guardduty_list["count"] == -1:
@@ -1086,9 +1062,7 @@ class Configuration:
         return
     
     def get_configuration_cloudwatch(self):
-        """Retrieve multiple elements of the configuration of the existing cloudwatch dashboards
-        """ 
-
+        """Retrieve multiple elements of the configuration of the existing cloudwatch dashboards.""" 
         cloudwatch_list = self.services["cloudwatch"]
 
         if cloudwatch_list["count"] == -1:
@@ -1139,9 +1113,7 @@ class Configuration:
         return
 
     def get_configuration_maciev2(self):
-        """Retrieve multiple elements of the configuration of the existing macie buckets
-        """ 
-
+        """Retrieve multiple elements of the configuration of the existing macie buckets.""" 
         macie_list = self.services["macie"]
 
         if macie_list["count"] == -1:
@@ -1186,9 +1158,7 @@ class Configuration:
         return
     
     def get_configuration_inspector2(self):
-        """Retrieve multiple elements of the configuration of the existing inspector coverages
-        """ 
-
+        """Retrieve multiple elements of the configuration of the existing inspector coverages.""" 
         inspector_list = self.services["inspector"]
 
         if inspector_list["count"] == 0:
@@ -1220,9 +1190,7 @@ class Configuration:
         self.display_progress(len(results), "inspector")
     
     def get_configuration_detective(self):
-        """Retrieve multiple elements of the configuration of the existing detective graphs
-        """ 
-
+        """Retrieve multiple elements of the configuration of the existing detective graphs.""" 
         detective_list = self.services["detective"]
 
         if detective_list["count"] == -1:
@@ -1244,9 +1212,7 @@ class Configuration:
         print("finito detectivo")
     
     def get_configuration_cloudtrail(self):
-        """Retrieve multiple elements of the configuration of the existing cloudtrail trails
-        """ 
-
+        """Retrieve multiple elements of the configuration of the existing cloudtrail trails.""" 
         cloudtrail_list = self.services["cloudtrail"]
 
         if cloudtrail_list["count"] == -1:
@@ -1287,7 +1253,7 @@ class Configuration:
         self.display_progress(len(results), "cloudtrail")
 
     def display_progress(self, count, name):
-        """Display if the configuration of the given service worked
+        """Display if the configuration of the given service worked.
 
         Parameters
         ----------
@@ -1296,7 +1262,6 @@ class Configuration:
         name : str
             Name of the service
         """
-
         if count != 0:
             print(
                 "\t\u2705 "

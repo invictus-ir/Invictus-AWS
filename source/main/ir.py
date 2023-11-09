@@ -1,11 +1,13 @@
-from source.main.Enumeration import Enumeration
-from source.main.Configuration import Configuration
-from source.main.Logs import Logs
-from source.main.Analysis import Analysis
+"""File used to run all the steps."""
+
+from source.main.enumeration import Enumeration
+from source.main.configuration import Configuration
+from source.main.logs import Logs
+from source.main.analysis import Analysis
 from source.utils.utils import ENUMERATION_SERVICES, BOLD, ENDC
 
 class IR:
-    """IR Class that runs the differents functions needed
+    """IR Class that runs the differents functions needed.
 
     Attributes
     ----------
@@ -41,6 +43,7 @@ class IR:
     execute_analysis(queryfile, exists, timeframe)
         Run the logs analysis main function
     """
+
     services = None
     e = None
     c = None
@@ -53,7 +56,7 @@ class IR:
     table = None
 
     def __init__(self, region, dl, steps, source=None, output=None, catalog=None, database=None, table=None):
-        """Constructor of the IR class
+        """Handle the constructor of the IR class.
         
         Parameters
         ----------
@@ -74,7 +77,6 @@ class IR:
         table : str, optional
             Contains the sql requirements to query the logs
         """
-        
         print(f"\n[+] Working on region {BOLD}{region}{ENDC}")
         
         if "4" in steps:
@@ -100,29 +102,27 @@ class IR:
                 self.l = Logs(region, dl)
 
     def execute_enumeration(self, regionless):
-        """Run the enumeration main function
+        """Run the enumeration main function.
         
         Parameters
         ----------
         regionless : str
             'not-all' if the tool is used on only one region. First region to run the tool on otherwise
         """
-
         self.services = self.e.execute(self.services, regionless)
 
     def execute_configuration(self, regionless):
-        """Run the configuration main function
+        """Run the configuration main function.
         
         Parameters
         ----------
         regionless : str
             'not-all' if the tool is used on only one region. First region to run the tool on otherwise
         """
-
         self.c.execute(self.services, regionless)
 
     def execute_logs(self, regionless, start, end):
-        """Run the logs extraction main function
+        """Run the logs extraction main function.
         
         Parameters
         ----------
@@ -133,11 +133,10 @@ class IR:
         end : str
             End date of the logs collected
         """
-
         self.l.execute(self.services, regionless, start, end)
 
     def execute_analysis(self, queryfile, exists, timeframe):
-        """Run the logs analysis main function
+        """Run the logs analysis main function.
         
         Parameters
         ----------
@@ -148,5 +147,4 @@ class IR:
         timeframe : str
             Timeframe used in the query to filter results
         """
-        
         self.a.execute(self.source, self.output, self.catalog, self.database, self.table, queryfile, exists, timeframe)

@@ -1,3 +1,6 @@
+"""File used for the logs collection
+"""
+
 import datetime
 from sys import exit
 from json import loads, dumps

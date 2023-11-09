@@ -1,3 +1,5 @@
+"""File used for the analysis."""
+
 import yaml, datetime
 from source.utils.utils import athena_query, S3_CLIENT, rename_file_s3, get_table, set_clients, date, get_bucket_and_prefix, ENDC, OKGREEN, ROOT_FOLDER, create_folder, create_tmp_bucket
 from source.utils.enum import paginate
@@ -8,7 +10,7 @@ from time import sleep
 
 
 class Analysis:
-    """Analysis Class that runs the differents functions needed
+    """Analysis Class that runs the differents functions needed.
 
     Attributes
     ----------
@@ -56,7 +58,7 @@ class Analysis:
     time = None
 
     def __init__(self, region, dl):
-        """Constructor of the Analysis class
+        """Handle the constructor of the Analysis class.
         
         Parameters
         ----------
@@ -65,7 +67,6 @@ class Analysis:
         dl : bool
             True if the user wants to download the results, False if he wants the results to be written in a s3 bucket
         """
-
         self.region = region
         self.results = []
         self.dl = dl
@@ -80,13 +81,11 @@ class Analysis:
             create_folder(self.path)
         
     def self_test(self):
-        """Test function
-        """
-         
+        """Test function."""
         print("[+] Logs Analysis test passed\n")
 
     def execute(self, source_bucket, output_bucket, catalog, db, table, queryfile, exists, timeframe):
-        """Main function of the class
+        """Handle the main function of the class.
         
         Parameters
         ----------
@@ -107,7 +106,6 @@ class Analysis:
         timeframe : str
             Time filter for default queries
         """
-
         print(f"[+] Beginning Logs Analysis")
 
         set_clients(self.region)
@@ -197,7 +195,7 @@ class Analysis:
         self.clear_folder(self.dl)
     
     def init_athena(self, db, table, source_bucket, output_bucket, exists, isTrail):
-        """Initiates athena database and table for further analysis
+        """Initiate athena database and table for further analysis.
 
         Parameters
         ----------
@@ -214,7 +212,6 @@ class Analysis:
         isTrail : bool
             if the source bucket of the table is a bucket trail
         """
-
         # if db doesn't exists
         if not exists[0]:
             query_db = f"CREATE DATABASE IF NOT EXISTS {db};"
@@ -352,7 +349,7 @@ class Analysis:
             print(f"[+] Table {db}.{table} created")
    
     def set_table(self, ddl, db):
-        """Replace the table name of the ddl file by database.table
+        """Replace the table name of the ddl file by database.table.
 
         Parameters
         ----------
@@ -366,7 +363,6 @@ class Analysis:
         table : str
             Name of the table
         """
-        
         table, data = get_table(ddl, True)
 
         if not "." in table:
@@ -378,7 +374,7 @@ class Analysis:
         return table
 
     def results_query(self, id, query):
-        """Print the results of the query and where they are written
+        """Print the results of the query and where they are written.
         
         Parameters
         ----------
@@ -387,7 +383,6 @@ class Analysis:
         query : str
         Query run
         """
-    
         number   = len(source.utils.utils.ATHENA_CLIENT.get_query_results(QueryExecutionId=id)["ResultSet"]["Rows"])
         if number == 2:
             print(f"[+] {OKGREEN}{number-1} hit !{ENDC}")
@@ -402,9 +397,7 @@ class Analysis:
             print(f"[+] {number-1} hit. You may have better luck next time my young padawan !")
 
     def merge_results(self):
-        """Merge the results csv files in one single xlsx file
-        """
-
+        """Merge the results csv files in one single xlsx file."""
         if self.results:
 
             bucket_name, prefix = get_bucket_and_prefix(self.output_bucket)
@@ -448,14 +441,13 @@ class Analysis:
             print(f"[+] No results at all were found")
     
     def clear_folder(self, dl):
-        """If results written locally, delete the tmp bucket created for the analysis. If results written in a bucket, clear the bucket so the .metadata and .txt are deleted
+        """If results written locally, delete the tmp bucket created for the analysis. If results written in a bucket, clear the bucket so the .metadata and .txt are deleted.
 
         Parameters
         ----------
         dl : bool
             True if the user wants to download the results, False if he wants the results to be written in a s3 bucket
         """
-
         bucket, prefix = get_bucket_and_prefix(self.output_bucket)
 
         if dl:
@@ -485,7 +477,7 @@ class Analysis:
                         )
 
     def is_trail_bucket(self, catalog, db, table):
-        """Verify if a table source bucket is a trail bucket
+        """Verify if a table source bucket is a trail bucket.
         
         Parameters
         ----------
@@ -501,7 +493,6 @@ class Analysis:
         isTrail : bool
             if the trail has a specified bucket
         """
-
         isTrail = False
 
         if self.source_bucket != None:

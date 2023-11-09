@@ -1,14 +1,15 @@
+"""Main file of the tool, used to run all the steps."""
+
 import argparse, sys
 from os import path
 import datetime
 from re import match
 
-from source.main.IR import IR
+from source.main.ir import IR
 from source.utils.utils import *
 
 def set_args():
-    """Define the arguments used when calling the tool
-    """
+    """Define the arguments used when calling the tool."""
     parser = argparse.ArgumentParser(add_help=False)
 
     parser.add_argument(
@@ -123,7 +124,7 @@ def set_args():
     return parser.parse_args()
 
 def run_steps(dl, region, regionless, steps, start, end, source, output, catalog, database, table, queryfile, exists, timeframe):
-    """Run the steps of the tool (enum, config, logs extraction, logs analysis)
+    """Run the steps of the tool (enum, config, logs extraction, logs analysis).
 
     Parameters
     ----------
@@ -156,7 +157,6 @@ def run_steps(dl, region, regionless, steps, start, end, source, output, catalog
     timeframe : str
         Time filter for default queries
     """
-
     if dl:
         create_folder(ROOT_FOLDER + "/" + region)
 
@@ -194,14 +194,13 @@ def run_steps(dl, region, regionless, steps, start, end, source, output, catalog
                 print(str(e))
 
 def verify_all_regions(input_region):
-    """Search for all enabled regions and verify that the given region exists (region that the tool will begin with)
+    """Search for all enabled regions and verify that the given region exists (region that the tool will begin with).
     
     Parameters
     ----------
     input_region : str
         If we're in this function, the used decided to run the tool on all enabled functions. This given region is the first one that the tool will analyze.
     """
-
     response = try_except(
         ACCOUNT_CLIENT.list_regions,
         RegionOptStatusContains=["ENABLED", "ENABLED_BY_DEFAULT"],
@@ -227,7 +226,7 @@ def verify_all_regions(input_region):
         sys.exit(-1)
 
 def verify_one_region(region):
-    """Verify the region inputs and run the steps of the tool for one region
+    """Verify the region inputs and run the steps of the tool for one region.
     
     Parameters
     ----------
@@ -239,7 +238,6 @@ def verify_one_region(region):
     good : bool
         True if the region is enabled
     """
-
     good = False
 
     try:
@@ -257,7 +255,7 @@ def verify_one_region(region):
     return good
 
 def verify_steps(steps, source, output, catalog, database, table, region, dl):
-    """Verify that the steps entered are correct
+    """Verify that the steps entered are correct.
 
     Parameters
     ----------
@@ -293,7 +291,6 @@ def verify_steps(steps, source, output, catalog, database, table, region, dl):
     exists : tuple of bool
         If the input db and table already exists
     """
-
     #Verifying steps inputs
 
     for step in steps:
@@ -423,7 +420,7 @@ def verify_steps(steps, source, output, catalog, database, table, region, dl):
     return steps, source, output, database, table, exists
 
 def verify_bucket(bucket, type):
-    """Verify that the user inputs regarding the buckets logs are correct
+    """Verify that the user inputs regarding the buckets logs are correct.
 
     Parameters
     ----------
@@ -437,7 +434,6 @@ def verify_bucket(bucket, type):
     bucket : str
         Bucket we verify it exists
     """
-
     s3 = boto3.resource('s3')
 
     if not bucket.endswith("/"):
@@ -459,7 +455,7 @@ def verify_bucket(bucket, type):
     return bucket
 
 def verify_dates(start, end, steps):
-    """Verify if the date inputs are correct
+    """Verify if the date inputs are correct.
     
     Parameters
     ----------
@@ -470,7 +466,6 @@ def verify_dates(start, end, steps):
     steps : list of str
         Steps to run
     """
-
     if "3" not in steps and (start != None or end != None):
         print("invictus-aws.py: error: Only input dates with step 3.")
         sys.exit(-1)
@@ -516,7 +511,7 @@ def verify_dates(start, end, steps):
             sys.exit(-1)
 
 def verify_file(queryfile, steps):
-    """Verify if the query file input is correct
+    """Verify if the query file input is correct.
     
     Parameters
     ----------
@@ -525,7 +520,6 @@ def verify_file(queryfile, steps):
     steps : list of str
         Steps to run
     """
-
     if "4" not in steps and queryfile != "source/files/queries.yaml":
         print("invictus-aws.py: error: Only input queryfile with step 4.")
         sys.exit(-1)
@@ -538,7 +532,7 @@ def verify_file(queryfile, steps):
         sys.exit(-1)
 
 def verify_timeframe(timeframe, steps):
-    """Verify the input timeframe which is used to filter queries results
+    """Verify the input timeframe which is used to filter queries results.
 
     Parameters
     ----------
@@ -547,7 +541,6 @@ def verify_timeframe(timeframe, steps):
     steps : list of str
         Steps to run
     """
-
     if timeframe != None:
 
         if "4" not in steps:
@@ -559,9 +552,7 @@ def verify_timeframe(timeframe, steps):
             sys.exit(-1)
 
 def main():
-    """Main function of the tool. Gets the arguments and run the appropriate functions.
-    """
-
+    """Get the arguments and run the appropriate functions."""
     print(
         """
       _            _      _                                      

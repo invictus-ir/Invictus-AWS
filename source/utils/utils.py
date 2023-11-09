@@ -1,3 +1,5 @@
+"""File containing all types of functions and variables, used everywhere in the tool."""
+
 import boto3
 from botocore.exceptions import ClientError
 import datetime, os
@@ -8,7 +10,7 @@ from json import dumps
 
 
 def get_random_chars(n):
-    """Generate random str
+    """Generate random str.
 
     Parameters
     ----------
@@ -20,17 +22,15 @@ def get_random_chars(n):
     ret : str
         Random str of n chars
     """
-
     ret = "".join(choices(ascii_lowercase + digits, k=n))
     return ret
 
 def is_list(list_data):
-    """Verify if the given data are a list
+    """Verify if the given data are a list.
 
     list_data : list
         List to verify
     """
-
     for data in list_data:
         if isinstance(data, datetime.datetime):
             data = str(data)
@@ -40,14 +40,13 @@ def is_list(list_data):
             is_dict(data)
 
 def is_dict(data_dict):
-    """Verify if the given data are a dictionary
+    """Verify if the given data are a dictionary.
 
     Parameters
     ----------
     data_dict : dict
         Dictionary to verify
     """
-
     for data in data_dict:
         if isinstance(data_dict[data], datetime.datetime):
             data_dict[data] = str(data_dict[data])
@@ -57,7 +56,7 @@ def is_dict(data_dict):
             is_dict(data_dict[data])
 
 def fix_json(response):
-    """Used to correct json format
+    """Correct json format.
     
     Parameters
     ----------
@@ -69,14 +68,13 @@ def fix_json(response):
     response : json
         Fixed response
     """
-
     if isinstance(response, dict):
         is_dict(response)
 
     return response
 
 def try_except(func, *args, **kwargs):
-    """Try except function
+    """Try except function.
 
     Parameters
     ----------
@@ -92,7 +90,6 @@ def try_except(func, *args, **kwargs):
     ret : str
         Either the execution of the function, either an object
     """
-
     try:
         ret = func(*args, **kwargs)
     except Exception as e:
@@ -100,7 +97,7 @@ def try_except(func, *args, **kwargs):
     return ret
 
 def create_command(command, output):
-    """Merge the command and its results
+    """Merge the command and its results.
 
     Parameters
     ----------
@@ -114,14 +111,13 @@ def create_command(command, output):
     command_output : dict
         Command and its results
     """
-
     command_output = {}
     command_output["command"] = command
     command_output["output"] = output
     return command_output
 
 def writefile_s3(bucket, key, filename):
-    """Write a local file to a s3 bucket
+    """Write a local file to a s3 bucket.
 
     Parameters
     ----------
@@ -137,12 +133,11 @@ def writefile_s3(bucket, key, filename):
     response : dict
         Response of the request made
     """
-
     response = S3_CLIENT.meta.client.upload_file(filename, bucket, key)
     return response
 
 def create_s3_if_not_exists(region, bucket_name):
-    """Create a s3 bucket if needed during the investigation
+    """Create a s3 bucket if needed during the investigation.
 
     Parameters
     ----------
@@ -180,7 +175,7 @@ def create_s3_if_not_exists(region, bucket_name):
     return bucket_name
 
 def write_file(file, mode, content):
-    """Write content to a new file
+    """Write content to a new file.
 
     Parameters
     ----------
@@ -191,23 +186,21 @@ def write_file(file, mode, content):
     content : str
         Content to be written in the file
     """
-
     with open(file, mode) as f:
         f.write(content)
 
 def create_folder(path):
-    """Create a folder
+    """Create a folder.
     
     Parameters
     ----------
     path : str
         Path of the folder to be created
     """
-
     os.makedirs(path, exist_ok=True)
 
 def run_s3_dl(bucket, path, prefix=""):
-    """Handle the steps of the content's download of a s3 bucket
+    """Handle the steps of the content's download of a s3 bucket.
     
     Parameters
     ----------
@@ -218,7 +211,6 @@ def run_s3_dl(bucket, path, prefix=""):
     prefix : str, optional
         Specific folder in the bucket to download
     """
-
     paginator = S3_CLIENT.get_paginator('list_objects_v2')
     operation_parameters = {"Bucket": bucket, "Prefix": prefix}
 
@@ -235,7 +227,7 @@ def run_s3_dl(bucket, path, prefix=""):
                     S3_CLIENT.download_file(bucket, s3_key, local_path)
 
 def write_s3(bucket, key, content):
-    """Write content to s3 bucket
+    """Write content to s3 bucket.
 
     Parameters
     ----------
@@ -251,12 +243,11 @@ def write_s3(bucket, key, content):
     response : dict
         Results of the request made
     """
-
     response = S3_CLIENT.put_object(Bucket=bucket, Key=key, Body=content)
     return response
 
 def copy_s3_bucket(src_bucket, dst_bucket, service, region, prefix=""):
-    """Copy the content at a specific path of a s3 bucket to another
+    """Copy the content at a specific path of a s3 bucket to another.
 
     Parameters
     ----------
@@ -271,7 +262,6 @@ def copy_s3_bucket(src_bucket, dst_bucket, service, region, prefix=""):
     prefix : str, optional
         Path of the data to copy to reduce the amount of data
     """
-
     s3res = boto3.resource("s3")
 
     paginator = S3_CLIENT.get_paginator('list_objects_v2')
@@ -285,7 +275,7 @@ def copy_s3_bucket(src_bucket, dst_bucket, service, region, prefix=""):
                 try_except(s3res.meta.client.copy, copy_source, dst_bucket, new_key)
 
 def copy_or_write_s3(key, value, dst_bucket, region):
-    """Depending on the action content of value (0 or 1), write the data to our s3 bucket, or copy the data to the source bucket to our bucket
+    """Depending on the action content of value (0 or 1), write the data to our s3 bucket, or copy the data to the source bucket to our bucket.
 
     Parameters
     ----------
@@ -298,7 +288,6 @@ def copy_or_write_s3(key, value, dst_bucket, region):
     region : str
         Region where the serice is scanned
     """
-
     if value["action"] == 0:
         write_s3(
             dst_bucket,
@@ -319,7 +308,7 @@ def copy_or_write_s3(key, value, dst_bucket, region):
             copy_s3_bucket(bucket, dst_bucket, key, region, prefix)
 
 def write_or_dl(key, value, conf):
-    """Depending on the action content of value (0 or 1), write the data to a single json file, or download the content of a s3 bucket
+    """Depending on the action content of value (0 or 1), write the data to a single json file, or download the content of a s3 bucket.
 
     Parameters
     ----------
@@ -330,7 +319,6 @@ def write_or_dl(key, value, conf):
     conf : str
         Path to write the results
     """
-
     if value["action"] == 0:
         write_file(
             conf + f"/{key}.json",
@@ -350,7 +338,7 @@ def write_or_dl(key, value, conf):
             run_s3_dl(bucket, path, prefix)
 
 def athena_query(region, query, bucket):
-    """Runs an athena query and verifies it worked
+    """Run an athena query and verifies it worked.
 
     region: str
         Region where the query is made
@@ -364,7 +352,6 @@ def athena_query(region, query, bucket):
     response : dict
         Results of the response
     """
-
     athena = boto3.client("athena", region_name=region)
 
     result = athena.start_query_execution(
@@ -386,7 +373,7 @@ def athena_query(region, query, bucket):
     return response
 
 def rename_file_s3(bucket, folder, new_key, old_key):
-    """Rename a s3 file (well it copies it, changes the name, then deletes the old one)
+    """Rename a s3 file (well it copies it, changes the name, then deletes the old one).
 
     Parameters
     ----------
@@ -399,7 +386,6 @@ def rename_file_s3(bucket, folder, new_key, old_key):
     old_key : str
         Old name of the file
     """
-
     S3_CLIENT.copy_object(
         Bucket=bucket,
         Key=f'{folder}{new_key}',
@@ -412,7 +398,7 @@ def rename_file_s3(bucket, folder, new_key, old_key):
     )
 
 def get_table(ddl, get_db):
-    """Get the table name out of a ddl file
+    """Get the table name out of a ddl file.
 
     Parameters
     ----------
@@ -428,7 +414,6 @@ def get_table(ddl, get_db):
     data : str
         Content of the ddl file
     """
-
     with open(ddl, "rt") as ddl:
         data = ddl.read()
         table_content = data.split("(", 1)
@@ -438,7 +423,7 @@ def get_table(ddl, get_db):
         return table, data
 
 def get_bucket_and_prefix(bucket):
-    """Split bucket name and prefix of the given bucket
+    """Split bucket name and prefix of the given bucket.
 
     Parameters
     ----------
@@ -452,7 +437,6 @@ def get_bucket_and_prefix(bucket):
     prefix : str
         Path in the bucket
     """
-
     if bucket.startswith("s3://"):
         bucket = bucket.replace("s3://", "")
     
@@ -463,7 +447,7 @@ def get_bucket_and_prefix(bucket):
     return bucket_name, prefix
 
 def create_tmp_bucket(region, bucket_name):
-    """Create a tmp bucket (only when the local flag is present for the logs analysis)
+    """Create a tmp bucket (only when the local flag is present for the logs analysis).
 
     Parameters
     ----------
@@ -550,7 +534,6 @@ def set_clients(region):
     region : str
         Region where the client will be used
     """
-    
     global LAMBDA_CLIENT
     global WAF_CLIENT
     global EC2_CLIENT
