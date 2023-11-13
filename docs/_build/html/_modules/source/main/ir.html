@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>source.main.ir &mdash; test  documentation</title>
+      <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
+        <script src="../../../_static/jquery.js"></script>
+        <script src="../../../_static/underscore.js"></script>
+        <script src="../../../_static/doctools.js"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            test
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules.html">Invictus-AWS</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">test</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">source.main.ir</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for source.main.ir</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;File used to run all the steps.&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">source.main.enumeration</span> <span class="kn">import</span> <span class="n">Enumeration</span>
+<span class="kn">from</span> <span class="nn">source.main.configuration</span> <span class="kn">import</span> <span class="n">Configuration</span>
+<span class="kn">from</span> <span class="nn">source.main.logs</span> <span class="kn">import</span> <span class="n">Logs</span>
+<span class="kn">from</span> <span class="nn">source.main.analysis</span> <span class="kn">import</span> <span class="n">Analysis</span>
+<span class="kn">from</span> <span class="nn">source.utils.utils</span> <span class="kn">import</span> <span class="n">ENUMERATION_SERVICES</span><span class="p">,</span> <span class="n">BOLD</span><span class="p">,</span> <span class="n">ENDC</span>
+
+<div class="viewcode-block" id="IR"><a class="viewcode-back" href="../../../source.main.html#source.main.ir.IR">[docs]</a><span class="k">class</span> <span class="nc">IR</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;IR Class that runs the differents functions needed.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    services : dict</span>
+<span class="sd">        Will contain data about the diffent steps</span>
+<span class="sd">    e : object</span>
+<span class="sd">        Enumeration object</span>
+<span class="sd">    c : object</span>
+<span class="sd">        Configuration object</span>
+<span class="sd">    l : object</span>
+<span class="sd">        Logs collection object</span>
+<span class="sd">    a : object</span>
+<span class="sd">        Analysis object</span>
+<span class="sd">    source :  str</span>
+<span class="sd">        Source bucket for the analysis part (4)</span>
+<span class="sd">    output : str</span>
+<span class="sd">        Output bucket for the analysis part (4)</span>
+<span class="sd">    catalog : str</span>
+<span class="sd">        Data catalog used with the database </span>
+<span class="sd">    database : str </span>
+<span class="sd">        Database containing the table for logs analytics</span>
+<span class="sd">    table : str</span>
+<span class="sd">        Contains the sql requirements to query the logs</span>
+
+<span class="sd">    Methods</span>
+<span class="sd">    -------</span>
+<span class="sd">    execute_enumeration(regionless)</span>
+<span class="sd">        Run the enumeration main function</span>
+<span class="sd">    execute_configuration(regionless)</span>
+<span class="sd">        Run the configuration main function</span>
+<span class="sd">    execute_logs(regionless, start, end)</span>
+<span class="sd">        Run the logs extraction main function</span>
+<span class="sd">    execute_analysis(queryfile, exists, timeframe)</span>
+<span class="sd">        Run the logs analysis main function</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">services</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">e</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">c</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">l</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">source</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">output</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">catalog</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">database</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">table</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">region</span><span class="p">,</span> <span class="n">dl</span><span class="p">,</span> <span class="n">steps</span><span class="p">,</span> <span class="n">source</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">output</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">catalog</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">database</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">table</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Handle the constructor of the IR class.</span>
+<span class="sd">        </span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        region : str</span>
+<span class="sd">            Region in which to tool is executed</span>
+<span class="sd">        dl : bool</span>
+<span class="sd">            True if the user wants to download the results, False if he wants the results to be written in a s3 bucket</span>
+<span class="sd">        steps : list of str</span>
+<span class="sd">            Steps to run (1 for enum, 2 for config, 3 for logs extraction, 4 for analysis)</span>
+<span class="sd">        source :  str, optional</span>
+<span class="sd">            Source bucket for the analysis part (4)</span>
+<span class="sd">        output : str, optional</span>
+<span class="sd">            Output bucket for the analysis part (4)</span>
+<span class="sd">        catalog : str, optional</span>
+<span class="sd">            Data catalog used with the database </span>
+<span class="sd">        database : str , optional</span>
+<span class="sd">            Database containing the table for logs analytics</span>
+<span class="sd">        table : str, optional</span>
+<span class="sd">            Contains the sql requirements to query the logs</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">[+] Working on region </span><span class="si">{</span><span class="n">BOLD</span><span class="si">}{</span><span class="n">region</span><span class="si">}{</span><span class="n">ENDC</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="s2">&quot;4&quot;</span> <span class="ow">in</span> <span class="n">steps</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">a</span> <span class="o">=</span> <span class="n">Analysis</span><span class="p">(</span><span class="n">region</span><span class="p">,</span> <span class="n">dl</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">source</span> <span class="o">!=</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">source</span> <span class="o">=</span> <span class="n">source</span>
+            <span class="k">if</span> <span class="n">output</span> <span class="o">!=</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">output</span> <span class="o">=</span> <span class="n">output</span>
+            <span class="k">if</span> <span class="n">catalog</span> <span class="o">!=</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">catalog</span> <span class="o">=</span> <span class="n">catalog</span>
+            <span class="k">if</span> <span class="n">database</span> <span class="o">!=</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">database</span> <span class="o">=</span> <span class="n">database</span>
+            <span class="k">if</span> <span class="n">table</span> <span class="o">!=</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">table</span> <span class="o">=</span> <span class="n">table</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">services</span> <span class="o">=</span> <span class="n">ENUMERATION_SERVICES</span>
+
+            <span class="k">if</span> <span class="s2">&quot;1&quot;</span> <span class="ow">in</span> <span class="n">steps</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">e</span> <span class="o">=</span> <span class="n">Enumeration</span><span class="p">(</span><span class="n">region</span><span class="p">,</span> <span class="n">dl</span><span class="p">)</span>
+            <span class="k">if</span> <span class="s2">&quot;2&quot;</span> <span class="ow">in</span> <span class="n">steps</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">c</span> <span class="o">=</span> <span class="n">Configuration</span><span class="p">(</span><span class="n">region</span><span class="p">,</span> <span class="n">dl</span><span class="p">)</span>
+            <span class="k">if</span> <span class="s2">&quot;3&quot;</span> <span class="ow">in</span> <span class="n">steps</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">l</span> <span class="o">=</span> <span class="n">Logs</span><span class="p">(</span><span class="n">region</span><span class="p">,</span> <span class="n">dl</span><span class="p">)</span>
+
+<div class="viewcode-block" id="IR.execute_enumeration"><a class="viewcode-back" href="../../../source.main.html#source.main.ir.IR.execute_enumeration">[docs]</a>    <span class="k">def</span> <span class="nf">execute_enumeration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">regionless</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Run the enumeration main function.</span>
+<span class="sd">        </span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        regionless : str</span>
+<span class="sd">            &#39;not-all&#39; if the tool is used on only one region. First region to run the tool on otherwise</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">services</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">e</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">services</span><span class="p">,</span> <span class="n">regionless</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="IR.execute_configuration"><a class="viewcode-back" href="../../../source.main.html#source.main.ir.IR.execute_configuration">[docs]</a>    <span class="k">def</span> <span class="nf">execute_configuration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">regionless</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Run the configuration main function.</span>
+<span class="sd">        </span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        regionless : str</span>
+<span class="sd">            &#39;not-all&#39; if the tool is used on only one region. First region to run the tool on otherwise</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">c</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">services</span><span class="p">,</span> <span class="n">regionless</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="IR.execute_logs"><a class="viewcode-back" href="../../../source.main.html#source.main.ir.IR.execute_logs">[docs]</a>    <span class="k">def</span> <span class="nf">execute_logs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">regionless</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Run the logs extraction main function.</span>
+<span class="sd">        </span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        regionless : str</span>
+<span class="sd">            &#39;not-all&#39; if the tool is used on only one region. First region to run the tool on otherwise</span>
+<span class="sd">        start : str</span>
+<span class="sd">            Start date of the logs collected</span>
+<span class="sd">        end : str</span>
+<span class="sd">            End date of the logs collected</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">l</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">services</span><span class="p">,</span> <span class="n">regionless</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="IR.execute_analysis"><a class="viewcode-back" href="../../../source.main.html#source.main.ir.IR.execute_analysis">[docs]</a>    <span class="k">def</span> <span class="nf">execute_analysis</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">queryfile</span><span class="p">,</span> <span class="n">exists</span><span class="p">,</span> <span class="n">timeframe</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Run the logs analysis main function.</span>
+<span class="sd">        </span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        queryfile : str</span>
+<span class="sd">            File containing the queries to run</span>
+<span class="sd">        exists : tuple of bool</span>
+<span class="sd">            Array containing information about if the db and table exists</span>
+<span class="sd">        timeframe : str</span>
+<span class="sd">            Timeframe used in the query to filter results</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">a</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">source</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">output</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">catalog</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">database</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">table</span><span class="p">,</span> <span class="n">queryfile</span><span class="p">,</span> <span class="n">exists</span><span class="p">,</span> <span class="n">timeframe</span><span class="p">)</span></div></div>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, test.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

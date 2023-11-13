@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>source.utils.utils &mdash; test  documentation</title>
+      <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
+        <script src="../../../_static/jquery.js"></script>
+        <script src="../../../_static/underscore.js"></script>
+        <script src="../../../_static/doctools.js"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            test
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules.html">Invictus-AWS</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">test</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">source.utils.utils</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for source.utils.utils</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;File containing all types of functions and variables, used everywhere in the tool.&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">boto3</span>
+<span class="kn">from</span> <span class="nn">botocore.exceptions</span> <span class="kn">import</span> <span class="n">ClientError</span>
+<span class="kn">import</span> <span class="nn">datetime</span><span class="o">,</span> <span class="nn">os</span>
+<span class="kn">from</span> <span class="nn">sys</span> <span class="kn">import</span> <span class="n">exit</span>
+<span class="kn">from</span> <span class="nn">random</span> <span class="kn">import</span> <span class="n">choices</span>
+<span class="kn">from</span> <span class="nn">string</span> <span class="kn">import</span> <span class="n">ascii_lowercase</span><span class="p">,</span> <span class="n">digits</span>
+<span class="kn">from</span> <span class="nn">json</span> <span class="kn">import</span> <span class="n">dumps</span>
+
+
+<div class="viewcode-block" id="get_random_chars"><a class="viewcode-back" href="../../../source.utils.html#source.utils.utils.get_random_chars">[docs]</a><span class="k">def</span> <span class="nf">get_random_chars</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Generate random str.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    n : int</span>
+<span class="sd">        Number of char to be generated</span>
+<span class="sd">    </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    ret : str</span>
+<span class="sd">        Random str of n chars</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">ret</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">choices</span><span class="p">(</span><span class="n">ascii_lowercase</span> <span class="o">+</span> <span class="n">digits</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="n">n</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">ret</span></div>
+
+<div class="viewcode-block" id="is_list"><a class="viewcode-back" href="../../../source.utils.html#source.utils.utils.is_list">[docs]</a><span class="k">def</span> <span class="nf">is_list</span><span class="p">(</span><span class="n">list_data</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Verify if the given data are a list.</span>
+
+<span class="sd">    list_data : list</span>
+<span class="sd">        List to verify</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">for</span> <span class="n">data</span> <span class="ow">in</span> <span class="n">list_data</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="p">):</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+            <span class="n">is_list</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="n">is_dict</span><span class="p">(</span><span class="n">data</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="is_dict"><a class="viewcode-back" href="../../../source.utils.html#source.utils.utils.is_dict">[docs]</a><span class="k">def</span> <span class="nf">is_dict</span><span class="p">(</span><span class="n">data_dict</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Verify if the given data are a dictionary.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    data_dict : dict</span>
+<span class="sd">        Dictionary to verify</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">for</span> <span class="n">data</span> <span class="ow">in</span> <span class="n">data_dict</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data_dict</span><span class="p">[</span><span class="n">data</span><span class="p">],</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="p">):</span>
+            <span class="n">data_dict</span><span class="p">[</span><span class="n">data</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">data_dict</span><span class="p">[</span><span class="n">data</span><span class="p">])</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data_dict</span><span class="p">[</span><span class="n">data</span><span class="p">],</span> <span class="nb">list</span><span class="p">):</span>
+            <span class="n">is_list</span><span class="p">(</span><span class="n">data_dict</span><span class="p">[</span><span class="n">data</span><span class="p">])</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data_dict</span><span class="p">[</span><span class="n">data</span><span class="p">],</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="n">is_dict</span><span class="p">(</span><span class="n">data_dict</span><span class="p">[</span><span class="n">data</span><span class="p">])</span></div>
+
+<div class="viewcode-block" id="fix_json"><a class="viewcode-back" href="../../../source.utils.html#source.utils.utils.fix_json">[docs]</a><span class="k">def</span> <span class="nf">fix_json</span><span class="p">(</span><span class="n">response</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Correct json format.</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    response : json</span>
+<span class="sd">        Usually the response of a request (boto3, requests)</span>
+<span class="sd">        </span>
+<span class="sd">    Returns </span>
+<span class="sd">    -------</span>
+<span class="sd">    response : json</span>
+<span class="sd">        Fixed response</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">response</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="n">is_dict</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">response</span></div>
+
+<div class="viewcode-block" id="try_except"><a class="viewcode-back" href="../../../source.utils.html#source.utils.utils.try_except">[docs]</a><span class="k">def</span> <span class="nf">try_except</span><span class="p">(</span><span class="n">func</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Try except function.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    func : str</span>
+<span class="sd">        Function tried</span>
+<span class="sd">    *args : list</span>
+<span class="sd">        List of args, optional</span>
+<span class="sd">    **kwargs : list</span>
+<span class="sd">        List of key pairs args, optional</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    ret : str</span>
+<span class="sd">        Either the execution of the function, either an object</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">ret</span> <span class="o">=</span> <span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">ret</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;count&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)}</span>
+    <span class="k">return</span> <span class="n">ret</span></div>
+
+<div class="viewcode-block" id="create_command"><a class="viewcode-back" href="../../../source.utils.html#source.utils.utils.create_command">[docs]</a><span class="k">def</span> <span class="nf">create_command</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="n">output</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Merge the command and its results.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    command : str</span>
+<span class="sd">        Command made</span>
+<span class="sd">    output : dict</span>
+<span class="sd">        Output of the command</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    command_output : dict</span>
+<span class="sd">        Command and its results</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">command_output</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">command_output</span><span class="p">[</span><span class="s2">&quot;command&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">command</span>
+    <span class="n">command_output</span><span class="p">[</span><span class="s2">&quot;output&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">output</span>
+    <span class="k">return</span> <span class="n">command_output</span></div>
+
+<div class="viewcode-block" id="writefile_s3"><a class="viewcode-back" href="../../../source.utils.html#source.utils.utils.writefile_s3">[docs]</a><span class="k">def</span> <span class="nf">writefile_s3</span><span class="p">(</span><span class="n">bucket</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">filename</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Write a local file to a s3 bucket.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    bucket : str</span>
+<span class="sd">        Bucket in which the file is uploaded</span>
+<span class="sd">    key : str</span>
+<span class="sd">        Path where the file is uploaded</span>
+<span class="sd">    filename : str</span>
+<span class="sd">        File to be uploaded</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    response : dict</span>
+<span class="sd">        Response of the request made</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">response</span> <span class="o">=</span> <span class="n">S3_CLIENT</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">upload_file</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">bucket</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">response</span></div>
+
+<div class="viewcode-block" id="create_s3_if_not_exists"><a class="viewcode-back" href="../../../source.utils.html#source.utils.utils.create_s3_if_not_exists">[docs]</a><span class="k">def</span> <span class="nf">create_s3_if_not_exists</span><span class="p">(</span><span class="n">region</span><span class="p">,</span> <span class="n">bucket_name</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Create a s3 bucket if needed during the investigation.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    region : str</span>
+<span class="sd">        Region where to create the s3</span>
+<span class="sd">    bucket_name : str</span>
+<span class="sd">        Name of the new bucket</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    bucket_name : str</span>
+<span class="sd">        Name of the newly created bucket</span>
+
+<span class="sd">    Note that for region=us-east-1, AWS necessitates that you leave LocationConstraint blank</span>
+<span class="sd">    https://docs.aws.amazon.com/AmazonS3/latest/API/API_CreateBucket.html#API_CreateBucket_RequestBody</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">s3</span> <span class="o">=</span> <span class="n">boto3</span><span class="o">.</span><span class="n">client</span><span class="p">(</span><span class="s2">&quot;s3&quot;</span><span class="p">,</span> <span class="n">region_name</span><span class="o">=</span><span class="n">region</span><span class="p">)</span>
+    <span class="n">response</span> <span class="o">=</span> <span class="n">s3</span><span class="o">.</span><span class="n">list_buckets</span><span class="p">()</span>
+
+    <span class="k">for</span> <span class="n">bkt</span> <span class="ow">in</span> <span class="n">response</span><span class="p">[</span><span class="s2">&quot;Buckets&quot;</span><span class="p">]:</span>
+        <span class="k">if</span> <span class="n">bkt</span><span class="p">[</span><span class="s2">&quot;Name&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">bucket_name</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">bucket_name</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[+] Logs bucket does not exists, creating it now: </span><span class="si">{</span><span class="n">bucket_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="n">bucket_config</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">region</span> <span class="o">!=</span> <span class="s2">&quot;us-east-1&quot;</span><span class="p">:</span>
+        <span class="n">bucket_config</span><span class="p">[</span><span class="s2">&quot;CreateBucketConfiguration&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;LocationConstraint&quot;</span><span class="p">:</span> <span class="n">region</span><span class="p">}</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="n">s3</span><span class="o">.</span><span class="n">create_bucket</span><span class="p">(</span><span class="n">Bucket</span><span class="o">=</span><span class="n">bucket_name</span><span class="p">,</span> <span class="o">**</span><span class="n">bucket_config</span><span class="p">)</span>
+    <span class="k">except</span> <span class="n">ClientError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+        <span class="n">exit</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">bucket_name</span></div>
+
+<div class="viewcode-block" id="write_file"><a class="viewcode-back" href="../../../source.utils.html#source.utils.utils.write_file">[docs]</a><span class="k">def</span> <span class="nf">write_file</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="n">mode</span><span class="p">,</span> <span class="n">content</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Write content to a new file.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    file : str</span>
+<span class="sd">        File to be filled </span>
+<span class="sd">    mode : str</span>
+<span class="sd">        Opening mode of the file (w, a, etc)</span>
+<span class="sd">    content : str</span>
+<span class="sd">        Content to be written in the file</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="n">mode</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">content</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="create_folder"><a class="viewcode-back" href="../../../source.utils.html#source.utils.utils.create_folder">[docs]</a><span class="k">def</span> <span class="nf">create_folder</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Create a folder.</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    path : str</span>
+<span class="sd">        Path of the folder to be created</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="run_s3_dl"><a class="viewcode-back" href="../../../source.utils.html#source.utils.utils.run_s3_dl">[docs]</a><span class="k">def</span> <span class="nf">run_s3_dl</span><span class="p">(</span><span class="n">bucket</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Handle the steps of the content&#39;s download of a s3 bucket.</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    bucket : str</span>
+<span class="sd">        Bucket being copied</span>
+<span class="sd">    path : str</span>
+<span class="sd">        Local path where to paste the content of the bucket</span>
+<span class="sd">    prefix : str, optional</span>
+<span class="sd">        Specific folder in the bucket to download</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">paginator</span> <span class="o">=</span> <span class="n">S3_CLIENT</span><span class="o">.</span><span class="n">get_paginator</span><span class="p">(</span><span class="s1">&#39;list_objects_v2&#39;</span><span class="p">)</span>
+    <span class="n">operation_parameters</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;Bucket&quot;</span><span class="p">:</span> <span class="n">bucket</span><span class="p">,</span> <span class="s2">&quot;Prefix&quot;</span><span class="p">:</span> <span class="n">prefix</span><span class="p">}</span>
+
+    <span class="k">for</span> <span class="n">page</span> <span class="ow">in</span> <span class="n">paginator</span><span class="o">.</span><span class="n">paginate</span><span class="p">(</span><span class="o">**</span><span class="n">operation_parameters</span><span class="p">):</span>
+        <span class="k">if</span> <span class="s1">&#39;Contents&#39;</span> <span class="ow">in</span> <span class="n">page</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">s3_object</span> <span class="ow">in</span> <span class="n">page</span><span class="p">[</span><span class="s1">&#39;Contents&#39;</span><span class="p">]:</span>
+                <span class="n">s3_key</span> <span class="o">=</span> <span class="n">s3_object</span><span class="p">[</span><span class="s1">&#39;Key&#39;</span><span class="p">]</span>
+                <span class="n">local_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">s3_key</span><span class="p">)</span>
+
+                <span class="n">local_directory</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">local_path</span><span class="p">)</span>
+                <span class="n">create_folder</span><span class="p">(</span><span class="n">local_directory</span><span class="p">)</span>
+
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">local_path</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">):</span> 
+                    <span class="n">S3_CLIENT</span><span class="o">.</span><span class="n">download_file</span><span class="p">(</span><span class="n">bucket</span><span class="p">,</span> <span class="n">s3_key</span><span class="p">,</span> <span class="n">local_path</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="write_s3"><a class="viewcode-back" href="../../../source.utils.html#source.utils.utils.write_s3">[docs]</a><span class="k">def</span> <span class="nf">write_s3</span><span class="p">(</span><span class="n">bucket</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">content</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Write content to s3 bucket.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    bucket : str</span>
+<span class="sd">        Name of the bucket in which we put data</span>
+<span class="sd">    key : str</span>
+<span class="sd">        Path in the bucket</span>
+<span class="sd">    content : str</span>
+<span class="sd">        Data to be put</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    response : dict</span>
+<span class="sd">        Results of the request made</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">response</span> <span class="o">=</span> <span class="n">S3_CLIENT</span><span class="o">.</span><span class="n">put_object</span><span class="p">(</span><span class="n">Bucket</span><span class="o">=</span><span class="n">bucket</span><span class="p">,</span> <span class="n">Key</span><span class="o">=</span><span class="n">key</span><span class="p">,</span> <span class="n">Body</span><span class="o">=</span><span class="n">content</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">response</span></div>
+
+<div class="viewcode-block" id="copy_s3_bucket"><a class="viewcode-back" href="../../../source.utils.html#source.utils.utils.copy_s3_bucket">[docs]</a><span class="k">def</span> <span class="nf">copy_s3_bucket</span><span class="p">(</span><span class="n">src_bucket</span><span class="p">,</span> <span class="n">dst_bucket</span><span class="p">,</span> <span class="n">service</span><span class="p">,</span> <span class="n">region</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Copy the content at a specific path of a s3 bucket to another.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    src_bucket : str</span>
+<span class="sd">        Bucket where all the logs of the corresponding service are stored</span>
+<span class="sd">    dst_bucket : str</span>
+<span class="sd">        Bucket used in incident response</span>
+<span class="sd">    service : str</span>
+<span class="sd">        Service of which the logs are copied (s3, ec2, etc)</span>
+<span class="sd">    region : str</span>
+<span class="sd">        Region where the service is scanned</span>
+<span class="sd">    prefix : str, optional</span>
+<span class="sd">        Path of the data to copy to reduce the amount of data</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">s3res</span> <span class="o">=</span> <span class="n">boto3</span><span class="o">.</span><span class="n">resource</span><span class="p">(</span><span class="s2">&quot;s3&quot;</span><span class="p">)</span>
+
+    <span class="n">paginator</span> <span class="o">=</span> <span class="n">S3_CLIENT</span><span class="o">.</span><span class="n">get_paginator</span><span class="p">(</span><span class="s1">&#39;list_objects_v2&#39;</span><span class="p">)</span>
+    <span class="n">operation_parameters</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;Bucket&quot;</span><span class="p">:</span> <span class="n">src_bucket</span><span class="p">,</span> <span class="s2">&quot;Prefix&quot;</span><span class="p">:</span> <span class="n">prefix</span><span class="p">}</span>
+
+    <span class="k">for</span> <span class="n">page</span> <span class="ow">in</span> <span class="n">paginator</span><span class="o">.</span><span class="n">paginate</span><span class="p">(</span><span class="o">**</span><span class="n">operation_parameters</span><span class="p">):</span>
+        <span class="k">if</span> <span class="s1">&#39;Contents&#39;</span> <span class="ow">in</span> <span class="n">page</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">page</span><span class="p">[</span><span class="s1">&#39;Contents&#39;</span><span class="p">]:</span>
+                <span class="n">copy_source</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;Bucket&quot;</span><span class="p">:</span> <span class="n">src_bucket</span><span class="p">,</span> <span class="s2">&quot;Key&quot;</span><span class="p">:</span> <span class="n">key</span><span class="p">[</span><span class="s2">&quot;Key&quot;</span><span class="p">]}</span>
+                <span class="n">new_key</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">region</span><span class="si">}</span><span class="s2">/logs/</span><span class="si">{</span><span class="n">service</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">src_bucket</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">key</span><span class="p">[</span><span class="s1">&#39;Key&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="n">try_except</span><span class="p">(</span><span class="n">s3res</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">copy</span><span class="p">,</span> <span class="n">copy_source</span><span class="p">,</span> <span class="n">dst_bucket</span><span class="p">,</span> <span class="n">new_key</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="copy_or_write_s3"><a class="viewcode-back" href="../../../source.utils.html#source.utils.utils.copy_or_write_s3">[docs]</a><span class="k">def</span> <span class="nf">copy_or_write_s3</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">dst_bucket</span><span class="p">,</span> <span class="n">region</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Depending on the action content of value (0 or 1), write the data to our s3 bucket, or copy the data to the source bucket to our bucket.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    key : str</span>
+<span class="sd">        Name of the service</span>
+<span class="sd">    value : dict</span>
+<span class="sd">        Either logs of the service or the buckets where the logs are stored, based on the const LOGS_RESULTS</span>
+<span class="sd">    dst_bucket : str</span>
+<span class="sd">        Bucket where to put the data</span>
+<span class="sd">    region : str</span>
+<span class="sd">        Region where the serice is scanned</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">value</span><span class="p">[</span><span class="s2">&quot;action&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">write_s3</span><span class="p">(</span>
+            <span class="n">dst_bucket</span><span class="p">,</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">region</span><span class="si">}</span><span class="s2">/logs/</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">.json&quot;</span><span class="p">,</span>
+            <span class="n">dumps</span><span class="p">(</span><span class="n">value</span><span class="p">[</span><span class="s2">&quot;results&quot;</span><span class="p">],</span> <span class="n">indent</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="nb">str</span><span class="p">),</span>
+        <span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">src_bucket</span> <span class="ow">in</span> <span class="n">value</span><span class="p">[</span><span class="s2">&quot;results&quot;</span><span class="p">]:</span>
+            <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+
+            <span class="k">if</span> <span class="s2">&quot;|&quot;</span> <span class="ow">in</span> <span class="n">src_bucket</span><span class="p">:</span>
+                <span class="n">split</span> <span class="o">=</span> <span class="n">src_bucket</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;|&quot;</span><span class="p">)</span>
+                <span class="n">bucket</span> <span class="o">=</span> <span class="n">split</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="n">prefix</span> <span class="o">=</span> <span class="n">split</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">bucket</span> <span class="o">=</span> <span class="n">src_bucket</span>
+
+            <span class="n">copy_s3_bucket</span><span class="p">(</span><span class="n">bucket</span><span class="p">,</span> <span class="n">dst_bucket</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">region</span><span class="p">,</span> <span class="n">prefix</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="write_or_dl"><a class="viewcode-back" href="../../../source.utils.html#source.utils.utils.write_or_dl">[docs]</a><span class="k">def</span> <span class="nf">write_or_dl</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">conf</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Depending on the action content of value (0 or 1), write the data to a single json file, or download the content of a s3 bucket.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    key : str</span>
+<span class="sd">        Name of the service</span>
+<span class="sd">    value : str</span>
+<span class="sd">        Either logs of the service or the buckets where the logs are stored, based on the const LOGS_RESULTS</span>
+<span class="sd">    conf : str</span>
+<span class="sd">        Path to write the results</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">value</span><span class="p">[</span><span class="s2">&quot;action&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">write_file</span><span class="p">(</span>
+            <span class="n">conf</span> <span class="o">+</span> <span class="sa">f</span><span class="s2">&quot;/</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">.json&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;w&quot;</span><span class="p">,</span>
+            <span class="n">dumps</span><span class="p">(</span><span class="n">value</span><span class="p">[</span><span class="s2">&quot;results&quot;</span><span class="p">],</span> <span class="n">indent</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="nb">str</span><span class="p">),</span>
+        <span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">bucket</span> <span class="ow">in</span> <span class="n">value</span><span class="p">[</span><span class="s2">&quot;results&quot;</span><span class="p">]:</span>
+            <span class="n">path</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">conf</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="n">create_folder</span><span class="p">(</span><span class="n">path</span><span class="p">)</span> 
+            <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+            
+            <span class="k">if</span> <span class="s2">&quot;|&quot;</span> <span class="ow">in</span> <span class="n">bucket</span><span class="p">:</span>
+                <span class="n">split</span> <span class="o">=</span> <span class="n">bucket</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;|&quot;</span><span class="p">)</span>
+                <span class="n">bucket</span> <span class="o">=</span> <span class="n">split</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="n">prefix</span> <span class="o">=</span> <span class="n">split</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">run_s3_dl</span><span class="p">(</span><span class="n">bucket</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">prefix</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="athena_query"><a class="viewcode-back" href="../../../source.utils.html#source.utils.utils.athena_query">[docs]</a><span class="k">def</span> <span class="nf">athena_query</span><span class="p">(</span><span class="n">region</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="n">bucket</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Run an athena query and verifies it worked.</span>
+
+<span class="sd">    region: str</span>
+<span class="sd">        Region where the query is made</span>
+<span class="sd">    query : str</span>
+<span class="sd">        Query to be run</span>
+<span class="sd">    bucket : str</span>
+<span class="sd">        bucket where the results are written</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    response : dict</span>
+<span class="sd">        Results of the response</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">athena</span> <span class="o">=</span> <span class="n">boto3</span><span class="o">.</span><span class="n">client</span><span class="p">(</span><span class="s2">&quot;athena&quot;</span><span class="p">,</span> <span class="n">region_name</span><span class="o">=</span><span class="n">region</span><span class="p">)</span>
+
+    <span class="n">result</span> <span class="o">=</span> <span class="n">athena</span><span class="o">.</span><span class="n">start_query_execution</span><span class="p">(</span>
+        <span class="n">QueryString</span><span class="o">=</span><span class="n">query</span><span class="p">,</span>
+        <span class="n">ResultConfiguration</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;OutputLocation&quot;</span><span class="p">:</span> <span class="n">bucket</span><span class="p">}</span>
+    <span class="p">)</span>
+    
+    <span class="nb">id</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="s2">&quot;QueryExecutionId&quot;</span><span class="p">]</span>
+    <span class="n">status</span> <span class="o">=</span> <span class="s2">&quot;QUEUED&quot;</span>
+
+    <span class="k">while</span> <span class="n">status</span> <span class="o">!=</span> <span class="s2">&quot;SUCCEEDED&quot;</span><span class="p">:</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="n">athena</span><span class="o">.</span><span class="n">get_query_execution</span><span class="p">(</span><span class="n">QueryExecutionId</span><span class="o">=</span><span class="nb">id</span><span class="p">)</span>
+        <span class="n">status</span> <span class="o">=</span> <span class="n">response</span><span class="p">[</span><span class="s2">&quot;QueryExecution&quot;</span><span class="p">][</span><span class="s2">&quot;Status&quot;</span><span class="p">][</span><span class="s2">&quot;State&quot;</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">status</span> <span class="o">==</span> <span class="s2">&quot;FAILED&quot;</span> <span class="ow">or</span> <span class="n">status</span> <span class="o">==</span> <span class="s2">&quot;CANCELLED&quot;</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;[!] Error : </span><span class="si">{</span><span class="n">response</span><span class="p">[</span><span class="s2">&quot;QueryExecution&quot;</span><span class="p">][</span><span class="s2">&quot;Status&quot;</span><span class="p">][</span><span class="s2">&quot;AthenaError&quot;</span><span class="p">][</span><span class="s2">&quot;ErrorMessage&quot;</span><span class="p">]</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="n">exit</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>    
+    
+    <span class="k">return</span> <span class="n">response</span></div>
+
+<div class="viewcode-block" id="rename_file_s3"><a class="viewcode-back" href="../../../source.utils.html#source.utils.utils.rename_file_s3">[docs]</a><span class="k">def</span> <span class="nf">rename_file_s3</span><span class="p">(</span><span class="n">bucket</span><span class="p">,</span> <span class="n">folder</span><span class="p">,</span> <span class="n">new_key</span><span class="p">,</span> <span class="n">old_key</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Rename a s3 file (well it copies it, changes the name, then deletes the old one).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    bucket : str</span>
+<span class="sd">        Bucket where the file to rename is</span>
+<span class="sd">    folder : str</span>
+<span class="sd">        Folder where the file to rename is</span>
+<span class="sd">    new_key : str</span>
+<span class="sd">        New name of the file</span>
+<span class="sd">    old_key : str</span>
+<span class="sd">        Old name of the file</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">S3_CLIENT</span><span class="o">.</span><span class="n">copy_object</span><span class="p">(</span>
+        <span class="n">Bucket</span><span class="o">=</span><span class="n">bucket</span><span class="p">,</span>
+        <span class="n">Key</span><span class="o">=</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">folder</span><span class="si">}{</span><span class="n">new_key</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">,</span>
+        <span class="n">CopySource</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;Bucket&quot;</span><span class="p">:</span> <span class="n">bucket</span><span class="p">,</span> <span class="s2">&quot;Key&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">folder</span><span class="si">}{</span><span class="n">old_key</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">}</span>
+    <span class="p">)</span>
+
+    <span class="n">S3_CLIENT</span><span class="o">.</span><span class="n">delete_object</span><span class="p">(</span>
+        <span class="n">Bucket</span><span class="o">=</span><span class="n">bucket</span><span class="p">,</span>
+        <span class="n">Key</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">folder</span><span class="si">}{</span><span class="n">old_key</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="p">)</span></div>
+
+<div class="viewcode-block" id="get_table"><a class="viewcode-back" href="../../../source.utils.html#source.utils.utils.get_table">[docs]</a><span class="k">def</span> <span class="nf">get_table</span><span class="p">(</span><span class="n">ddl</span><span class="p">,</span> <span class="n">get_db</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Get the table name out of a ddl file.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ddl : str</span>
+<span class="sd">        Ddl file </span>
+<span class="sd">    get_db : bool</span>
+<span class="sd">        False if you only want the table name. True if you also want the db name that can be present just before the table name.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    table : str</span>
+<span class="sd">        Name of the table</span>
+<span class="sd">    data : str</span>
+<span class="sd">        Content of the ddl file</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">ddl</span><span class="p">,</span> <span class="s2">&quot;rt&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">ddl</span><span class="p">:</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">ddl</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+        <span class="n">table_content</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;(&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">table</span> <span class="o">=</span> <span class="n">table_content</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot; &quot;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">if</span> <span class="s2">&quot;.&quot;</span> <span class="ow">in</span> <span class="n">table</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">get_db</span><span class="p">:</span>
+            <span class="n">table</span> <span class="o">=</span> <span class="n">table</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">table</span><span class="p">,</span> <span class="n">data</span></div>
+
+<div class="viewcode-block" id="get_bucket_and_prefix"><a class="viewcode-back" href="../../../source.utils.html#source.utils.utils.get_bucket_and_prefix">[docs]</a><span class="k">def</span> <span class="nf">get_bucket_and_prefix</span><span class="p">(</span><span class="n">bucket</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Split bucket name and prefix of the given bucket.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    bucket : str</span>
+<span class="sd">        Bucket to split up</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    bucket_name : str</span>
+<span class="sd">        Name of the bucket</span>
+<span class="sd">    prefix : str</span>
+<span class="sd">        Path in the bucket</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">bucket</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;s3://&quot;</span><span class="p">):</span>
+        <span class="n">bucket</span> <span class="o">=</span> <span class="n">bucket</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;s3://&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+    
+    <span class="n">el</span> <span class="o">=</span> <span class="n">bucket</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">bucket_name</span> <span class="o">=</span> <span class="n">el</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="n">el</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="n">bucket_name</span><span class="p">,</span> <span class="n">prefix</span></div>
+
+<div class="viewcode-block" id="create_tmp_bucket"><a class="viewcode-back" href="../../../source.utils.html#source.utils.utils.create_tmp_bucket">[docs]</a><span class="k">def</span> <span class="nf">create_tmp_bucket</span><span class="p">(</span><span class="n">region</span><span class="p">,</span> <span class="n">bucket_name</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Create a tmp bucket (only when the local flag is present for the logs analysis).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    region : str</span>
+<span class="sd">        Name of the region where the analysis is done</span>
+<span class="sd">    bucket_name :</span>
+<span class="sd">        Name of the tmp bucket</span>
+
+<span class="sd">    Note that for region=us-east-1, AWS necessitates that you leave LocationConstraint blank</span>
+<span class="sd">    https://docs.aws.amazon.com/AmazonS3/latest/API/API_CreateBucket.html#API_CreateBucket_RequestBody</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">s3</span> <span class="o">=</span> <span class="n">boto3</span><span class="o">.</span><span class="n">client</span><span class="p">(</span><span class="s2">&quot;s3&quot;</span><span class="p">,</span> <span class="n">region_name</span><span class="o">=</span><span class="n">region</span><span class="p">)</span>
+
+    <span class="n">bucket_config</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">region</span> <span class="o">!=</span> <span class="s2">&quot;us-east-1&quot;</span><span class="p">:</span>
+        <span class="n">bucket_config</span><span class="p">[</span><span class="s2">&quot;CreateBucketConfiguration&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;LocationConstraint&quot;</span><span class="p">:</span> <span class="n">region</span><span class="p">}</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">s3</span><span class="o">.</span><span class="n">create_bucket</span><span class="p">(</span><span class="n">Bucket</span><span class="o">=</span><span class="n">bucket_name</span><span class="p">,</span> <span class="o">**</span><span class="n">bucket_config</span><span class="p">)</span>
+    <span class="k">except</span> <span class="n">ClientError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+        <span class="n">exit</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span></div>
+
+
+<span class="c1">#####################</span>
+<span class="c1"># RANDOM GENERATION #</span>
+<span class="c1">#####################</span>
+
+<span class="n">date</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">date</span><span class="o">.</span><span class="n">today</span><span class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s2">&quot;%Y-%m-</span><span class="si">%d</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="n">random_chars</span> <span class="o">=</span> <span class="n">get_random_chars</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+<span class="n">PREPARATION_BUCKET</span> <span class="o">=</span> <span class="s2">&quot;invictus-aws-&quot;</span> <span class="o">+</span> <span class="n">date</span> <span class="o">+</span> <span class="s2">&quot;-&quot;</span> <span class="o">+</span> <span class="n">random_chars</span>
+<span class="n">LOGS_BUCKET</span> <span class="o">=</span> <span class="s2">&quot;invictus-aws-&quot;</span> <span class="o">+</span> <span class="n">date</span> <span class="o">+</span> <span class="s2">&quot;-&quot;</span> <span class="o">+</span> <span class="n">random_chars</span>
+
+<span class="c1">#########</span>
+<span class="c1"># FILES #</span>
+<span class="c1">#########</span>
+
+<span class="n">ROOT_FOLDER</span> <span class="o">=</span> <span class="s2">&quot;./results/&quot;</span>
+
+<span class="c1">##########</span>
+<span class="c1"># COLORS #</span>
+<span class="c1">##########</span>
+
+<span class="n">OKGREEN</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="se">\033</span><span class="s1">[92m&#39;</span>
+<span class="n">WARNING</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="se">\033</span><span class="s1">[93m&#39;</span>
+<span class="n">FAIL</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="se">\033</span><span class="s1">[91m&#39;</span>
+<span class="n">ENDC</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="se">\033</span><span class="s1">[0m&#39;</span>
+<span class="n">BOLD</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="se">\033</span><span class="s1">[1m&#39;</span>
+<span class="n">UNDERLINE</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="se">\033</span><span class="s1">[4m&#39;</span>
+
+<span class="c1">###########</span>
+<span class="c1"># CLIENTS #</span>
+<span class="c1">###########</span>
+
+<span class="n">ACCOUNT_CLIENT</span> <span class="o">=</span> <span class="n">boto3</span><span class="o">.</span><span class="n">client</span><span class="p">(</span><span class="s1">&#39;account&#39;</span><span class="p">)</span>
+<span class="n">S3_CLIENT</span> <span class="o">=</span> <span class="n">boto3</span><span class="o">.</span><span class="n">client</span><span class="p">(</span><span class="s2">&quot;s3&quot;</span><span class="p">)</span>
+<span class="n">CLOUDWATCH_CLIENT</span> <span class="o">=</span> <span class="n">boto3</span><span class="o">.</span><span class="n">client</span><span class="p">(</span><span class="s2">&quot;cloudwatch&quot;</span><span class="p">)</span>
+<span class="n">CLOUDTRAIL_CLIENT</span> <span class="o">=</span> <span class="n">boto3</span><span class="o">.</span><span class="n">client</span><span class="p">(</span><span class="s2">&quot;cloudtrail&quot;</span><span class="p">)</span>
+<span class="n">ROUTE53_CLIENT</span> <span class="o">=</span> <span class="n">boto3</span><span class="o">.</span><span class="n">client</span><span class="p">(</span><span class="s2">&quot;route53&quot;</span><span class="p">)</span>
+<span class="n">IAM_CLIENT</span> <span class="o">=</span> <span class="n">boto3</span><span class="o">.</span><span class="n">client</span><span class="p">(</span><span class="s2">&quot;iam&quot;</span><span class="p">)</span>
+<span class="n">GUARDDUTY_CLIENT</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="n">WAF_CLIENT</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="n">LAMBDA_CLIENT</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="n">EC2_CLIENT</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="n">EB_CLIENT</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="n">ROUTE53_RESOLVER_CLIENT</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="n">DYNAMODB_CLIENT</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="n">RDS_CLIENT</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="n">EKS_CLIENT</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="n">ELS_CLIENT</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="n">SECRETS_CLIENT</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="n">KINESIS_CLIENT</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="n">INSPECTOR_CLIENT</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="n">DETECTIVE_CLIENT</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="n">MACIE_CLIENT</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="n">SSM_CLIENT</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="n">ATHENA_CLIENT</span> <span class="o">=</span> <span class="kc">None</span>
+
+<div class="viewcode-block" id="set_clients"><a class="viewcode-back" href="../../../source.utils.html#source.utils.utils.set_clients">[docs]</a><span class="k">def</span> <span class="nf">set_clients</span><span class="p">(</span><span class="n">region</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Set the clients to the given region.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    region : str</span>
+<span class="sd">        Region where the client will be used</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">global</span> <span class="n">LAMBDA_CLIENT</span>
+    <span class="k">global</span> <span class="n">WAF_CLIENT</span>
+    <span class="k">global</span> <span class="n">EC2_CLIENT</span>
+    <span class="k">global</span> <span class="n">EB_CLIENT</span>
+    <span class="k">global</span> <span class="n">ROUTE53_RESOLVER_CLIENT</span>
+    <span class="k">global</span> <span class="n">DYNAMODB_CLIENT</span>
+    <span class="k">global</span> <span class="n">RDS_CLIENT</span>
+    <span class="k">global</span> <span class="n">EKS_CLIENT</span>
+    <span class="k">global</span> <span class="n">ELS_CLIENT</span>
+    <span class="k">global</span> <span class="n">SECRETS_CLIENT</span>
+    <span class="k">global</span> <span class="n">KINESIS_CLIENT</span>
+    <span class="k">global</span> <span class="n">GUARDDUTY_CLIENT</span>
+    <span class="k">global</span> <span class="n">INSPECTOR_CLIENT</span>
+    <span class="k">global</span> <span class="n">DETECTIVE_CLIENT</span>
+    <span class="k">global</span> <span class="n">MACIE_CLIENT</span>
+    <span class="k">global</span> <span class="n">SSM_CLIENT</span>
+    <span class="k">global</span> <span class="n">ATHENA_CLIENT</span>
+
+    <span class="n">WAF_CLIENT</span> <span class="o">=</span> <span class="n">boto3</span><span class="o">.</span><span class="n">client</span><span class="p">(</span><span class="s2">&quot;wafv2&quot;</span><span class="p">,</span> <span class="n">region_name</span><span class="o">=</span><span class="n">region</span><span class="p">)</span>
+    <span class="n">LAMBDA_CLIENT</span> <span class="o">=</span> <span class="n">boto3</span><span class="o">.</span><span class="n">client</span><span class="p">(</span><span class="s2">&quot;lambda&quot;</span><span class="p">,</span> <span class="n">region_name</span><span class="o">=</span><span class="n">region</span><span class="p">)</span>
+    <span class="n">EC2_CLIENT</span> <span class="o">=</span> <span class="n">boto3</span><span class="o">.</span><span class="n">client</span><span class="p">(</span><span class="s2">&quot;ec2&quot;</span><span class="p">,</span> <span class="n">region_name</span><span class="o">=</span><span class="n">region</span><span class="p">)</span>
+    <span class="n">EB_CLIENT</span> <span class="o">=</span> <span class="n">boto3</span><span class="o">.</span><span class="n">client</span><span class="p">(</span><span class="s2">&quot;elasticbeanstalk&quot;</span><span class="p">,</span> <span class="n">region_name</span><span class="o">=</span><span class="n">region</span><span class="p">)</span>
+    <span class="n">ROUTE53_RESOLVER_CLIENT</span> <span class="o">=</span> <span class="n">boto3</span><span class="o">.</span><span class="n">client</span><span class="p">(</span><span class="s2">&quot;route53resolver&quot;</span><span class="p">,</span> <span class="n">region_name</span><span class="o">=</span><span class="n">region</span><span class="p">)</span>
+    <span class="n">DYNAMODB_CLIENT</span> <span class="o">=</span> <span class="n">boto3</span><span class="o">.</span><span class="n">client</span><span class="p">(</span><span class="s2">&quot;dynamodb&quot;</span><span class="p">,</span> <span class="n">region_name</span><span class="o">=</span><span class="n">region</span><span class="p">)</span>
+    <span class="n">RDS_CLIENT</span> <span class="o">=</span> <span class="n">boto3</span><span class="o">.</span><span class="n">client</span><span class="p">(</span><span class="s2">&quot;rds&quot;</span><span class="p">,</span> <span class="n">region_name</span><span class="o">=</span><span class="n">region</span><span class="p">)</span>
+    <span class="n">EKS_CLIENT</span> <span class="o">=</span> <span class="n">boto3</span><span class="o">.</span><span class="n">client</span><span class="p">(</span><span class="s2">&quot;eks&quot;</span><span class="p">,</span> <span class="n">region_name</span><span class="o">=</span><span class="n">region</span><span class="p">)</span>
+    <span class="n">ELS_CLIENT</span> <span class="o">=</span> <span class="n">boto3</span><span class="o">.</span><span class="n">client</span><span class="p">(</span><span class="s2">&quot;es&quot;</span><span class="p">,</span> <span class="n">region_name</span><span class="o">=</span><span class="n">region</span><span class="p">)</span>
+    <span class="n">SECRETS_CLIENT</span> <span class="o">=</span> <span class="n">boto3</span><span class="o">.</span><span class="n">client</span><span class="p">(</span><span class="s2">&quot;secretsmanager&quot;</span><span class="p">,</span> <span class="n">region_name</span><span class="o">=</span><span class="n">region</span><span class="p">)</span>
+    <span class="n">KINESIS_CLIENT</span> <span class="o">=</span> <span class="n">boto3</span><span class="o">.</span><span class="n">client</span><span class="p">(</span><span class="s2">&quot;kinesis&quot;</span><span class="p">,</span> <span class="n">region_name</span><span class="o">=</span><span class="n">region</span><span class="p">)</span>
+    <span class="n">GUARDDUTY_CLIENT</span> <span class="o">=</span> <span class="n">boto3</span><span class="o">.</span><span class="n">client</span><span class="p">(</span><span class="s2">&quot;guardduty&quot;</span><span class="p">,</span> <span class="n">region_name</span><span class="o">=</span><span class="n">region</span><span class="p">)</span>
+    <span class="n">INSPECTOR_CLIENT</span> <span class="o">=</span> <span class="n">boto3</span><span class="o">.</span><span class="n">client</span><span class="p">(</span><span class="s2">&quot;inspector2&quot;</span><span class="p">,</span> <span class="n">region_name</span><span class="o">=</span><span class="n">region</span><span class="p">)</span>
+    <span class="n">DETECTIVE_CLIENT</span> <span class="o">=</span> <span class="n">boto3</span><span class="o">.</span><span class="n">client</span><span class="p">(</span><span class="s2">&quot;detective&quot;</span><span class="p">,</span> <span class="n">region_name</span><span class="o">=</span><span class="n">region</span><span class="p">)</span>
+    <span class="n">MACIE_CLIENT</span> <span class="o">=</span> <span class="n">boto3</span><span class="o">.</span><span class="n">client</span><span class="p">(</span><span class="s2">&quot;macie2&quot;</span><span class="p">,</span> <span class="n">region_name</span><span class="o">=</span><span class="n">region</span><span class="p">)</span>
+    <span class="n">SSM_CLIENT</span> <span class="o">=</span> <span class="n">boto3</span><span class="o">.</span><span class="n">client</span><span class="p">(</span><span class="s2">&quot;ssm&quot;</span><span class="p">,</span> <span class="n">region_name</span><span class="o">=</span><span class="n">region</span><span class="p">)</span>
+    <span class="n">ATHENA_CLIENT</span> <span class="o">=</span> <span class="n">boto3</span><span class="o">.</span><span class="n">client</span><span class="p">(</span><span class="s2">&quot;athena&quot;</span><span class="p">,</span> <span class="n">region_name</span><span class="o">=</span><span class="n">region</span><span class="p">)</span></div>
+
+<span class="c1">########</span>
+<span class="c1"># MISC #</span>
+<span class="c1">########</span>
+
+<span class="n">POSSIBLE_STEPS</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;1&quot;</span><span class="p">,</span> <span class="s2">&quot;2&quot;</span><span class="p">,</span> <span class="s2">&quot;3&quot;</span><span class="p">,</span> <span class="s2">&quot;4&quot;</span><span class="p">]</span>
+
+<span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">-1 means we didn&#39;t enter in the enumerate function associated </span>
+<span class="sd">0 means we ran the associated function but the service wasn&#39;t available</span>
+<span class="sd">&#39;&#39;&#39;</span>
+<span class="n">ENUMERATION_SERVICES</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;s3&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;count&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;elements&quot;</span><span class="p">:</span> <span class="p">[],</span> <span class="s2">&quot;ids&quot;</span><span class="p">:</span> <span class="p">[]},</span>
+    <span class="s2">&quot;wafv2&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;count&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;elements&quot;</span><span class="p">:</span> <span class="p">[],</span> <span class="s2">&quot;ids&quot;</span><span class="p">:</span> <span class="p">[]},</span>
+    <span class="s2">&quot;lambda&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;count&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;elements&quot;</span><span class="p">:</span> <span class="p">[],</span> <span class="s2">&quot;ids&quot;</span><span class="p">:</span> <span class="p">[]},</span>
+    <span class="s2">&quot;vpc&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;count&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;elements&quot;</span><span class="p">:</span> <span class="p">[],</span> <span class="s2">&quot;ids&quot;</span><span class="p">:</span> <span class="p">[]},</span>
+    <span class="s2">&quot;elasticbeanstalk&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;count&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;elements&quot;</span><span class="p">:</span> <span class="p">[],</span> <span class="s2">&quot;ids&quot;</span><span class="p">:</span> <span class="p">[]},</span>
+    <span class="s2">&quot;route53&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;count&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;elements&quot;</span><span class="p">:</span> <span class="p">[],</span> <span class="s2">&quot;ids&quot;</span><span class="p">:</span> <span class="p">[]},</span>
+    <span class="s2">&quot;ec2&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;count&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;elements&quot;</span><span class="p">:</span> <span class="p">[],</span> <span class="s2">&quot;ids&quot;</span><span class="p">:</span> <span class="p">[]},</span>
+    <span class="s2">&quot;iam&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;count&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;elements&quot;</span><span class="p">:</span> <span class="p">[],</span> <span class="s2">&quot;ids&quot;</span><span class="p">:</span> <span class="p">[]},</span>
+    <span class="s2">&quot;dynamodb&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;count&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;elements&quot;</span><span class="p">:</span> <span class="p">[],</span> <span class="s2">&quot;ids&quot;</span><span class="p">:</span> <span class="p">[]},</span>
+    <span class="s2">&quot;rds&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;count&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;elements&quot;</span><span class="p">:</span> <span class="p">[],</span> <span class="s2">&quot;ids&quot;</span><span class="p">:</span> <span class="p">[]},</span>
+    <span class="s2">&quot;eks&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;count&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;elements&quot;</span><span class="p">:</span> <span class="p">[],</span> <span class="s2">&quot;ids&quot;</span><span class="p">:</span> <span class="p">[]},</span>
+    <span class="s2">&quot;els&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;count&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;elements&quot;</span><span class="p">:</span> <span class="p">[],</span> <span class="s2">&quot;ids&quot;</span><span class="p">:</span> <span class="p">[]},</span>
+    <span class="s2">&quot;secrets&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;count&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;elements&quot;</span><span class="p">:</span> <span class="p">[],</span> <span class="s2">&quot;ids&quot;</span><span class="p">:</span> <span class="p">[]},</span>
+    <span class="s2">&quot;kinesis&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;count&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;elements&quot;</span><span class="p">:</span> <span class="p">[],</span> <span class="s2">&quot;ids&quot;</span><span class="p">:</span> <span class="p">[]},</span>
+    <span class="s2">&quot;cloudwatch&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;count&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;elements&quot;</span><span class="p">:</span> <span class="p">[],</span> <span class="s2">&quot;ids&quot;</span><span class="p">:</span> <span class="p">[]},</span>
+    <span class="s2">&quot;guardduty&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;count&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;elements&quot;</span><span class="p">:</span> <span class="p">[],</span> <span class="s2">&quot;ids&quot;</span><span class="p">:</span> <span class="p">[]},</span>
+    <span class="s2">&quot;detective&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;count&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;elements&quot;</span><span class="p">:</span> <span class="p">[],</span> <span class="s2">&quot;ids&quot;</span><span class="p">:</span> <span class="p">[]},</span>
+    <span class="s2">&quot;inspector&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;count&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;elements&quot;</span><span class="p">:</span> <span class="p">[],</span> <span class="s2">&quot;ids&quot;</span><span class="p">:</span> <span class="p">[]},</span>
+    <span class="s2">&quot;macie&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;count&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;elements&quot;</span><span class="p">:</span> <span class="p">[],</span> <span class="s2">&quot;ids&quot;</span><span class="p">:</span> <span class="p">[]},</span>
+    <span class="s2">&quot;cloudtrail-logs&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;count&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;elements&quot;</span><span class="p">:</span> <span class="p">[],</span> <span class="s2">&quot;ids&quot;</span><span class="p">:</span> <span class="p">[]},</span>
+    <span class="s2">&quot;cloudtrail&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;count&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;elements&quot;</span><span class="p">:</span> <span class="p">[],</span> <span class="s2">&quot;ids&quot;</span><span class="p">:</span> <span class="p">[]},</span>
+<span class="p">}</span>
+
+<span class="n">LOGS_RESULTS</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;guardduty&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;action&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="s2">&quot;results&quot;</span><span class="p">:</span> <span class="p">[]},</span>
+    <span class="s2">&quot;cloudtrail-logs&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;action&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="s2">&quot;results&quot;</span><span class="p">:</span> <span class="p">[]},</span>
+    <span class="s2">&quot;wafv2&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;action&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="s2">&quot;results&quot;</span><span class="p">:</span> <span class="p">[]},</span>
+    <span class="s2">&quot;vpc&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;action&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="s2">&quot;results&quot;</span><span class="p">:</span> <span class="p">[]},</span>
+    <span class="s2">&quot;cloudwatch&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;action&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="s2">&quot;results&quot;</span><span class="p">:</span> <span class="p">[]},</span>
+    <span class="s2">&quot;s3&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;action&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="s2">&quot;results&quot;</span><span class="p">:</span> <span class="p">[]},</span>
+    <span class="s2">&quot;inspector&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;action&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="s2">&quot;results&quot;</span><span class="p">:</span> <span class="p">[]},</span>
+    <span class="s2">&quot;macie&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;action&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="s2">&quot;results&quot;</span><span class="p">:</span> <span class="p">[]},</span>
+    <span class="s2">&quot;rds&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;action&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="s2">&quot;results&quot;</span><span class="p">:</span> <span class="p">[]},</span>
+    <span class="s2">&quot;route53&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;action&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="s2">&quot;results&quot;</span><span class="p">:</span> <span class="p">[]}</span>
+<span class="p">}</span>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, test.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

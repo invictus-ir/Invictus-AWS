@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>main module &mdash; test  documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="source package" href="source.html" />
+    <link rel="prev" title="Invictus-AWS" href="modules.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            test
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">Invictus-AWS</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">main module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="source.html">source package</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">test</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="modules.html">Invictus-AWS</a></li>
+      <li class="breadcrumb-item active">main module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/main.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-main">
+<span id="main-module"></span><h1>main module<a class="headerlink" href="#module-main" title="Permalink to this headline"></a></h1>
+<p>Main file of the tool, used to run all the steps.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="main.main">
+<span class="sig-prename descclassname"><span class="pre">main.</span></span><span class="sig-name descname"><span class="pre">main</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/main.html#main"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#main.main" title="Permalink to this definition"></a></dt>
+<dd><p>Get the arguments and run the appropriate functions.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="main.run_steps">
+<span class="sig-prename descclassname"><span class="pre">main.</span></span><span class="sig-name descname"><span class="pre">run_steps</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dl</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">region</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">regionless</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">steps</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">catalog</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">database</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">table</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">queryfile</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exists</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeframe</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/main.html#run_steps"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#main.run_steps" title="Permalink to this definition"></a></dt>
+<dd><p>Run the steps of the tool (enum, config, logs extraction, logs analysis).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dl</strong> (<em>bool</em>) – True if the user wants to download the results, False if he wants the results to be written in a s3 bucket</p></li>
+<li><p><strong>region</strong> (<em>str</em>) – Region in which the tool is executed</p></li>
+<li><p><strong>regionless</strong> (<em>str</em>) – “not-all” if the tool is used on only one region. First region to run the tool on otherwise</p></li>
+<li><p><strong>steps</strong> (<em>list of str</em>) – Steps to run (1 for enum, 2 for config, 3 for logs extraction, 4 for analysis)</p></li>
+<li><p><strong>start</strong> (<em>str</em>) – Start time for logs collection</p></li>
+<li><p><strong>end</strong> (<em>str</em>) – End time for logs collection</p></li>
+<li><p><strong>source</strong> (<em>str</em>) – Source bucket for the analysis part (4)</p></li>
+<li><p><strong>output</strong> (<em>str</em>) – Output bucket for the analysis part (4)</p></li>
+<li><p><strong>catalog</strong> (<em>str</em>) – Data catalog used with the database</p></li>
+<li><p><strong>database</strong> (<em>str</em>) – Database containing the table for logs analytics</p></li>
+<li><p><strong>table</strong> (<em>str</em>) – Contains the sql requirements to query the logs</p></li>
+<li><p><strong>queryfile</strong> (<em>str</em>) – File containing the queries</p></li>
+<li><p><strong>exists</strong> (<em>tuple of bool</em>) – If the input db and table already exists</p></li>
+<li><p><strong>timeframe</strong> (<em>str</em>) – Time filter for default queries</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="main.set_args">
+<span class="sig-prename descclassname"><span class="pre">main.</span></span><span class="sig-name descname"><span class="pre">set_args</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/main.html#set_args"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#main.set_args" title="Permalink to this definition"></a></dt>
+<dd><p>Define the arguments used when calling the tool.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="main.verify_all_regions">
+<span class="sig-prename descclassname"><span class="pre">main.</span></span><span class="sig-name descname"><span class="pre">verify_all_regions</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_region</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/main.html#verify_all_regions"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#main.verify_all_regions" title="Permalink to this definition"></a></dt>
+<dd><p>Search for all enabled regions and verify that the given region exists (region that the tool will begin with).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>input_region</strong> (<em>str</em>) – If we’re in this function, the used decided to run the tool on all enabled functions. This given region is the first one that the tool will analyze.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="main.verify_bucket">
+<span class="sig-prename descclassname"><span class="pre">main.</span></span><span class="sig-name descname"><span class="pre">verify_bucket</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bucket</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/main.html#verify_bucket"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#main.verify_bucket" title="Permalink to this definition"></a></dt>
+<dd><p>Verify that the user inputs regarding the buckets logs are correct.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>bucket</strong> (<em>str</em>) – Bucket we verify it exists</p></li>
+<li><p><strong>type</strong> (<em>str</em>) – Source or output bucket (for log analysis)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>bucket</strong> – Bucket we verify it exists</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="main.verify_dates">
+<span class="sig-prename descclassname"><span class="pre">main.</span></span><span class="sig-name descname"><span class="pre">verify_dates</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">start</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">steps</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/main.html#verify_dates"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#main.verify_dates" title="Permalink to this definition"></a></dt>
+<dd><p>Verify if the date inputs are correct.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>start</strong> (<em>str</em>) – Start time</p></li>
+<li><p><strong>end</strong> (<em>str</em>) – End time</p></li>
+<li><p><strong>steps</strong> (<em>list of str</em>) – Steps to run</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="main.verify_file">
+<span class="sig-prename descclassname"><span class="pre">main.</span></span><span class="sig-name descname"><span class="pre">verify_file</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">queryfile</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">steps</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/main.html#verify_file"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#main.verify_file" title="Permalink to this definition"></a></dt>
+<dd><p>Verify if the query file input is correct.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>queryfile</strong> (<em>str</em>) – Yaml file containing the query</p></li>
+<li><p><strong>steps</strong> (<em>list of str</em>) – Steps to run</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="main.verify_one_region">
+<span class="sig-prename descclassname"><span class="pre">main.</span></span><span class="sig-name descname"><span class="pre">verify_one_region</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">region</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/main.html#verify_one_region"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#main.verify_one_region" title="Permalink to this definition"></a></dt>
+<dd><p>Verify the region inputs and run the steps of the tool for one region.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>region</strong> (<em>str</em>) – Region to run the tool in</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>good</strong> – True if the region is enabled</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="main.verify_steps">
+<span class="sig-prename descclassname"><span class="pre">main.</span></span><span class="sig-name descname"><span class="pre">verify_steps</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">steps</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">catalog</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">database</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">table</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">region</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dl</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/main.html#verify_steps"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#main.verify_steps" title="Permalink to this definition"></a></dt>
+<dd><p>Verify that the steps entered are correct.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>steps</strong> (<em>list of str</em>) – Steps to run (1 for enum, 2 for config, 3 for logs extraction, 4 for analysis)</p></li>
+<li><p><strong>source</strong> (<em>str</em>) – Source bucket for the analysis part (4)</p></li>
+<li><p><strong>output</strong> (<em>str</em>) – Output bucket for the analysis part (4)</p></li>
+<li><p><strong>catalog</strong> (<em>str</em>) – Data catalog used with the database</p></li>
+<li><p><strong>database</strong> (<em>str</em>) – Database containing the table for logs analytics</p></li>
+<li><p><strong>table</strong> (<em>str</em>) – Contains the sql requirements to query the logs</p></li>
+<li><p><strong>region</strong> (<em>str</em>) – Region in which the tool is executed</p></li>
+<li><p><strong>dl</strong> (<em>bool</em>) – True if the user wants to download the results, False if he wants the results to be written in a s3 bucket</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><strong>steps</strong> (<em>list of str</em>) – Steps to run (1 for enum, 2 for config, 3 for logs extraction, 4 for analysis)</p></li>
+<li><p><strong>source</strong> (<em>str</em>) – Source bucket for the analysis part (4)</p></li>
+<li><p><strong>output</strong> (<em>str</em>) – Output bucket for the analysis part (4)</p></li>
+<li><p><strong>database</strong> (<em>str</em>) – Database containing the table for logs analytics</p></li>
+<li><p><strong>table</strong> (<em>str</em>) – Contains the sql requirements to query the logs</p></li>
+<li><p><strong>exists</strong> (<em>tuple of bool</em>) – If the input db and table already exists</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="main.verify_timeframe">
+<span class="sig-prename descclassname"><span class="pre">main.</span></span><span class="sig-name descname"><span class="pre">verify_timeframe</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">timeframe</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">steps</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/main.html#verify_timeframe"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#main.verify_timeframe" title="Permalink to this definition"></a></dt>
+<dd><p>Verify the input timeframe which is used to filter queries results.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>timeframe</strong> (<em>str</em>) – Input timeframe</p></li>
+<li><p><strong>steps</strong> (<em>list of str</em>) – Steps to run</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="modules.html" class="btn btn-neutral float-left" title="Invictus-AWS" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="source.html" class="btn btn-neutral float-right" title="source package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, test.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

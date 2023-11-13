@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>source.main.logs &mdash; test  documentation</title>
+      <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
+        <script src="../../../_static/jquery.js"></script>
+        <script src="../../../_static/underscore.js"></script>
+        <script src="../../../_static/doctools.js"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            test
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules.html">Invictus-AWS</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">test</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">source.main.logs</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for source.main.logs</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;File used for the logs collection</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">datetime</span>
+<span class="kn">from</span> <span class="nn">sys</span> <span class="kn">import</span> <span class="n">exit</span>
+<span class="kn">from</span> <span class="nn">json</span> <span class="kn">import</span> <span class="n">loads</span><span class="p">,</span> <span class="n">dumps</span>
+<span class="kn">from</span> <span class="nn">time</span> <span class="kn">import</span> <span class="n">sleep</span>
+<span class="kn">from</span> <span class="nn">os</span> <span class="kn">import</span> <span class="n">remove</span><span class="p">,</span> <span class="n">rmdir</span>
+<span class="kn">from</span> <span class="nn">requests</span> <span class="kn">import</span> <span class="n">get</span>
+
+<span class="kn">import</span> <span class="nn">source.utils.utils</span>
+<span class="kn">from</span> <span class="nn">source.utils.utils</span> <span class="kn">import</span> <span class="n">write_file</span><span class="p">,</span> <span class="n">create_folder</span><span class="p">,</span> <span class="n">copy_or_write_s3</span><span class="p">,</span> <span class="n">create_command</span><span class="p">,</span> <span class="n">writefile_s3</span><span class="p">,</span> <span class="n">LOGS_RESULTS</span><span class="p">,</span> <span class="n">create_s3_if_not_exists</span><span class="p">,</span> <span class="n">LOGS_BUCKET</span><span class="p">,</span> <span class="n">ROOT_FOLDER</span><span class="p">,</span> <span class="n">set_clients</span><span class="p">,</span> <span class="n">write_or_dl</span><span class="p">,</span> <span class="n">write_s3</span><span class="p">,</span> <span class="n">athena_query</span>
+<span class="kn">from</span> <span class="nn">source.utils.enum</span> <span class="kn">import</span> <span class="o">*</span>
+
+
+<div class="viewcode-block" id="Logs"><a class="viewcode-back" href="../../../source.main.html#source.main.logs.Logs">[docs]</a><span class="k">class</span> <span class="nc">Logs</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Logs Collection Class that runs the differents functions needed</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    bucket : str</span>
+<span class="sd">        Bucket where the results are written</span>
+<span class="sd">    region : str</span>
+<span class="sd">        Region in which the tool is executed</span>
+<span class="sd">    dl : bool</span>
+<span class="sd">        True if the user wants to download the results, False if he wants the results to be written in a s3 bucket</span>
+<span class="sd">    confs : str</span>
+<span class="sd">        Path where the results are written, locally</span>
+<span class="sd">    results : dict</span>
+<span class="sd">        Object where the results of the functions are written</span>
+
+<span class="sd">    Methods</span>
+<span class="sd">    -------</span>
+<span class="sd">    self_test()</span>
+<span class="sd">        Test function</span>
+<span class="sd">    execute(services, regionless)</span>
+<span class="sd">        Main function of the class. Run every logs extraction function and then write the results where asked</span>
+<span class="sd">    get_logs_guardduty()</span>
+<span class="sd">        Retrieve the logs of the existing guardduty detectors</span>
+<span class="sd">    get_logs_cloudtrail_logs(start, end)</span>
+<span class="sd">        Retrieve the cloudtrail logs</span>
+<span class="sd">    get_logs_wafv2()</span>
+<span class="sd">        Retrieve the logs of the existing waf web acls</span>
+<span class="sd">    get_logs_vpc()</span>
+<span class="sd">        Retrieve the logs of the existing vpcs</span>
+<span class="sd">    get_logs_elasticbeanstalk()</span>
+<span class="sd">        Retrieve the logs of the configuration of the existing elasticbeanstalk environments</span>
+<span class="sd">    get_logs_cloudwatch()</span>
+<span class="sd">        Retrieve the logs of the configuration of the existing cloudwatch dashboards</span>
+<span class="sd">    get_logs_s3()</span>
+<span class="sd">        Retrieve the logs of the configuration of the existing s3 buckets</span>
+<span class="sd">    get_logs_inspector2()</span>
+<span class="sd">        Retrieve the logs of the configuration of the existing inspector coverages</span>
+<span class="sd">    get_logs_maciev2()</span>
+<span class="sd">        Retrieve the logs of the configuration of the existing macie buckets</span>
+<span class="sd">    download_rds(nameDB, rds, logname)</span>
+<span class="sd">        &#39;Download&#39; the rds logs</span>
+<span class="sd">    get_logs_rds()</span>
+<span class="sd">        Retrieve the logs of the configuration of the existing rds instances</span>
+<span class="sd">    get_logs_route53()</span>
+<span class="sd">        Retrieve the logs of the configuration of the existing routes53 hosted zones</span>
+<span class="sd">    display_progress(count, name)</span>
+<span class="sd">        Diplays if the configuration of the given service worked</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">bucket</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">region</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">dl</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">confs</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">results</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">region</span><span class="p">,</span> <span class="n">dl</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Constructor of the Logs Collection class</span>
+<span class="sd">        </span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        region : str</span>
+<span class="sd">            Region in which to tool is executed</span>
+<span class="sd">        dl : bool</span>
+<span class="sd">            True if the user wants to download the results, False if he wants the results to be written in a s3 bucket</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">region</span> <span class="o">=</span> <span class="n">region</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">results</span> <span class="o">=</span> <span class="n">LOGS_RESULTS</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dl</span> <span class="o">=</span> <span class="n">dl</span>
+
+        <span class="c1">#Also created for cloudtrail-logs results</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">confs</span> <span class="o">=</span> <span class="n">ROOT_FOLDER</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">region</span> <span class="o">+</span> <span class="s2">&quot;/logs&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bucket</span> <span class="o">=</span> <span class="n">create_s3_if_not_exists</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">region</span><span class="p">,</span> <span class="n">LOGS_BUCKET</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dl</span><span class="p">:</span>
+            <span class="n">create_folder</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">confs</span><span class="p">)</span>
+     
+<div class="viewcode-block" id="Logs.self_test"><a class="viewcode-back" href="../../../source.main.html#source.main.logs.Logs.self_test">[docs]</a>    <span class="k">def</span> <span class="nf">self_test</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test function</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;[+] Logs Extraction test passed</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Logs.execute"><a class="viewcode-back" href="../../../source.main.html#source.main.logs.Logs.execute">[docs]</a>    <span class="k">def</span> <span class="nf">execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">services</span><span class="p">,</span> <span class="n">regionless</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Main function of the class. Run every logs extraction function and then write the results where asked</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        services : list</span>
+<span class="sd">            Array used to write the results of the different configuration functions</span>
+<span class="sd">        regionless : str</span>
+<span class="sd">            &quot;not-all&quot; if the tool is used on only one region. First region to run the tool on otherwise</span>
+<span class="sd">        start : str</span>
+<span class="sd">            Start time for logs collection</span>
+<span class="sd">        end : str  </span>
+<span class="sd">            End time for logs collection</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[+] Beginning Logs Extraction&quot;</span><span class="p">)</span>
+
+        <span class="n">set_clients</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">region</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">services</span> <span class="o">=</span> <span class="n">services</span>
+
+        <span class="k">if</span> <span class="n">regionless</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">region</span> <span class="ow">or</span> <span class="n">regionless</span> <span class="o">==</span> <span class="s2">&quot;not-all&quot;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">get_logs_s3</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">get_logs_cloudtrail_logs</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">get_logs_wafv2</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">get_logs_vpc</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">get_logs_elasticbeanstalk</span><span class="p">()</span>
+    
+        <span class="bp">self</span><span class="o">.</span><span class="n">get_logs_route53</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">get_logs_rds</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">get_logs_cloudwatch</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">get_logs_guardduty</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">get_logs_inspector2</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">get_logs_maciev2</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dl</span><span class="p">:</span>
+            <span class="k">with</span> <span class="n">tqdm</span><span class="p">(</span><span class="n">desc</span><span class="o">=</span><span class="s2">&quot;[+] Writing results&quot;</span><span class="p">,</span> <span class="n">leave</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">total</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">))</span> <span class="k">as</span> <span class="n">pbar</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                    <span class="k">if</span> <span class="n">value</span><span class="p">[</span><span class="s2">&quot;results&quot;</span><span class="p">]</span> <span class="ow">and</span> <span class="n">key</span> <span class="o">!=</span> <span class="s2">&quot;cloudtrail-logs&quot;</span><span class="p">:</span>
+                        <span class="n">write_or_dl</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">confs</span><span class="p">)</span>
+                    <span class="k">elif</span> <span class="n">key</span> <span class="o">==</span> <span class="s2">&quot;cloudtrail-logs&quot;</span><span class="p">:</span>
+                        <span class="k">for</span> <span class="n">el</span> <span class="ow">in</span> <span class="n">value</span><span class="p">[</span><span class="s2">&quot;results&quot;</span><span class="p">]:</span>
+                            <span class="n">trail</span> <span class="o">=</span> <span class="n">el</span><span class="p">[</span><span class="s2">&quot;CloudTrailEvent&quot;</span><span class="p">]</span>
+                            <span class="n">obj</span> <span class="o">=</span> <span class="n">loads</span><span class="p">(</span><span class="n">trail</span><span class="p">)</span>
+                            <span class="n">dump</span> <span class="o">=</span> <span class="n">dumps</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="nb">str</span><span class="p">)</span>
+                            <span class="n">create_folder</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">confs</span><span class="si">}</span><span class="s2">/cloudtrail-logs/&quot;</span><span class="p">)</span>
+                            <span class="n">write_file</span><span class="p">(</span>
+                                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">confs</span><span class="si">}</span><span class="s2">/cloudtrail-logs/</span><span class="si">{</span><span class="n">obj</span><span class="p">[</span><span class="s1">&#39;eventID&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">.json&quot;</span><span class="p">,</span>
+                                <span class="s2">&quot;w&quot;</span><span class="p">,</span>
+                                <span class="n">dump</span><span class="p">,</span>
+                            <span class="p">)</span>
+                    <span class="n">pbar</span><span class="o">.</span><span class="n">update</span><span class="p">()</span> 
+                    <span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">with</span> <span class="n">tqdm</span><span class="p">(</span><span class="n">desc</span><span class="o">=</span><span class="s2">&quot;[+] Writing results&quot;</span><span class="p">,</span> <span class="n">leave</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">total</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">))</span> <span class="k">as</span> <span class="n">pbar</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                    <span class="k">if</span> <span class="n">value</span><span class="p">[</span><span class="s2">&quot;results&quot;</span><span class="p">]</span> <span class="ow">and</span> <span class="n">key</span> <span class="o">!=</span> <span class="s2">&quot;cloudtrail-logs&quot;</span><span class="p">:</span>
+                        <span class="n">copy_or_write_s3</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">bucket</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">region</span><span class="p">)</span>
+                    <span class="n">pbar</span><span class="o">.</span><span class="n">update</span><span class="p">()</span> 
+                    <span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
+
+        <span class="c1"># cloudtrail-logs has to be done in any case for further analysis</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s2">&quot;cloudtrail-logs&quot;</span><span class="p">][</span><span class="s2">&quot;results&quot;</span><span class="p">]:</span>
+            <span class="n">res</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s2">&quot;cloudtrail-logs&quot;</span><span class="p">][</span><span class="s2">&quot;results&quot;</span><span class="p">]</span>
+
+            <span class="k">with</span> <span class="n">tqdm</span><span class="p">(</span><span class="n">desc</span><span class="o">=</span><span class="s2">&quot;[+] Writing results&quot;</span><span class="p">,</span> <span class="n">leave</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">total</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s2">&quot;cloudtrail-logs&quot;</span><span class="p">][</span><span class="s2">&quot;results&quot;</span><span class="p">]))</span> <span class="k">as</span> <span class="n">pbar</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">el</span> <span class="ow">in</span> <span class="n">res</span><span class="p">:</span>
+
+                    <span class="n">trail</span> <span class="o">=</span> <span class="n">el</span><span class="p">[</span><span class="s2">&quot;CloudTrailEvent&quot;</span><span class="p">]</span>
+                    <span class="n">obj</span> <span class="o">=</span> <span class="n">loads</span><span class="p">(</span><span class="n">trail</span><span class="p">)</span>
+                    <span class="n">dump</span> <span class="o">=</span> <span class="n">dumps</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="nb">str</span><span class="p">)</span>
+                    <span class="n">write_s3</span><span class="p">(</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">bucket</span><span class="p">,</span>
+                        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">region</span><span class="si">}</span><span class="s2">/logs/cloudtrail-logs/</span><span class="si">{</span><span class="n">obj</span><span class="p">[</span><span class="s1">&#39;eventID&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">.json&quot;</span><span class="p">,</span>
+                        <span class="n">dump</span><span class="p">,</span>
+                    <span class="p">)</span> 
+                    <span class="n">pbar</span><span class="o">.</span><span class="n">update</span><span class="p">()</span> 
+                    <span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
+           
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[+] Logs extraction results stored in the bucket </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">bucket</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+  
+<div class="viewcode-block" id="Logs.get_logs_guardduty"><a class="viewcode-back" href="../../../source.main.html#source.main.logs.Logs.get_logs_guardduty">[docs]</a>    <span class="k">def</span> <span class="nf">get_logs_guardduty</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Retrieve the logs of the existing guardduty detectors</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">guardduty_list</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">services</span><span class="p">[</span><span class="s2">&quot;guardduty&quot;</span><span class="p">]</span>
+
+<span class="w">        </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        In the first part, we verify that the enumeration of the service is already done. </span>
+<span class="sd">        If it doesn&#39;t, we redo it.</span>
+<span class="sd">        If it is, we verify if the service is available or not.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+
+        <span class="k">if</span> <span class="n">guardduty_list</span><span class="p">[</span><span class="s2">&quot;count&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+            <span class="n">detector_ids</span> <span class="o">=</span> <span class="n">paginate</span><span class="p">(</span><span class="n">source</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">GUARDDUTY_CLIENT</span><span class="p">,</span> <span class="s2">&quot;list_detectors&quot;</span><span class="p">,</span> <span class="s2">&quot;DetectorIds&quot;</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">detector_ids</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">display_progress</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;guardduty&quot;</span><span class="p">)</span>
+                <span class="k">return</span>
+
+        <span class="k">elif</span> <span class="n">guardduty_list</span><span class="p">[</span><span class="s2">&quot;count&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">display_progress</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;guardduty&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">detector_ids</span> <span class="o">=</span> <span class="n">guardduty_list</span><span class="p">[</span><span class="s2">&quot;ids&quot;</span><span class="p">]</span>
+
+<span class="w">        </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        In this part, we get the logs of the service (if existing)</span>
+<span class="sd">        Then all the results are added to a same json file.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+
+        <span class="n">findings_data</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">with</span> <span class="n">tqdm</span><span class="p">(</span><span class="n">desc</span><span class="o">=</span><span class="s2">&quot;[+] Getting GUARDDUTY logs&quot;</span><span class="p">,</span> <span class="n">leave</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">total</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">detector_ids</span><span class="p">))</span> <span class="k">as</span> <span class="n">pbar</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">detector</span> <span class="ow">in</span> <span class="n">detector_ids</span><span class="p">:</span>
+                <span class="n">findings</span> <span class="o">=</span> <span class="n">paginate</span><span class="p">(</span><span class="n">source</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">GUARDDUTY_CLIENT</span><span class="p">,</span> <span class="s2">&quot;list_findings&quot;</span><span class="p">,</span> <span class="s2">&quot;FindingIds&quot;</span><span class="p">,</span> <span class="n">DetectorId</span><span class="o">=</span><span class="n">detector</span><span class="p">)</span>
+
+                <span class="n">response</span> <span class="o">=</span> <span class="n">try_except</span><span class="p">(</span>
+                    <span class="n">source</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">GUARDDUTY_CLIENT</span><span class="o">.</span><span class="n">get_findings</span><span class="p">,</span> <span class="n">DetectorId</span><span class="o">=</span><span class="n">detector</span><span class="p">,</span> <span class="n">FindingIds</span><span class="o">=</span><span class="n">findings</span>
+                <span class="p">)</span>
+                <span class="n">response</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;ResponseMetadata&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+                <span class="n">response</span> <span class="o">=</span> <span class="n">fix_json</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
+                <span class="n">findings_data</span><span class="p">[</span><span class="n">detector</span><span class="p">]</span> <span class="o">=</span> <span class="n">response</span>
+                <span class="n">pbar</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>
+
+        <span class="n">results</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="n">create_command</span><span class="p">(</span>
+                <span class="s2">&quot;guardduty get-findings --detector-id &lt;id&gt; --findings-id &lt;ids&gt;&quot;</span><span class="p">,</span>
+                <span class="n">findings_data</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s2">&quot;guardduty&quot;</span><span class="p">][</span><span class="s2">&quot;action&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s2">&quot;guardduty&quot;</span><span class="p">][</span><span class="s2">&quot;results&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">results</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">display_progress</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">results</span><span class="p">),</span> <span class="s2">&quot;guardduty&quot;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Logs.get_logs_cloudtrail_logs"><a class="viewcode-back" href="../../../source.main.html#source.main.logs.Logs.get_logs_cloudtrail_logs">[docs]</a>    <span class="k">def</span> <span class="nf">get_logs_cloudtrail_logs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Retrieve the cloudtrail logs</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        start : str</span>
+<span class="sd">            Start time for logs collection</span>
+<span class="sd">        end : str  </span>
+<span class="sd">            End time for logs collection</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">trails_name</span> <span class="o">=</span> <span class="n">paginate</span><span class="p">(</span><span class="n">source</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">CLOUDTRAIL_CLIENT</span><span class="p">,</span> <span class="s2">&quot;list_trails&quot;</span><span class="p">,</span> <span class="s2">&quot;Trails&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">trails_name</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">trails_name</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">response</span> <span class="o">=</span> <span class="n">source</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">CLOUDTRAIL_CLIENT</span><span class="o">.</span><span class="n">get_trail</span><span class="p">(</span><span class="n">Name</span><span class="o">=</span><span class="n">trails_name</span><span class="p">[</span><span class="s2">&quot;TrailARN&quot;</span><span class="p">])</span>
+                <span class="n">bucket</span> <span class="o">=</span> <span class="n">response</span><span class="p">[</span><span class="s2">&quot;Trail&quot;</span><span class="p">][</span><span class="s2">&quot;S3BucketName&quot;</span><span class="p">]</span>
+
+                <span class="k">if</span> <span class="s2">&quot;S3KeyPrefix&quot;</span> <span class="ow">in</span> <span class="n">response</span><span class="p">[</span><span class="s2">&quot;Trail&quot;</span><span class="p">]:</span>
+                    <span class="n">prefix</span> <span class="o">=</span> <span class="n">response</span><span class="p">[</span><span class="s2">&quot;Trail&quot;</span><span class="p">][</span><span class="s2">&quot;S3KeyPrefix&quot;</span><span class="p">]</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+                
+                <span class="n">all_bucket</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">bucket</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[+] You have an existing Cloudtrail trail. You can use the associated bucket </span><span class="si">{</span><span class="n">all_bucket</span><span class="si">}</span><span class="s2"> as source for the analysis. But don&#39;t forget to restrain the number of logs as much as possible by using the most precise subfolder.&quot;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">buckets</span> <span class="o">=</span> <span class="p">[]</span>
+                <span class="k">for</span> <span class="n">trail</span> <span class="ow">in</span> <span class="n">trails_name</span><span class="p">:</span>
+                    <span class="n">response</span> <span class="o">=</span>  <span class="n">source</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">CLOUDTRAIL_CLIENT</span><span class="o">.</span><span class="n">get_trail</span><span class="p">(</span><span class="n">Name</span><span class="o">=</span><span class="n">trail</span><span class="p">[</span><span class="s2">&quot;TrailARN&quot;</span><span class="p">])</span>
+                    <span class="n">bucket</span> <span class="o">=</span> <span class="n">response</span><span class="p">[</span><span class="s2">&quot;Trail&quot;</span><span class="p">][</span><span class="s2">&quot;S3BucketName&quot;</span><span class="p">]</span>
+                    <span class="k">if</span> <span class="s2">&quot;S3KeyPrefix&quot;</span> <span class="ow">in</span> <span class="n">response</span><span class="p">[</span><span class="s2">&quot;Trail&quot;</span><span class="p">]:</span>
+                        <span class="n">prefix</span> <span class="o">=</span> <span class="n">response</span><span class="p">[</span><span class="s2">&quot;Trail&quot;</span><span class="p">][</span><span class="s2">&quot;S3KeyPrefix&quot;</span><span class="p">]</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+
+                    <span class="n">all_bucket</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">bucket</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2">&quot;</span>
+                    <span class="n">buckets</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">all_bucket</span><span class="p">)</span>
+
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[+] You have multiple existing Cloudtrail trails. You can use the associated buckets listed below as source for the analysis.</span><span class="se">\n</span><span class="s2">[!] Warning : If you do so, don&#39;t forget to restrain the number of logs as much as possible by using the most precise subfolder :&quot;</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">buckets</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\u2022</span><span class="s2"> </span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                
+
+        <span class="k">else</span><span class="p">:</span>
+
+            <span class="n">start_date</span> <span class="o">=</span> <span class="n">start</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;-&quot;</span><span class="p">)</span>
+            <span class="n">end_date</span> <span class="o">=</span> <span class="n">end</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;-&quot;</span><span class="p">)</span>
+            <span class="n">datetime_start</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">start_date</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="nb">int</span><span class="p">(</span><span class="n">start_date</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span> <span class="nb">int</span><span class="p">(</span><span class="n">start_date</span><span class="p">[</span><span class="mi">2</span><span class="p">]))</span>
+            <span class="n">datetime_end</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">end_date</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="nb">int</span><span class="p">(</span><span class="n">end_date</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span> <span class="nb">int</span><span class="p">(</span><span class="n">end_date</span><span class="p">[</span><span class="mi">2</span><span class="p">]))</span>
+            
+            <span class="n">logs</span> <span class="o">=</span> <span class="n">paginate</span><span class="p">(</span><span class="n">source</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">CLOUDTRAIL_CLIENT</span><span class="p">,</span> <span class="s2">&quot;lookup_events&quot;</span><span class="p">,</span> <span class="s2">&quot;Events&quot;</span><span class="p">,</span> <span class="n">StartTime</span><span class="o">=</span><span class="n">datetime_start</span><span class="p">,</span> <span class="n">EndTime</span><span class="o">=</span><span class="n">datetime_end</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">logs</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">display_progress</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;cloudtrail&quot;</span><span class="p">)</span>
+                <span class="k">return</span>
+            
+            <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s2">&quot;cloudtrail-logs&quot;</span><span class="p">][</span><span class="s2">&quot;action&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s2">&quot;cloudtrail-logs&quot;</span><span class="p">][</span><span class="s2">&quot;results&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">logs</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">display_progress</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;cloudtrail-logs&quot;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Logs.get_logs_wafv2"><a class="viewcode-back" href="../../../source.main.html#source.main.logs.Logs.get_logs_wafv2">[docs]</a>    <span class="k">def</span> <span class="nf">get_logs_wafv2</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Retrieve the logs of the existing waf web acls</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">waf_list</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">services</span><span class="p">[</span><span class="s2">&quot;wafv2&quot;</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">waf_list</span><span class="p">[</span><span class="s2">&quot;count&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+            <span class="n">wafs</span> <span class="o">=</span> <span class="n">misc_lookup</span><span class="p">(</span><span class="s2">&quot;WAF&quot;</span><span class="p">,</span> <span class="n">source</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">WAF_CLIENT</span><span class="o">.</span><span class="n">list_web_acls</span><span class="p">,</span> <span class="s2">&quot;NextMarker&quot;</span><span class="p">,</span> <span class="s2">&quot;WebACLs&quot;</span><span class="p">,</span> <span class="n">Scope</span><span class="o">=</span><span class="s2">&quot;REGIONAL&quot;</span><span class="p">,</span> <span class="n">Limit</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">wafs</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">display_progress</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;wafv2&quot;</span><span class="p">)</span>
+                <span class="k">return</span>
+
+            <span class="n">identifiers</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">el</span> <span class="ow">in</span> <span class="n">wafs</span><span class="p">:</span>
+                <span class="n">identifiers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">el</span><span class="p">[</span><span class="s2">&quot;ARN&quot;</span><span class="p">])</span>
+
+        <span class="k">elif</span> <span class="n">waf_list</span><span class="p">[</span><span class="s2">&quot;count&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">display_progress</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;wafv2&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">identifiers</span> <span class="o">=</span> <span class="n">waf_list</span><span class="p">[</span><span class="s2">&quot;ids&quot;</span><span class="p">]</span>
+            <span class="k">return</span> <span class="n">identifiers</span>
+
+        <span class="n">cnt</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s2">&quot;wafv2&quot;</span><span class="p">][</span><span class="s2">&quot;action&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+
+        <span class="k">with</span> <span class="n">tqdm</span><span class="p">(</span><span class="n">desc</span><span class="o">=</span><span class="s2">&quot;[+] Getting WAF logs&quot;</span><span class="p">,</span> <span class="n">leave</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">total</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">identifiers</span><span class="p">))</span> <span class="k">as</span> <span class="n">pbar</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">arn</span> <span class="ow">in</span> <span class="n">identifiers</span><span class="p">:</span>
+                <span class="n">logging</span> <span class="o">=</span> <span class="n">try_except</span><span class="p">(</span><span class="n">source</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">WAF_CLIENT</span><span class="o">.</span><span class="n">get_logging_configuration</span><span class="p">,</span> <span class="n">ResourceArn</span><span class="o">=</span><span class="n">arn</span><span class="p">)</span>
+                <span class="k">if</span> <span class="s2">&quot;LoggingConfiguration&quot;</span> <span class="ow">in</span> <span class="n">logging</span><span class="p">:</span>
+                    <span class="n">destinations</span> <span class="o">=</span> <span class="n">logging</span><span class="p">[</span><span class="s2">&quot;LoggingConfiguration&quot;</span><span class="p">][</span><span class="s2">&quot;LogDestinationConfigs&quot;</span><span class="p">]</span>
+                    <span class="k">for</span> <span class="n">destination</span> <span class="ow">in</span> <span class="n">destinations</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="s2">&quot;s3&quot;</span> <span class="ow">in</span> <span class="n">destination</span><span class="p">:</span>
+                            <span class="n">bucket</span> <span class="o">=</span> <span class="n">destination</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;:&quot;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+                            <span class="n">src_bucket</span> <span class="o">=</span> <span class="n">bucket</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+                            <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s2">&quot;wafv2&quot;</span><span class="p">][</span><span class="s2">&quot;results&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">src_bucket</span><span class="p">)</span>
+
+                            <span class="n">cnt</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="n">pbar</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">display_progress</span><span class="p">(</span><span class="n">cnt</span><span class="p">,</span> <span class="s2">&quot;wafv2&quot;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Logs.get_logs_vpc"><a class="viewcode-back" href="../../../source.main.html#source.main.logs.Logs.get_logs_vpc">[docs]</a>    <span class="k">def</span> <span class="nf">get_logs_vpc</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Retrieve the logs of the existing vpcs</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">vpc_list</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">services</span><span class="p">[</span><span class="s2">&quot;vpc&quot;</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">vpc_list</span><span class="p">[</span><span class="s2">&quot;count&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+            <span class="n">vpcs</span> <span class="o">=</span> <span class="n">paginate</span><span class="p">(</span><span class="n">source</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">EC2_CLIENT</span><span class="p">,</span> <span class="s2">&quot;describe_vpcs&quot;</span><span class="p">,</span> <span class="s2">&quot;Vpcs&quot;</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">vpcs</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">display_progress</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;vpc&quot;</span><span class="p">)</span>
+                <span class="k">return</span>
+
+        <span class="k">elif</span> <span class="n">vpc_list</span><span class="p">[</span><span class="s2">&quot;count&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">display_progress</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;vpc&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+
+        <span class="n">flow_logs</span> <span class="o">=</span> <span class="n">paginate</span><span class="p">(</span><span class="n">source</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">EC2_CLIENT</span><span class="p">,</span> <span class="s2">&quot;describe_flow_logs&quot;</span><span class="p">,</span> <span class="s2">&quot;FlowLogs&quot;</span><span class="p">)</span>
+        <span class="n">cnt</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s2">&quot;vpc&quot;</span><span class="p">][</span><span class="s2">&quot;action&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+
+        <span class="k">with</span> <span class="n">tqdm</span><span class="p">(</span><span class="n">desc</span><span class="o">=</span><span class="s2">&quot;[+] Getting VPC logs&quot;</span><span class="p">,</span> <span class="n">leave</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">total</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">flow_logs</span><span class="p">))</span> <span class="k">as</span> <span class="n">pbar</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">flow_log</span> <span class="ow">in</span> <span class="n">flow_logs</span><span class="p">:</span>
+                <span class="k">if</span> <span class="s2">&quot;s3&quot;</span> <span class="ow">in</span> <span class="n">flow_log</span><span class="p">[</span><span class="s2">&quot;LogDestinationType&quot;</span><span class="p">]:</span>
+                    <span class="n">bucket</span> <span class="o">=</span> <span class="n">flow_log</span><span class="p">[</span><span class="s2">&quot;LogDestination&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;:&quot;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+                    <span class="n">src_bucket</span> <span class="o">=</span> <span class="n">bucket</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+                    <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s2">&quot;vpc&quot;</span><span class="p">][</span><span class="s2">&quot;results&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">src_bucket</span><span class="p">)</span>
+                    <span class="n">cnt</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="n">pbar</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">display_progress</span><span class="p">(</span><span class="n">cnt</span><span class="p">,</span> <span class="s2">&quot;vpc&quot;</span><span class="p">)</span></div>
+    
+<div class="viewcode-block" id="Logs.get_logs_elasticbeanstalk"><a class="viewcode-back" href="../../../source.main.html#source.main.logs.Logs.get_logs_elasticbeanstalk">[docs]</a>    <span class="k">def</span> <span class="nf">get_logs_elasticbeanstalk</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Retrieve the logs of the configuration of the existing elasticbeanstalk environments</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">eb</span> <span class="o">=</span> <span class="n">source</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">EB_CLIENT</span> 
+
+        <span class="n">eb_list</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">services</span><span class="p">[</span><span class="s2">&quot;elasticbeanstalk&quot;</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">eb_list</span><span class="p">[</span><span class="s2">&quot;count&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+
+            <span class="n">environments</span> <span class="o">=</span> <span class="n">paginate</span><span class="p">(</span><span class="n">source</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">EB_CLIENT</span><span class="p">,</span> <span class="s2">&quot;describe_environments&quot;</span><span class="p">,</span> <span class="s2">&quot;Environments&quot;</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">environments</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">display_progress</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;elasticbeanstalk&quot;</span><span class="p">)</span>
+                <span class="k">return</span>
+
+        <span class="k">elif</span> <span class="n">eb_list</span><span class="p">[</span><span class="s2">&quot;count&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">display_progress</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;elasticbeanstalk&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">environments</span> <span class="o">=</span> <span class="n">eb_list</span><span class="p">[</span><span class="s2">&quot;elements&quot;</span><span class="p">]</span>
+
+        <span class="n">path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">confs</span> <span class="o">+</span> <span class="s2">&quot;elasticbeanstalk/&quot;</span>
+        <span class="n">create_folder</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+
+        <span class="k">with</span> <span class="n">tqdm</span><span class="p">(</span><span class="n">desc</span><span class="o">=</span><span class="s2">&quot;[+] Getting ELASTICBEANSTALK logs&quot;</span><span class="p">,</span> <span class="n">leave</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">total</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">environments</span><span class="p">))</span> <span class="k">as</span> <span class="n">pbar</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">environment</span> <span class="ow">in</span> <span class="n">environments</span><span class="p">:</span>
+                <span class="n">name</span> <span class="o">=</span> <span class="n">environment</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;EnvironmentName&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;&quot;</span><span class="p">:</span>
+                    <span class="k">continue</span>
+
+                <span class="n">response</span> <span class="o">=</span> <span class="n">try_except</span><span class="p">(</span>
+                    <span class="n">eb</span><span class="o">.</span><span class="n">request_environment_info</span><span class="p">,</span> <span class="n">EnvironmentName</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">InfoType</span><span class="o">=</span><span class="s2">&quot;bundle&quot;</span>
+                <span class="p">)</span>
+                <span class="n">response</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;ResponseMetadata&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+                <span class="n">response</span> <span class="o">=</span> <span class="n">fix_json</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
+                <span class="n">sleep</span><span class="p">(</span><span class="mi">60</span><span class="p">)</span>
+
+                <span class="n">response</span> <span class="o">=</span> <span class="n">try_except</span><span class="p">(</span>
+                    <span class="n">eb</span><span class="o">.</span><span class="n">retrieve_environment_info</span><span class="p">,</span> <span class="n">EnvironmentName</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">InfoType</span><span class="o">=</span><span class="s2">&quot;bundle&quot;</span>
+                <span class="p">)</span>
+                <span class="n">response</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;ResponseMetadata&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+                <span class="n">response</span> <span class="o">=</span> <span class="n">fix_json</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
+
+                <span class="n">urls</span> <span class="o">=</span> <span class="n">response</span><span class="p">[</span><span class="s2">&quot;EnvironmentInfo&quot;</span><span class="p">]</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">urls</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">url</span> <span class="o">=</span> <span class="n">urls</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+                    <span class="n">url</span> <span class="o">=</span> <span class="n">url</span><span class="p">[</span><span class="s2">&quot;Message&quot;</span><span class="p">]</span>
+
+                <span class="n">filename</span> <span class="o">=</span> <span class="n">path</span> <span class="o">+</span> <span class="n">name</span> <span class="o">+</span> <span class="s2">&quot;.zip&quot;</span>
+                <span class="n">r</span> <span class="o">=</span> <span class="n">get</span><span class="p">(</span><span class="n">url</span><span class="p">)</span>
+                <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s2">&quot;wb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">content</span><span class="p">)</span>
+
+                <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">dl</span><span class="p">:</span>
+                    <span class="n">key</span> <span class="o">=</span> <span class="s2">&quot;eb/&quot;</span> <span class="o">+</span> <span class="n">name</span> <span class="o">+</span> <span class="s2">&quot;.zip&quot;</span>
+                    <span class="n">writefile_s3</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bucket</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">filename</span><span class="p">)</span>
+                    <span class="n">remove</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+                    <span class="n">rmdir</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+                <span class="n">pbar</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">display_progress</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">environments</span><span class="p">),</span> <span class="s2">&quot;elasticbeanstalk&quot;</span><span class="p">)</span></div>
+  
+<div class="viewcode-block" id="Logs.get_logs_cloudwatch"><a class="viewcode-back" href="../../../source.main.html#source.main.logs.Logs.get_logs_cloudwatch">[docs]</a>    <span class="k">def</span> <span class="nf">get_logs_cloudwatch</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Retrieve the logs of the configuration of the existing cloudwatch dashboards</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">cloudwatch_list</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">services</span><span class="p">[</span><span class="s2">&quot;cloudwatch&quot;</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">cloudwatch_list</span><span class="p">[</span><span class="s2">&quot;count&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+            <span class="n">dashboards</span> <span class="o">=</span> <span class="n">paginate</span><span class="p">(</span><span class="n">source</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">CLOUDWATCH_CLIENT</span><span class="p">,</span> <span class="s2">&quot;list_dashboards&quot;</span><span class="p">,</span> <span class="s2">&quot;DashboardEntries&quot;</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">dashboards</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">display_progress</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;cloudwatch&quot;</span><span class="p">)</span>
+                <span class="k">return</span>
+
+        <span class="k">elif</span> <span class="n">cloudwatch_list</span><span class="p">[</span><span class="s2">&quot;count&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">display_progress</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;cloudwatch&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">dashboards</span> <span class="o">=</span> <span class="n">cloudwatch_list</span><span class="p">[</span><span class="s2">&quot;elements&quot;</span><span class="p">]</span>
+
+        <span class="n">dashboards_data</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">with</span> <span class="n">tqdm</span><span class="p">(</span><span class="n">desc</span><span class="o">=</span><span class="s2">&quot;[+] Getting CLOUDWATCH logs&quot;</span><span class="p">,</span> <span class="n">leave</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">total</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">dashboards</span><span class="p">))</span> <span class="k">as</span> <span class="n">pbar</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">dashboard</span> <span class="ow">in</span> <span class="n">dashboards</span><span class="p">:</span>
+                <span class="n">dashboard_name</span> <span class="o">=</span> <span class="n">dashboard</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;DashboardName&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">dashboard_name</span> <span class="o">==</span> <span class="s2">&quot;&quot;</span><span class="p">:</span>
+                    <span class="k">continue</span>
+                <span class="n">response</span> <span class="o">=</span> <span class="n">try_except</span><span class="p">(</span>
+                    <span class="n">source</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">CLOUDWATCH_CLIENT</span><span class="o">.</span><span class="n">get_dashboard</span><span class="p">,</span> <span class="n">DashboardName</span><span class="o">=</span><span class="n">dashboard_name</span>
+                <span class="p">)</span>
+                <span class="n">response</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;ResponseMetadata&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+                <span class="n">dashboards_data</span><span class="p">[</span><span class="n">dashboard_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">fix_json</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
+                <span class="n">pbar</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>
+
+        <span class="n">metrics</span> <span class="o">=</span> <span class="n">try_except</span><span class="p">(</span><span class="n">source</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">CLOUDWATCH_CLIENT</span><span class="p">,</span> <span class="s2">&quot;list_metrics&quot;</span><span class="p">)</span>
+
+        <span class="n">alarms</span> <span class="o">=</span> <span class="n">simple_paginate</span><span class="p">(</span><span class="n">source</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">CLOUDWATCH_CLIENT</span><span class="p">,</span> <span class="s2">&quot;describe_alarms&quot;</span><span class="p">)</span>
+
+        <span class="n">results</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="n">create_command</span><span class="p">(</span><span class="s2">&quot;cloudwatch get-dashboard --name &lt;name&gt;&quot;</span><span class="p">,</span> <span class="n">dashboards_data</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">create_command</span><span class="p">(</span><span class="s2">&quot;cloudwatch list-metrics --name &lt;name&gt;&quot;</span><span class="p">,</span> <span class="n">metrics</span><span class="p">))</span>
+        <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="n">create_command</span><span class="p">(</span><span class="s2">&quot;cloudwatch describe-alarms --name &lt;name&gt;&quot;</span><span class="p">,</span> <span class="n">alarms</span><span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s2">&quot;cloudwatch&quot;</span><span class="p">][</span><span class="s2">&quot;action&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s2">&quot;cloudwatch&quot;</span><span class="p">][</span><span class="s2">&quot;results&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">results</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">display_progress</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">results</span><span class="p">),</span> <span class="s2">&quot;cloudwatch&quot;</span><span class="p">)</span></div>
+    
+<div class="viewcode-block" id="Logs.get_logs_s3"><a class="viewcode-back" href="../../../source.main.html#source.main.logs.Logs.get_logs_s3">[docs]</a>    <span class="k">def</span> <span class="nf">get_logs_s3</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Retrieve the logs of the configuration of the existing s3 buckets</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">s3_list</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">services</span><span class="p">[</span><span class="s2">&quot;s3&quot;</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">s3_list</span><span class="p">[</span><span class="s2">&quot;count&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+
+            <span class="n">elements</span> <span class="o">=</span> <span class="n">s3_lookup</span><span class="p">()</span>
+
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">elements</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">display_progress</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;s3&quot;</span><span class="p">)</span>
+                <span class="k">return</span>
+
+        <span class="k">elif</span> <span class="n">s3_list</span><span class="p">[</span><span class="s2">&quot;count&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="c1"># if there is not bucket at all</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">display_progress</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;s3&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">elements</span> <span class="o">=</span> <span class="n">s3_list</span><span class="p">[</span><span class="s2">&quot;elements&quot;</span><span class="p">]</span>
+
+        <span class="n">cnt</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s2">&quot;s3&quot;</span><span class="p">][</span><span class="s2">&quot;action&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s2">&quot;s3&quot;</span><span class="p">][</span><span class="s2">&quot;results&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        
+        <span class="k">with</span> <span class="n">tqdm</span><span class="p">(</span><span class="n">desc</span><span class="o">=</span><span class="s2">&quot;[+] Getting S3 logs&quot;</span><span class="p">,</span> <span class="n">leave</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">total</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">elements</span><span class="p">))</span> <span class="k">as</span> <span class="n">pbar</span><span class="p">:</span>
+            
+            <span class="c1"># Simulez une action quelconque.</span>
+            <span class="k">for</span> <span class="n">bucket</span> <span class="ow">in</span> <span class="n">elements</span><span class="p">:</span> 
+            
+                <span class="n">name</span> <span class="o">=</span> <span class="n">bucket</span><span class="p">[</span><span class="s2">&quot;Name&quot;</span><span class="p">]</span>
+
+                <span class="n">logging</span> <span class="o">=</span> <span class="n">try_except</span><span class="p">(</span><span class="n">S3_CLIENT</span><span class="o">.</span><span class="n">get_bucket_logging</span><span class="p">,</span> <span class="n">Bucket</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+
+                <span class="k">if</span> <span class="s2">&quot;LoggingEnabled&quot;</span> <span class="ow">in</span> <span class="n">logging</span><span class="p">:</span>
+                    <span class="n">target</span> <span class="o">=</span> <span class="n">logging</span><span class="p">[</span><span class="s2">&quot;LoggingEnabled&quot;</span><span class="p">][</span><span class="s2">&quot;TargetBucket&quot;</span><span class="p">]</span>
+                    <span class="n">bucket</span> <span class="o">=</span> <span class="n">target</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;:&quot;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+                    <span class="n">src_bucket</span> <span class="o">=</span> <span class="n">bucket</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+                    <span class="k">if</span> <span class="n">logging</span><span class="p">[</span><span class="s2">&quot;LoggingEnabled&quot;</span><span class="p">][</span><span class="s2">&quot;TargetPrefix&quot;</span><span class="p">]:</span>
+                        <span class="n">prefix</span> <span class="o">=</span> <span class="n">logging</span><span class="p">[</span><span class="s2">&quot;LoggingEnabled&quot;</span><span class="p">][</span><span class="s2">&quot;TargetPrefix&quot;</span><span class="p">]</span>
+                    <span class="n">src_bucket</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">src_bucket</span><span class="si">}</span><span class="s2">|</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2">&quot;</span>
+
+                    <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s2">&quot;s3&quot;</span><span class="p">][</span><span class="s2">&quot;results&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">src_bucket</span><span class="p">)</span>
+
+                    <span class="n">cnt</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="n">pbar</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>
+       
+        <span class="bp">self</span><span class="o">.</span><span class="n">display_progress</span><span class="p">(</span><span class="n">cnt</span><span class="p">,</span> <span class="s2">&quot;s3&quot;</span><span class="p">)</span></div>
+       
+<div class="viewcode-block" id="Logs.get_logs_inspector2"><a class="viewcode-back" href="../../../source.main.html#source.main.logs.Logs.get_logs_inspector2">[docs]</a>    <span class="k">def</span> <span class="nf">get_logs_inspector2</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Retrieve the logs of the configuration of the existing inspector coverages</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">inspector_list</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">services</span><span class="p">[</span><span class="s2">&quot;inspector&quot;</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">inspector_list</span><span class="p">[</span><span class="s2">&quot;count&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+
+            <span class="n">covered</span> <span class="o">=</span> <span class="n">paginate</span><span class="p">(</span><span class="n">source</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">INSPECTOR_CLIENT</span><span class="p">,</span> <span class="s2">&quot;list_coverage&quot;</span><span class="p">,</span> <span class="s2">&quot;coveredResources&quot;</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">covered</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">display_progress</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;inspector&quot;</span><span class="p">)</span>
+                <span class="k">return</span>
+
+        <span class="k">elif</span> <span class="n">inspector_list</span><span class="p">[</span><span class="s2">&quot;count&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">display_progress</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;inspector&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+
+        <span class="n">get_findings</span> <span class="o">=</span> <span class="n">simple_paginate</span><span class="p">(</span><span class="n">source</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">INSPECTOR_CLIENT</span><span class="p">,</span> <span class="s2">&quot;list_findings&quot;</span><span class="p">)</span>
+
+        <span class="n">get_grouped_findings</span> <span class="o">=</span> <span class="n">simple_paginate</span><span class="p">(</span>
+            <span class="n">source</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">INSPECTOR_CLIENT</span><span class="p">,</span> <span class="s2">&quot;list_finding_aggregations&quot;</span><span class="p">,</span> <span class="n">aggregationType</span><span class="o">=</span><span class="s2">&quot;TITLE&quot;</span>
+        <span class="p">)</span>
+
+        <span class="n">results</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">create_command</span><span class="p">(</span><span class="s2">&quot;aws inspector2 list-findings&quot;</span><span class="p">,</span> <span class="n">get_findings</span><span class="p">))</span>
+        <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="n">create_command</span><span class="p">(</span>
+                <span class="s2">&quot;aws inspector2 list-finding-aggregations --aggregation-type TITLE&quot;</span><span class="p">,</span>
+                <span class="n">get_grouped_findings</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s2">&quot;inspector&quot;</span><span class="p">][</span><span class="s2">&quot;action&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s2">&quot;inspector&quot;</span><span class="p">][</span><span class="s2">&quot;results&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">results</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">display_progress</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">results</span><span class="p">),</span> <span class="s2">&quot;inspector&quot;</span><span class="p">)</span></div>
+    
+<div class="viewcode-block" id="Logs.get_logs_maciev2"><a class="viewcode-back" href="../../../source.main.html#source.main.logs.Logs.get_logs_maciev2">[docs]</a>    <span class="k">def</span> <span class="nf">get_logs_maciev2</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Retrieve the logs of the configuration of the existing macie buckets</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">macie_list</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">services</span><span class="p">[</span><span class="s2">&quot;macie&quot;</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">macie_list</span><span class="p">[</span><span class="s2">&quot;count&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+
+            <span class="n">elements</span> <span class="o">=</span> <span class="n">paginate</span><span class="p">(</span><span class="n">source</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">MACIE_CLIENT</span><span class="p">,</span> <span class="s2">&quot;describe_buckets&quot;</span><span class="p">,</span> <span class="s2">&quot;buckets&quot;</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">elements</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">display_progress</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;macie&quot;</span><span class="p">)</span>
+                <span class="k">return</span>
+        <span class="k">elif</span> <span class="n">macie_list</span><span class="p">[</span><span class="s2">&quot;count&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">display_progress</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;macie&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+
+        <span class="n">get_list_findings</span> <span class="o">=</span> <span class="n">simple_paginate</span><span class="p">(</span><span class="n">source</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">MACIE_CLIENT</span><span class="p">,</span> <span class="s2">&quot;list_findings&quot;</span><span class="p">)</span>
+
+        <span class="n">response</span> <span class="o">=</span> <span class="n">try_except</span><span class="p">(</span>
+            <span class="n">source</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">MACIE_CLIENT</span><span class="o">.</span><span class="n">get_findings</span><span class="p">,</span>
+            <span class="n">findingIds</span><span class="o">=</span><span class="n">get_list_findings</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;findingIds&quot;</span><span class="p">,</span> <span class="p">[]),</span>
+        <span class="p">)</span>
+        <span class="n">response</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;ResponseMetadata&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="n">findings</span> <span class="o">=</span> <span class="n">fix_json</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
+
+        <span class="n">results</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">create_command</span><span class="p">(</span><span class="s2">&quot;aws macie2 list-findings&quot;</span><span class="p">,</span> <span class="n">get_list_findings</span><span class="p">))</span>
+        <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="n">create_command</span><span class="p">(</span><span class="s2">&quot;aws macie2 get-findings --finding-ids &lt;ID&gt;&quot;</span><span class="p">,</span> <span class="n">findings</span><span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s2">&quot;macie&quot;</span><span class="p">][</span><span class="s2">&quot;action&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s2">&quot;macie&quot;</span><span class="p">][</span><span class="s2">&quot;results&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">results</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">display_progress</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">results</span><span class="p">),</span> <span class="s2">&quot;macie&quot;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Logs.download_rds"><a class="viewcode-back" href="../../../source.main.html#source.main.logs.Logs.download_rds">[docs]</a>    <span class="k">def</span> <span class="nf">download_rds</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nameDB</span><span class="p">,</span> <span class="n">rds</span><span class="p">,</span> <span class="n">logname</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;&#39;Download&#39; the rds logs</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        nameDB : str</span>
+<span class="sd">            name of the rds instance</span>
+<span class="sd">        rds : object</span>
+<span class="sd">            RDS client</span>
+<span class="sd">        logname : str</span>
+<span class="sd">            name of the logfile to get</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        ret : dict</span>
+<span class="sd">            Part of the response</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">response</span> <span class="o">=</span> <span class="n">try_except</span><span class="p">(</span>
+            <span class="n">rds</span><span class="o">.</span><span class="n">download_db_log_file_portion</span><span class="p">,</span>
+            <span class="n">DBInstanceIdentifier</span><span class="o">=</span><span class="n">nameDB</span><span class="p">,</span>
+            <span class="n">LogFileName</span><span class="o">=</span><span class="n">logname</span><span class="p">,</span>
+            <span class="n">Marker</span><span class="o">=</span><span class="s2">&quot;0&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="n">ret</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;LogFileData&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">ret</span></div>
+    
+<div class="viewcode-block" id="Logs.get_logs_rds"><a class="viewcode-back" href="../../../source.main.html#source.main.logs.Logs.get_logs_rds">[docs]</a>    <span class="k">def</span> <span class="nf">get_logs_rds</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Retrieve the logs of the configuration of the existing rds instances</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">rds_list</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">services</span><span class="p">[</span><span class="s2">&quot;rds&quot;</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">rds_list</span><span class="p">[</span><span class="s2">&quot;count&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+
+            <span class="n">list_of_dbs</span> <span class="o">=</span> <span class="n">paginate</span><span class="p">(</span><span class="n">source</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">RDS_CLIENT</span><span class="p">,</span> <span class="s2">&quot;describe_db_instances&quot;</span><span class="p">,</span> <span class="s2">&quot;DBInstances&quot;</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">list_of_dbs</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">display_progress</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;rds&quot;</span><span class="p">)</span>
+                <span class="k">return</span>
+
+        <span class="k">elif</span> <span class="n">rds_list</span><span class="p">[</span><span class="s2">&quot;count&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">display_progress</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;rds&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">list_of_dbs</span> <span class="o">=</span> <span class="n">rds_list</span><span class="p">[</span><span class="s2">&quot;elements&quot;</span><span class="p">]</span>
+
+        <span class="n">total_logs</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">with</span> <span class="n">tqdm</span><span class="p">(</span><span class="n">desc</span><span class="o">=</span><span class="s2">&quot;[+] Getting RDS logs&quot;</span><span class="p">,</span> <span class="n">leave</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">total</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">list_of_dbs</span><span class="p">))</span> <span class="k">as</span> <span class="n">pbar</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">db</span> <span class="ow">in</span> <span class="n">list_of_dbs</span><span class="p">:</span>
+                <span class="n">total_logs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">download_rds</span><span class="p">(</span>
+                        <span class="n">db</span><span class="p">[</span><span class="s2">&quot;DBInstanceIdentifier&quot;</span><span class="p">],</span>
+                        <span class="n">source</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">RDS_CLIENT</span><span class="p">,</span>
+                        <span class="s2">&quot;external/mysql-external.log&quot;</span><span class="p">,</span>
+                    <span class="p">)</span>
+                <span class="p">)</span>
+                <span class="n">total_logs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">download_rds</span><span class="p">(</span>
+                        <span class="n">db</span><span class="p">[</span><span class="s2">&quot;DBInstanceIdentifier&quot;</span><span class="p">],</span> <span class="n">source</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">RDS_CLIENT</span><span class="p">,</span> <span class="s2">&quot;error/mysql-error.log&quot;</span>
+                    <span class="p">)</span>
+                <span class="p">)</span>
+                <span class="n">pbar</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s2">&quot;rds&quot;</span><span class="p">][</span><span class="s2">&quot;action&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s2">&quot;rds&quot;</span><span class="p">][</span><span class="s2">&quot;results&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">total_logs</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">display_progress</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">list_of_dbs</span><span class="p">),</span> <span class="s2">&quot;rds&quot;</span><span class="p">)</span></div>
+    
+<div class="viewcode-block" id="Logs.get_logs_route53"><a class="viewcode-back" href="../../../source.main.html#source.main.logs.Logs.get_logs_route53">[docs]</a>    <span class="k">def</span> <span class="nf">get_logs_route53</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Retrieve the logs of the configuration of the existing routes53 hosted zones</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">route53_list</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">services</span><span class="p">[</span><span class="s2">&quot;route53&quot;</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">route53_list</span><span class="p">[</span><span class="s2">&quot;count&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+            
+            <span class="n">hosted_zones</span> <span class="o">=</span> <span class="n">paginate</span><span class="p">(</span><span class="n">source</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">ROUTE53_CLIENT</span><span class="p">,</span> <span class="s2">&quot;list_hosted_zones&quot;</span><span class="p">,</span> <span class="s2">&quot;HostedZones&quot;</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">hosted_zones</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">display_progress</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;route53&quot;</span><span class="p">)</span>
+                <span class="k">return</span>
+
+        <span class="k">elif</span> <span class="n">route53_list</span><span class="p">[</span><span class="s2">&quot;count&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">display_progress</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;route53&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+
+        <span class="n">resolver_log_configs</span> <span class="o">=</span> <span class="n">paginate</span><span class="p">(</span><span class="n">source</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">ROUTE53_RESOLVER_CLIENT</span><span class="p">,</span> <span class="s2">&quot;list_resolver_query_log_configs&quot;</span><span class="p">,</span> <span class="s2">&quot;ResolverQueryLogConfigs&quot;</span><span class="p">)</span>
+        <span class="n">cnt</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s2">&quot;route53&quot;</span><span class="p">][</span><span class="s2">&quot;action&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s2">&quot;route53&quot;</span><span class="p">][</span><span class="s2">&quot;results&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">with</span> <span class="n">tqdm</span><span class="p">(</span><span class="n">desc</span><span class="o">=</span><span class="s2">&quot;[+] Getting ROUTE53 logs&quot;</span><span class="p">,</span> <span class="n">leave</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">total</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">resolver_log_configs</span><span class="p">))</span> <span class="k">as</span> <span class="n">pbar</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">bucket_location</span> <span class="ow">in</span> <span class="n">resolver_log_configs</span><span class="p">:</span>
+                <span class="k">if</span> <span class="s2">&quot;s3&quot;</span> <span class="ow">in</span> <span class="n">bucket_location</span><span class="p">[</span><span class="s2">&quot;DestinationArn&quot;</span><span class="p">]:</span>
+                    <span class="n">bucket</span> <span class="o">=</span> <span class="n">bucket_location</span><span class="p">[</span><span class="s2">&quot;DestinationArn&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;:&quot;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+                    <span class="k">if</span> <span class="s2">&quot;/&quot;</span> <span class="ow">in</span> <span class="n">bucket</span><span class="p">:</span>
+
+                        <span class="n">src_bucket</span> <span class="o">=</span> <span class="n">bucket</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+                        <span class="n">prefix</span> <span class="o">=</span> <span class="n">bucket</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+                        <span class="n">result</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">src_bucket</span><span class="si">}</span><span class="s2">|</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2">&quot;</span>
+
+                    <span class="k">else</span> <span class="p">:</span>
+                        <span class="n">result</span> <span class="o">=</span> <span class="n">bucket</span>
+
+                    <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s2">&quot;route53&quot;</span><span class="p">][</span><span class="s2">&quot;results&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+
+                    <span class="n">cnt</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="n">pbar</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>
+                
+        <span class="bp">self</span><span class="o">.</span><span class="n">display_progress</span><span class="p">(</span><span class="n">cnt</span><span class="p">,</span> <span class="s2">&quot;route53&quot;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Logs.display_progress"><a class="viewcode-back" href="../../../source.main.html#source.main.logs.Logs.display_progress">[docs]</a>    <span class="k">def</span> <span class="nf">display_progress</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">count</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Diplays if the configuration of the given service worked</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        count : int</span>
+<span class="sd">            != 0 a configuration file was created. 0 otherwise</span>
+<span class="sd">        name : str</span>
+<span class="sd">            Name of the service</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="n">count</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span>
+                <span class="s2">&quot;         </span><span class="se">\u2705</span><span class="s2"> &quot;</span>
+                <span class="o">+</span> <span class="n">name</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span>
+                <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\033</span><span class="s2">[1m&quot;</span>
+                <span class="o">+</span> <span class="s2">&quot; - Logs extracted&quot;</span>
+                <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\033</span><span class="s2">[0m&quot;</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span>
+                <span class="s2">&quot;         </span><span class="se">\u274c</span><span class="s2"> &quot;</span> <span class="o">+</span> <span class="n">name</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\033</span><span class="s2">[1m&quot;</span> <span class="o">+</span> <span class="s2">&quot; - No Logs&quot;</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\033</span><span class="s2">[0m&quot;</span>
+            <span class="p">)</span></div></div>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, test.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

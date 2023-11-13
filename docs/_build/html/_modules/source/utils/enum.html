@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>source.utils.enum &mdash; test  documentation</title>
+      <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
+        <script src="../../../_static/jquery.js"></script>
+        <script src="../../../_static/underscore.js"></script>
+        <script src="../../../_static/doctools.js"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            test
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules.html">Invictus-AWS</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">test</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">source.utils.enum</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for source.utils.enum</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;File containg all the aws enumeration function used to get data.&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">source.utils.utils</span> <span class="kn">import</span> <span class="n">fix_json</span><span class="p">,</span> <span class="n">try_except</span><span class="p">,</span> <span class="n">S3_CLIENT</span>
+<span class="kn">import</span> <span class="nn">source.utils.utils</span>
+<span class="kn">from</span> <span class="nn">tqdm</span> <span class="kn">import</span> <span class="n">tqdm</span>
+
+<div class="viewcode-block" id="s3_lookup"><a class="viewcode-back" href="../../../source.utils.html#source.utils.enum.s3_lookup">[docs]</a><span class="k">def</span> <span class="nf">s3_lookup</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return all existing buckets.</span>
+<span class="sd">    </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    elements : list</span>
+<span class="sd">        List of the existing buckets</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">response</span> <span class="o">=</span> <span class="n">try_except</span><span class="p">(</span><span class="n">S3_CLIENT</span><span class="o">.</span><span class="n">list_buckets</span><span class="p">)</span>
+    <span class="n">buckets</span> <span class="o">=</span> <span class="n">fix_json</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
+
+    <span class="n">elements</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">elements</span> <span class="o">=</span> <span class="n">buckets</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Buckets&quot;</span><span class="p">,</span> <span class="p">[])</span>
+
+    <span class="k">return</span> <span class="n">elements</span></div>
+
+<div class="viewcode-block" id="ec2_lookup"><a class="viewcode-back" href="../../../source.utils.html#source.utils.enum.ec2_lookup">[docs]</a><span class="k">def</span> <span class="nf">ec2_lookup</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return all ec2 instances.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    elements : list</span>
+<span class="sd">        List of the existing ec2 instances</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">elements</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">paginator</span> <span class="o">=</span> <span class="n">source</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">EC2_CLIENT</span><span class="o">.</span><span class="n">get_paginator</span><span class="p">(</span><span class="s2">&quot;describe_instances&quot;</span><span class="p">)</span>
+    
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">with</span> <span class="n">tqdm</span><span class="p">(</span><span class="n">desc</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;[+] Getting EC2 data&quot;</span><span class="p">,</span> <span class="n">leave</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="k">as</span> <span class="n">pbar</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">page</span> <span class="ow">in</span> <span class="n">paginator</span><span class="o">.</span><span class="n">paginate</span><span class="p">():</span>
+                <span class="n">page</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;ResponseMetadata&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+                <span class="n">page</span> <span class="o">=</span> <span class="n">fix_json</span><span class="p">(</span><span class="n">page</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">page</span><span class="p">[</span><span class="s2">&quot;Reservations&quot;</span><span class="p">]:</span>
+                    <span class="n">elements</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">page</span><span class="p">[</span><span class="s2">&quot;Reservations&quot;</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="s2">&quot;Instances&quot;</span><span class="p">])</span>
+                <span class="n">pbar</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[!] Error : </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>  
+
+    <span class="k">return</span> <span class="n">elements</span>  </div>
+
+<div class="viewcode-block" id="simple_paginate"><a class="viewcode-back" href="../../../source.utils.html#source.utils.enum.simple_paginate">[docs]</a><span class="k">def</span> <span class="nf">simple_paginate</span><span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="n">command</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return all the results of the command, no matter the number of results.</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    client : str</span>
+<span class="sd">        Name of the client used to call the request (S3, LAMBDA, etc)</span>
+<span class="sd">    command : str</span>
+<span class="sd">        Command executed</span>
+<span class="sd">    **kwargs : list, optional</span>
+<span class="sd">        List of parameters to add to the command.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    elements : list</span>
+<span class="sd">        List of the results of the command</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">elements</span> <span class="o">=</span> <span class="p">[]</span>
+   
+    <span class="n">paginator</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get_paginator</span><span class="p">(</span><span class="n">command</span><span class="p">)</span>
+    
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">with</span> <span class="n">tqdm</span><span class="p">(</span><span class="n">desc</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;[+] Getting </span><span class="si">{</span><span class="n">client</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">service_model</span><span class="o">.</span><span class="n">service_name</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span><span class="si">}</span><span class="s2"> data&quot;</span><span class="p">,</span> <span class="n">leave</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="k">as</span> <span class="n">pbar</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">page</span> <span class="ow">in</span> <span class="n">paginator</span><span class="o">.</span><span class="n">paginate</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+                <span class="n">page</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;ResponseMetadata&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+                <span class="n">page</span> <span class="o">=</span> <span class="n">fix_json</span><span class="p">(</span><span class="n">page</span><span class="p">)</span>
+                <span class="n">elements</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">page</span><span class="p">)</span>
+                <span class="n">pbar</span><span class="o">.</span><span class="n">update</span><span class="p">()</span> 
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[!] Error : </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>  
+
+    <span class="k">return</span> <span class="n">elements</span>  </div>
+
+<div class="viewcode-block" id="paginate"><a class="viewcode-back" href="../../../source.utils.html#source.utils.enum.paginate">[docs]</a><span class="k">def</span> <span class="nf">paginate</span><span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="n">command</span><span class="p">,</span> <span class="n">array</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Do the same as the previous function, but we can then filter the results on a specific part of the response.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    client : str</span>
+<span class="sd">        Name of the client used to call the request (S3, LAMBDA, etc)</span>
+<span class="sd">    command : str</span>
+<span class="sd">        Command executed</span>
+<span class="sd">    array : str</span>
+<span class="sd">        Filter added to get a specific part of the results</span>
+<span class="sd">    **kwargs : list, optional</span>
+<span class="sd">        List of parameters to add to the command.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    elements : list</span>
+<span class="sd">        List of the results of the command</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">elements</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">paginator</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get_paginator</span><span class="p">(</span><span class="n">command</span><span class="p">)</span>
+    
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">with</span> <span class="n">tqdm</span><span class="p">(</span><span class="n">desc</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;[+] Getting </span><span class="si">{</span><span class="n">client</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">service_model</span><span class="o">.</span><span class="n">service_name</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span><span class="si">}</span><span class="s2"> data&quot;</span><span class="p">,</span> <span class="n">leave</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="k">as</span> <span class="n">pbar</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">page</span> <span class="ow">in</span> <span class="n">paginator</span><span class="o">.</span><span class="n">paginate</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+                <span class="n">page</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;ResponseMetadata&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+                <span class="n">page</span> <span class="o">=</span> <span class="n">fix_json</span><span class="p">(</span><span class="n">page</span><span class="p">)</span>
+                <span class="n">elements</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">page</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">array</span><span class="p">,</span> <span class="p">[]))</span>
+                <span class="n">pbar</span><span class="o">.</span><span class="n">update</span><span class="p">()</span> 
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">client</span> <span class="o">!=</span> <span class="n">source</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">MACIE_CLIENT</span> <span class="ow">and</span> <span class="s2">&quot;Macie is not enabled&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[!] Error : </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>  
+
+    <span class="k">return</span> <span class="n">elements</span>  </div>
+
+<div class="viewcode-block" id="simple_misc_lookup"><a class="viewcode-back" href="../../../source.utils.html#source.utils.enum.simple_misc_lookup">[docs]</a><span class="k">def</span> <span class="nf">simple_misc_lookup</span><span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="n">function</span><span class="p">,</span> <span class="n">name_token</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return all the results of the command, no matter the number of results. Used by functions not usable by paginate.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    client : str</span>
+<span class="sd">        Name of the client (S3, LAMBDA, etc) only used for the progress bar</span>
+<span class="sd">    function : str</span>
+<span class="sd">        Concatenation of the client and the command (CLIENT.COMMAND)</span>
+<span class="sd">    name_token : str</span>
+<span class="sd">        Name of the token used by the command to get the other pages of results.    </span>
+<span class="sd">    **kwargs : list, optional</span>
+<span class="sd">        List of parameters to add to the command.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    elements : list</span>
+<span class="sd">        List of the results of the command</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">tokens</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="n">elements</span>  <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">response</span> <span class="o">=</span> <span class="n">try_except</span><span class="p">(</span><span class="n">function</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="n">response</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;ResponseMetadata&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="n">response</span> <span class="o">=</span> <span class="n">fix_json</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
+    <span class="n">elements</span> <span class="o">=</span> <span class="n">response</span>
+    
+    <span class="n">token</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">name_token</span> <span class="ow">in</span> <span class="n">response</span><span class="p">:</span>
+        <span class="n">token</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name_token</span><span class="p">)</span>
+
+    <span class="k">with</span> <span class="n">tqdm</span><span class="p">(</span><span class="n">desc</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;[+] Getting </span><span class="si">{</span><span class="n">client</span><span class="si">}</span><span class="s2"> configuration&quot;</span><span class="p">,</span> <span class="n">leave</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="k">as</span> <span class="n">pbar</span><span class="p">:</span>
+        <span class="k">while</span> <span class="n">token</span><span class="p">:</span>
+            <span class="n">response</span> <span class="o">=</span> <span class="n">try_except</span><span class="p">(</span><span class="n">function</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="n">response</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;ResponseMetadata&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="n">response</span> <span class="o">=</span> <span class="n">fix_json</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
+
+            <span class="n">token</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+            <span class="k">if</span> <span class="n">name_token</span> <span class="ow">in</span> <span class="n">response</span><span class="p">:</span>
+                <span class="n">token</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name_token</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">tokens</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="n">token</span><span class="p">:</span>
+                    <span class="k">break</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">elements</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
+                    <span class="n">tokens</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">token</span><span class="p">)</span>
+            <span class="n">pbar</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="n">elements</span></div>
+
+<div class="viewcode-block" id="misc_lookup"><a class="viewcode-back" href="../../../source.utils.html#source.utils.enum.misc_lookup">[docs]</a><span class="k">def</span> <span class="nf">misc_lookup</span><span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="n">function</span><span class="p">,</span> <span class="n">name_token</span><span class="p">,</span> <span class="n">array</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Do the same as the previous function, but we can then filter the results on a specific part of the response. Used by functions not usable by paginate.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    client : str</span>
+<span class="sd">        Name of the client (S3, LAMBDA, etc) only used for the progress bar</span>
+<span class="sd">    function : str</span>
+<span class="sd">        Concatenation of the client and the command (CLIENT.COMMAND)</span>
+<span class="sd">    name_token : str</span>
+<span class="sd">        Name of the token used by the command to get the other pages of results.   </span>
+<span class="sd">    array : str</span>
+<span class="sd">        Filter added to get a specific part of the results </span>
+<span class="sd">    **kwargs : list, optional</span>
+<span class="sd">        List of parameters to add to the command.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    elements : list</span>
+<span class="sd">        List of the results of the command</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">tokens</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="n">elements</span>  <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">response</span> <span class="o">=</span> <span class="n">try_except</span><span class="p">(</span><span class="n">function</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="n">response</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;ResponseMetadata&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="n">response</span> <span class="o">=</span> <span class="n">fix_json</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
+    <span class="n">elements</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">array</span><span class="p">,</span> <span class="p">[]))</span>
+    
+    <span class="n">token</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">name_token</span> <span class="ow">in</span> <span class="n">response</span><span class="p">:</span>
+        <span class="n">token</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name_token</span><span class="p">)</span>
+        <span class="n">tokens</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">token</span><span class="p">)</span>
+
+    <span class="k">with</span> <span class="n">tqdm</span><span class="p">(</span><span class="n">desc</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;[+] Getting </span><span class="si">{</span><span class="n">client</span><span class="si">}</span><span class="s2"> configuration&quot;</span><span class="p">,</span> <span class="n">leave</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="k">as</span> <span class="n">pbar</span><span class="p">:</span>
+        <span class="k">while</span> <span class="n">token</span><span class="p">:</span>
+            <span class="n">response</span> <span class="o">=</span> <span class="n">try_except</span><span class="p">(</span><span class="n">function</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="n">response</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;ResponseMetadata&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="n">response</span> <span class="o">=</span> <span class="n">fix_json</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
+
+            <span class="n">token</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+            <span class="k">if</span> <span class="n">name_token</span> <span class="ow">in</span> <span class="n">response</span><span class="p">:</span>
+                <span class="n">token</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name_token</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">tokens</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="n">token</span><span class="p">:</span>
+                    <span class="k">break</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">elements</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">array</span><span class="p">,</span> <span class="p">[]))</span>
+                    <span class="n">tokens</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">token</span><span class="p">)</span>
+            <span class="n">pbar</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="n">elements</span></div>
+
+<div class="viewcode-block" id="list_traffic_policies_lookup"><a class="viewcode-back" href="../../../source.utils.html#source.utils.enum.list_traffic_policies_lookup">[docs]</a><span class="k">def</span> <span class="nf">list_traffic_policies_lookup</span><span class="p">(</span><span class="n">function</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Get all the results of the list_traffic_policies command of the route53 client.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    function : str</span>
+<span class="sd">        Concatenation of the client and the command</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    elements : list</span>
+<span class="sd">        List of the results of the command</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">elements</span>  <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">response</span> <span class="o">=</span> <span class="n">try_except</span><span class="p">(</span><span class="n">function</span><span class="p">,</span> <span class="n">MaxItems</span><span class="o">=</span><span class="s2">&quot;100&quot;</span><span class="p">)</span>
+    <span class="n">response</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;ResponseMetadata&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="n">elements</span> <span class="o">=</span> <span class="n">fix_json</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
+
+    <span class="n">token</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">response</span><span class="p">[</span><span class="s2">&quot;IsTruncated&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="n">token</span> <span class="o">=</span> <span class="n">response</span><span class="p">[</span><span class="s2">&quot;TrafficPolicyIdMarker&quot;</span><span class="p">]</span>
+
+    <span class="k">with</span> <span class="n">tqdm</span><span class="p">(</span><span class="n">desc</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;[+] Getting ROUTE53 configuration&quot;</span><span class="p">,</span> <span class="n">leave</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="k">as</span> <span class="n">pbar</span><span class="p">:</span>
+        <span class="k">while</span> <span class="n">token</span><span class="p">:</span>
+            <span class="n">response</span> <span class="o">=</span> <span class="n">try_except</span><span class="p">(</span><span class="n">function</span><span class="p">,</span> <span class="n">MaxItems</span><span class="o">=</span><span class="s2">&quot;100&quot;</span><span class="p">)</span>
+            <span class="n">response</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;ResponseMetadata&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="n">response</span> <span class="o">=</span> <span class="n">fix_json</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
+            <span class="n">elements</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
+
+            <span class="n">token</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+            <span class="k">if</span> <span class="n">response</span><span class="p">[</span><span class="s2">&quot;IsTruncated&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="kc">True</span><span class="p">:</span>
+                <span class="n">token</span> <span class="o">=</span> <span class="n">response</span><span class="p">[</span><span class="s2">&quot;TrafficPolicyIdMarker&quot;</span><span class="p">]</span>
+            <span class="n">pbar</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="n">elements</span></div>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, test.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
