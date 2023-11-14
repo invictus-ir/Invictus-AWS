@@ -8,68 +8,6 @@ from time import sleep
 
 
 class Enumeration:
-    """Enumeration Class that runs the differents functions needed.
-
-    Attributes
-    ----------
-    services : dict
-        Object where the results of the functions are written
-    bucket : str
-        Bucket where the results are written
-    region : str
-        Region in which the tool is executed
-    dl : bool
-        True if the user wants to download the results, False if he wants the results to be written in a s3 bucket
-
-    Methods
-    -------
-    self_test()
-        Test function
-    execute(services, regionless)
-        Main function of the class. Run every enumeration function and then write the results where asked
-    enumerate_s3()
-        Enumerate the s3 buckets available
-    enumerate_wafv2()
-        Enumerate the waf web acls available
-    enumerate_lambda()
-        Enumerate the lambdas available
-    enumerate_vpc()
-        Enumerate the vpcs available
-    enumerate_elasticbeanstalk(self)
-        Enumerate the elasticbeanstalk environments available
-    enumerate_routes53()
-        Enumerate the routes53 hosted zones available
-    enumerate_ec2()
-        Enumerate the ec2 instances available
-    enumerate_iam()
-        Enumerate the IAM users available
-    enumerate_dynamodb()
-        Enumerate the dynamodb tables available
-    enumerate_rds()
-        Enumerate the rds instances available
-    enumerate_eks()
-        Enumerate the eks clusters available
-    enumerate_elasticsearch()
-        Enumerate the elasticsearch domains available
-    enumerate_secrets()
-        Enumerate the secretsmanager secrets available
-    enumerate_kinesis()
-        Enumerate the kinesis streams available
-    enumerate_cloudwatch()
-        Enumerate the cloudwatch dashboards available
-    enumerate_cloudtrail_trails()
-        Enumerate the cloudtrail trails available
-    enumerate_guardduty()
-        Enumerate the guardduty detectors available
-    enumerate_inspector2()
-        Enumerate the inspector coverage available
-    enumerate_detective()
-        Enumerate the detective graphs available
-    enumerate_macie()
-        Enumerate the macie buckets available
-    display_progress(ids, name, no_list=False)
-        Display the progress and the content of the service
-    """
 
     services = {}
     bucket = ""

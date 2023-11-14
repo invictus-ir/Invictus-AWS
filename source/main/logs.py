@@ -14,55 +14,6 @@ from source.utils.enum import *
 
 
 class Logs:
-    """Logs Collection Class that runs the differents functions needed
-
-    Attributes
-    ----------
-    bucket : str
-        Bucket where the results are written
-    region : str
-        Region in which the tool is executed
-    dl : bool
-        True if the user wants to download the results, False if he wants the results to be written in a s3 bucket
-    confs : str
-        Path where the results are written, locally
-    results : dict
-        Object where the results of the functions are written
-
-    Methods
-    -------
-    self_test()
-        Test function
-    execute(services, regionless)
-        Main function of the class. Run every logs extraction function and then write the results where asked
-    get_logs_guardduty()
-        Retrieve the logs of the existing guardduty detectors
-    get_logs_cloudtrail_logs(start, end)
-        Retrieve the cloudtrail logs
-    get_logs_wafv2()
-        Retrieve the logs of the existing waf web acls
-    get_logs_vpc()
-        Retrieve the logs of the existing vpcs
-    get_logs_elasticbeanstalk()
-        Retrieve the logs of the configuration of the existing elasticbeanstalk environments
-    get_logs_cloudwatch()
-        Retrieve the logs of the configuration of the existing cloudwatch dashboards
-    get_logs_s3()
-        Retrieve the logs of the configuration of the existing s3 buckets
-    get_logs_inspector2()
-        Retrieve the logs of the configuration of the existing inspector coverages
-    get_logs_maciev2()
-        Retrieve the logs of the configuration of the existing macie buckets
-    download_rds(nameDB, rds, logname)
-        'Download' the rds logs
-    get_logs_rds()
-        Retrieve the logs of the configuration of the existing rds instances
-    get_logs_route53()
-        Retrieve the logs of the configuration of the existing routes53 hosted zones
-    display_progress(count, name)
-        Diplays if the configuration of the given service worked
-
-    """
 
     bucket = None
     region = None

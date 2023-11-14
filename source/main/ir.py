@@ -7,42 +7,6 @@ from source.main.analysis import Analysis
 from source.utils.utils import ENUMERATION_SERVICES, BOLD, ENDC
 
 class IR:
-    """IR Class that runs the differents functions needed.
-
-    Attributes
-    ----------
-    services : dict
-        Will contain data about the diffent steps
-    e : object
-        Enumeration object
-    c : object
-        Configuration object
-    l : object
-        Logs collection object
-    a : object
-        Analysis object
-    source :  str
-        Source bucket for the analysis part (4)
-    output : str
-        Output bucket for the analysis part (4)
-    catalog : str
-        Data catalog used with the database 
-    database : str 
-        Database containing the table for logs analytics
-    table : str
-        Contains the sql requirements to query the logs
-
-    Methods
-    -------
-    execute_enumeration(regionless)
-        Run the enumeration main function
-    execute_configuration(regionless)
-        Run the configuration main function
-    execute_logs(regionless, start, end)
-        Run the logs extraction main function
-    execute_analysis(queryfile, exists, timeframe)
-        Run the logs analysis main function
-    """
 
     services = None
     e = None
