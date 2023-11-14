@@ -17,9 +17,9 @@ sys.path.insert(0, os.path.abspath('..'))
 
 # -- Project information -----------------------------------------------------
 
-project = 'test'
-copyright = '2023, test'
-author = 'test'
+project = 'Invictus-AWS'
+copyright = 'Copyright (c) 2023 Invictus Incident Response'
+author = 'Antonio Macovei, Rares Bratean & Benjamin Guillouzo'
 
 
 # -- General configuration ---------------------------------------------------
@@ -27,6 +27,7 @@ author = 'test'
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
+import sphinx_rtd_theme
 extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.viewcode",
@@ -50,8 +51,3 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 # a list of builtin themes.
 #
 html_theme = 'sphinx_rtd_theme'
-
-# Add any paths that contain custom static files (such as style sheets) here,
-# relative to this directory. They are copied after the builtin static files,
-# so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['_static']
