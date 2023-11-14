@@ -1,6 +1,4 @@
 __pycache__/
 .vscode
 results/
-docs/
-docs/make.bat
-docs/Makefile
+build/
