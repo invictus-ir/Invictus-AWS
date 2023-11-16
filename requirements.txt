@@ -5,3 +5,6 @@ pandas
 xlsxwriter
 click
 tqdm
+sphinx_rtd_theme
+sphinx
+m2r2

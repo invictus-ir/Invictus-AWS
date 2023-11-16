@@ -10,44 +10,6 @@ from time import sleep
 
 
 class Analysis:
-    """Analysis Class that runs the differents functions needed.
-
-    Attributes
-    ----------
-    source_bucket :  str
-        Source bucket of the logs
-    output_bucket : str
-        Output bucket of the results
-    region : str
-        Region in which the tool is executed
-    results : dict
-        Object where the results of the functions are written   
-    dl : bool
-        True if the user wants to download the results, False if he wants the results to be written in a s3 bucket
-    path : str
-        Where to write the results locally
-    time : str
-        Time when the class were executed (to add to the path)
-
-    Methods
-    -------
-    self_test()
-        Test function
-    execute(services, regionless)
-        Main function of the class
-    init_athena(db, table, source_bucket, output_bucket, exists, isTrail)
-        Initiates athena database and table for further analysis
-    set_table(ddl, db)
-        Replace the table name of the ddl file by database.table
-    results_query(id, query)
-        Print the results of the query and where they are written
-    merge_results()
-        Merge the results csv files in one single xlsx file
-    clear_folder(dl)
-        If results written locally, delete the tmp bucket created for the analysis. If results written in a bucket, clear the bucket so the .metadata and .txt are deleted
-    is_trail_bucket(catalog, db, table)
-        Verify if a table source bucket is a trail bucket
-    """
 
     source_bucket = None
     output_bucket = None

@@ -1,6 +1,4 @@
 __pycache__/
-source/__pycache__/
 .vscode
-t.json
 results/
-run_me.py
+build/

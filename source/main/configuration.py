@@ -8,62 +8,6 @@ from time import sleep
 
 
 class Configuration:
-    """Configuration Class that runs the differents functions needed.
-
-    Attributes
-    ----------
-    results : dict
-        Object where the results of the functions are written
-    bucket : str
-        Bucket where the results are written
-    region : str
-        Region in which the tool is executed
-    dl : bool
-        True if the user wants to download the results, False if he wants the results to be written in a s3 bucket
-    services : dict
-        Contains the results of the enumeration part, if already done
-
-    Methods
-    -------
-    self_test()
-        Test function
-    execute(services, regionless)
-        Main function of the class. Run every configuration function and then write the results where asked
-    get_configuration_s3
-        Retrieve multiple elements of the configuration of the existing s3 buckets
-    get_configuration_wafv2
-        Retrieve multiple elements of the configuration of the existing web acls
-    get_configuration_lambda
-        Retrieve multiple elements of the configuration of the existing lambdas
-    get_configuration_vpc
-        Retrieve multiple elements of the configuration of the existing vpcs
-    get_configuration_elasticbeanstalk
-        Retrieve multiple elements of the configuration of the existing elasticbeanstalk environments
-    get_configuration_routes53
-        Retrieve multiple elements of the configuration of the existing routes53 hosted zones
-    get_configuration_ec2
-        Retrieve multiple elements of the configuration of the existing ec2 instances
-    get_configuration_iam
-        Retrieve multiple elements of the configuration of the existing iam users
-    get_configuration_dynamodb
-        Retrieve multiple elements of the configuration of the existing dynamodb tables
-    get_configuration_rds
-        Retrieve multiple elements of the configuration of the existing rds instances
-    get_configuration_guardduty
-        Retrieve multiple elements of the configuration of the existing guardduty detectors
-    get_configuration_cloudwatch
-        Retrieve multiple elements of the configuration of the existing cloudwatch dashboards
-    get_configuration_maciev2
-        Retrieve multiple elements of the configuration of the existing macie buckets
-    get_configuration_inspector2
-        Retrieve multiple elements of the configuration of the existing inspector coverages
-    get_configuration_detective
-        Retrieve multiple elements of the configuration of the existing detective graphs
-    get_configuration_cloudtrail
-        Retrieve multiple elements of the configuration of the existing cloudtrail trails
-    display_progress(count, name)
-        Display if the configuration of the given service worked
-    """
 
     results = {}
     bucket = ""
