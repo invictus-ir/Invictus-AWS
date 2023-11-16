@@ -9,7 +9,7 @@ Examples
 
 =========================
 
-**Acquire data from all region, beginning by eu-west-3, with all the steps (1,2,3) and with results written in a S3 Bucket.** :   
+**Acquire data from all region, beginning by eu-west-3, with all the default steps (1,2,3) and with results written in a S3 Bucket.** :   
 
 ``$python3 main.py -A eu-west-3``
 
