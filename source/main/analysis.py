@@ -1,9 +1,9 @@
 """File used for the analysis."""
 
 import yaml, datetime
-from source.utils.utils import athena_query, S3_CLIENT, rename_file_s3, get_table, set_clients, date, get_bucket_and_prefix, ENDC, OKGREEN, ROOT_FOLDER, create_folder, create_tmp_bucket
-from source.utils.enum import paginate
+from source.utils.utils import athena_query, S3_CLIENT, rename_file_s3, get_table, set_clients, date, get_bucket_and_prefix, ENDC, OKGREEN, ROOT_FOLDER, create_folder, create_tmp_bucket, get_random_chars
 import source.utils.utils
+from source.utils.enum import paginate
 import pandas as pd
 from os import remove, replace
 from time import sleep
@@ -74,9 +74,11 @@ class Analysis:
         self.source_bucket = source_bucket
 
         if output_bucket == None:
-            tmp_bucket = "invictus-aws-tmp-results"
+            rand_str = get_random_chars(5)
+            tmp_bucket = f"invictus-aws-tmp-results-{rand_str}"
             create_tmp_bucket(self.region, tmp_bucket)
             output_bucket = f"s3://{tmp_bucket}/"
+            print(output_bucket)
     
         bucket, prefix = get_bucket_and_prefix(output_bucket)
         if not prefix:
