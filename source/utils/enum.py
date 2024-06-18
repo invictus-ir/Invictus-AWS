@@ -41,7 +41,7 @@ def ec2_lookup():
                     elements.extend(page["Reservations"][0]["Instances"])
                 pbar.update()
     except Exception as e:
-        print(f"[!] Error : {str(e)}")  
+        print(f"[!] invictus-aws.py: error: {str(e)}")  
 
     return elements  
 
@@ -74,7 +74,7 @@ def simple_paginate(client, command, **kwargs):
                 elements.append(page)
                 pbar.update() 
     except Exception as e:
-        print(f"[!] Error : {str(e)}")  
+        print(f"[!] invictus-aws.py: error: {str(e)}")  
 
     return elements  
 
@@ -109,7 +109,7 @@ def paginate(client, command, array, **kwargs):
                 pbar.update() 
     except Exception as e:
         if client != source.utils.utils.MACIE_CLIENT and "Macie is not enabled" not in str(e):
-            print(f"[!] Error : {str(e)}")  
+            print(f"[!] invictus-aws.py: error: {str(e)}")  
 
     return elements  
 

@@ -51,8 +51,8 @@ Each step can be run independently. There is no need to have completed step 1 to
 The script runs with a few parameters :  
 * `-h` to print out the help menu.
 * `-w cloud` or `-w local`. 'cloud' option if you want the results to be stored in a S3 bucket (automatically created). 'local' option if you want the results to be written to local storage. The default option is 'cloud'. So if you want to use 'cloud' option, you can either write nothing, write only `-w` or write `-w cloud`.
-* `-r region` or `-a [region]`. Use the first option if you want the tool to analyze only the specified region. Use the second option if you want the tool to analyze all regions. You can also specify a region if you want to start with that one.
-* `-s [step,step]`. Provide a comma-separated list of the steps to be executed. 1 = Enumeration. 2 = Configuration. 3 = Logs Extraction. 4 = Logs Analysis. The default option is 1,2,3 as **step 4 has to be executed alone**. So if you want to run the three first steps, you can either write nothing, write only `-s` or write `-s 1,2,3`. If yyou want to run step 4, then write `-s 4`.
+* `-r region` or `-A [region]`. Use the first option if you want the tool to analyze only the specified region. Use the second option if you want the tool to analyze all regions. You can also specify a region if you want to start with that one.
+* `-s [step,step]`. Provide a comma-separated list of the steps to be executed. 1 = Enumeration. 2 = Configuration. 3 = Logs Extraction. 4 = Logs Analysis. The default option is 1,2,3 as **step 4 has to be executed alone**. So if you want to run the three first steps, you can either write nothing, write only `-s` or write `-s 1,2,3`. If you want to run step 4, then write `-s 4`.
 * `-start YYYY-MM-DD`. Start date for the Cloudtrail logs collection. It is recommended to use it every time step 3 is executed as it will be extremely long to collect each logs. It has to be used with `-end` and must only be used with step 3.
 * `-end YYYY-MM-DD`. End date for the Cloudtrail logs collection. It is recommended to use it every time step 3 is executed as it will be extremely long to collect each logs. It has to be used with `-start` and must only be used with step 3.
 > **_NOTE:_**  The next parameters only apply if you run step 4. You have to collect the logs with step 3 on another execution or by your own means.
@@ -91,7 +91,7 @@ But don't forget that if you modify your logs source and still want to use the d
 But don't forget that if you modify your logs source and still want to use the default table, you need to delete it before.**
 
 **Analyze CloudTrail logs using your existing database and table, using your own query file** :  
-`$python3 main.py -r eu-west-3 -s 4 -o bucket/path-to-existing-folder-where-to-put-the-results/ -c your-catalog -d your-database -t your-table -f path-to-existing-query-file`  
+`$python3 main.py -r eu-west-3 -s 4 -c your-catalog -d your-database -t your-table -f path-to-existing-query-file`  
 
 **Analyze CloudTrail logs using a new table with your own structure.** :  
 `$python3 main.py -a eu-west-3 -s 4 -s bucket/path-to-the-existing-logs/ -o bucket/path-to-existing-folder-where-to-put-the-results/ -c your-catalog -d your-database -t your-creation-table-file.ddl`  

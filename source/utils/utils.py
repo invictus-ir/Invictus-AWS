@@ -367,7 +367,7 @@ def athena_query(region, query, bucket):
         status = response["QueryExecution"]["Status"]["State"]
 
         if status == "FAILED" or status == "CANCELLED":
-            print(f'[!] Error : {response["QueryExecution"]["Status"]["AthenaError"]["ErrorMessage"]}')
+            print(f'[!] invictus-aws.py: error: {response["QueryExecution"]["Status"]["AthenaError"]["ErrorMessage"]}')
             exit(-1)    
     
     return response

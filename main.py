@@ -7,6 +7,7 @@ from re import match
 
 from source.main.ir import IR
 from source.utils.utils import *
+from source.utils.strings import *
 
 def set_args():
     """Define the arguments used when calling the tool."""
@@ -31,7 +32,7 @@ def set_args():
         help="[+] 'cloud' option if you want the results to be stored in a S3 bucket (automatically created). 'local' option if you want the results to be written to local storage. The default option is 'cloud'. So if you want to use 'cloud' option, you can either write nothing, write only `-w` or write `-w cloud`."
     )
 
-    group1 = parser.add_mutually_exclusive_group(required=True)
+    group1 = parser.add_mutually_exclusive_group()
     group1.add_argument(
         "-r",
         "--aws-region",
@@ -123,7 +124,8 @@ def set_args():
 
     return parser.parse_args()
 
-def run_steps(dl, region, regionless, steps, start, end, source, output, catalog, database, table, queryfile, exists, timeframe):
+def run_steps(dl, region, first_region, steps, start, end, source, output, catalog, database, table, queryfile, exists, timeframe):
+
     """Run the steps of the tool (enum, config, logs extraction, logs analysis).
 
     Parameters
@@ -175,21 +177,21 @@ def run_steps(dl, region, regionless, steps, start, end, source, output, catalog
     else:
         if "1" in steps:
             try:
-                ir.execute_enumeration(regionless)
+                ir.execute_enumeration(first_region)
             except Exception as e: 
                 print(str(e))
 
         if "2" in steps:
             try:
-                ir.execute_configuration(regionless)
+                ir.execute_configuration(first_region)
             except Exception as e: 
                 print(str(e))
 
         if "3" in steps:
             try:
-                logs = ir.execute_logs(regionless, start, end)
+                logs = ir.execute_logs(first_region, start, end)
                 if logs == "0":
-                    print("[!] Error : Be aware that no Cloudtrail logs were found.")
+                    print(f"{ERROR} Be aware that no Cloudtrail logs were found.")
             except Exception as e: 
                 print(str(e))
 
@@ -199,7 +201,7 @@ def verify_all_regions(input_region):
     Parameters
     ----------
     input_region : str
-        If we're in this function, the used decided to run the tool on all enabled functions. This given region is the first one that the tool will analyze.
+        If we're in this function, the used decided to run the tool on all enabled regions. This given region is the first one that the tool will analyze.
     """
     response = try_except(
         ACCOUNT_CLIENT.list_regions,
@@ -212,17 +214,13 @@ def verify_all_regions(input_region):
     for region in regions:
         region_names.append(region["RegionName"])
 
-    regionless = ""
     if input_region in region_names:
         region_names.remove(input_region)
         region_names.insert(0, input_region)
-        regionless = input_region
 
-        return region_names, regionless
+        return region_names
     else:
-        print(
-            "[!] Error : The region you entered doesn't exist or is not enabled. Please enter a valid region. Exiting..."
-        )
+        print(f"{ERROR} The region you entered doesn't exist or is not enabled. Please enter a valid region.")
         sys.exit(-1)
 
 def verify_one_region(region):
@@ -235,10 +233,10 @@ def verify_one_region(region):
         
     Returns
     -------
-    good : bool
-        True if the region is enabled
+    enabled : array
+        Contains the region if it's enabled
     """
-    good = False
+    enabled = []
 
     try:
         response = ACCOUNT_CLIENT.get_region_opt_status(RegionName=region)
@@ -247,12 +245,12 @@ def verify_one_region(region):
             response["RegionOptStatus"] == "ENABLED_BY_DEFAULT"
             or response["RegionOptStatus"] == "ENABLED"
         ):
-            good = True
+            enabled.append(region)
     except Exception as e:
             print(str(e))
             sys.exit(-1)
 
-    return good
+    return enabled
 
 def verify_steps(steps, source, output, catalog, database, table, region, dl):
     """Verify that the steps entered are correct.
@@ -293,18 +291,7 @@ def verify_steps(steps, source, output, catalog, database, table, region, dl):
     """
     #Verifying steps inputs
 
-    for step in steps:
-        if step not in POSSIBLE_STEPS:
-            print(
-            "invictus-aws.py: error: The steps you entered are not allowed. Please enter only valid steps."
-            )
-            sys.exit(-1)
-
-    if "4" in steps and ("3" in steps or "2" in steps or "1" in steps):
-        print(
-        "invictus-aws.py: error: Step 4 can only be run alone."
-        )
-        sys.exit(-1)
+    verify_steps_input(steps)
 
     if "4" not in steps and (source != None or output != None or catalog != None or database != None or table != None):
         print(
@@ -344,17 +331,17 @@ def verify_steps(steps, source, output, catalog, database, table, region, dl):
             #Verifying catalog exists
             catalogs = athena.list_data_catalogs()
             if not any(cat['CatalogName'] == catalog for cat in catalogs['DataCatalogsSummary']):
-                print("invictus-aws.py: error: the data catalog you entered doesn't exist.")
+                print(f"{ERROR} The data catalog you entered doesn't exist.")
                 sys.exit(-1) 
 
             regex_pattern = r'^[a-zA-Z_]{1,255}$'
 
             if not match(regex_pattern, database):
-                print("invictus-aws.py: error: Wrong database name format. Database name can only contains letters and `_`, up to 255 characters.")
+                print(f"{ERROR} Wrong database name format. Database name can only contains letters and `_`, up to 255 characters.")
                 sys.exit(-1) 
             
             if not match(regex_pattern, table):
-                print("invictus-aws.py: error: Wrong table name format. Table name can only contains letters and `_`, up to 255 characters.")
+                print(f"{ERROR} Wrong table name format. Table name can only contains letters and `_`, up to 255 characters.")
                 sys.exit(-1) 
 
             databases = athena.list_databases(CatalogName=catalog)
@@ -367,7 +354,7 @@ def verify_steps(steps, source, output, catalog, database, table, region, dl):
                 if table.endswith(".ddl"):
                     exists = path.isfile(table)
                     if not exists:
-                        print("invictus-aws.py: error: you have to input a valid .ddl file to create a new table.")
+                        print(f"{ERROR} you have to input a valid .ddl file to create a new table.")
                         sys.exit(-1)
                     else:
                         tmp_table = get_table(table, False)[0]
@@ -378,55 +365,135 @@ def verify_steps(steps, source, output, catalog, database, table, region, dl):
                         table_exists = True
 
         else:
-            print("invictus-aws.py: error: all or none of these arguments are required: -c/--catalog, -d/--database, -t/--table.")
+            print(f"{ERROR} All or none of these arguments are required: -c/--catalog, -d/--database, -t/--table.")
             sys.exit(-1)
             
         if output == None and dl == False:
-            print("invictus-aws.py: error: the following arguments are required: -o/--output-bucket.")
+            print(f"{ERROR} The following arguments are required: -o/--output-bucket.")
             sys.exit(-1)
         elif output != None and dl == True: 
-            print("invictus-aws.py: error: the following arguments are not asked: -o/--output-bucket.")
+            print(f"{ERROR} The following arguments are not asked: -o/--output-bucket.")
             sys.exit(-1)
 
         #if all athena args are none, the source is none but table doesn't exists
         if (catalog == None and database == None and table == None) and source == None and not table_exists: 
-            print("invictus-aws.py: error: the following arguments are required: -b/--source-bucket.")
+            print(f"{ERROR} The following arguments are required: -b/--source-bucket.")
             sys.exit(-1) 
         
         # if all athena args are set, db or table is not set and source is not set : we need to recreate a table so we need the source bucket (no need if .ddl file as the source bucket is hardcoded in)
         if (catalog != None and database != None and table != None) and (not db_exists or not table_exists) and source == None and not table.endswith(".ddl"):
-            print("invictus-aws.py: error: the following arguments are required: -b/--source-bucket.")
+            print(f"{ERROR} The following arguments are required: -b/--source-bucket.")
             sys.exit(-1) 
 
         if (db_exists and table_exists) and source != None:
-            print("invictus-aws.py: error: the following arguments are not asked: -b/--source-bucket.\n[+] Don't forget do delete your table if you want to change the logs source.")
+            print(f"{ERROR} The following arguments are not asked: -b/--source-bucket.\n[+] Don't forget to delete your table if you want to change the logs source.")
             sys.exit(-1) 
     
     #Verify buckets inputs
 
     if source != None:
         source = verify_bucket(source, "source")
-        if not source.startswith("s3://"):
-            source = f"s3://{source}"
 
     
     if output != None:
         output = verify_bucket(output, "output")
-        if not output.startswith("s3://"):
-            output = f"s3://{output}"
 
     exists = [db_exists, table_exists]
             
     return steps, source, output, database, table, exists
 
-def verify_bucket(bucket, type):
+def verify_catalog_db_table(catalog, database, table, region):
+
+    #if db and table already exists (the basic ones if no input was provided)
+    db_exists = False
+    table_exists = False
+
+    athena = boto3.client("athena", region_name=region)
+
+    if catalog is None and database is None and table is None:
+        
+        #we need to verify if cloudtrailanalysis db and logs table already exists 
+        databases = athena.list_databases(CatalogName="AwsDataCatalog")
+        for db in databases["DatabaseList"]:
+            if db["Name"] == "cloudtrailanalysis":
+                db_exists = True
+                break
+        
+        if db_exists:
+            tables = athena.list_table_metadata(CatalogName="AwsDataCatalog",DatabaseName="cloudtrailanalysis")
+            for tb in tables["TableMetadataList"]:
+                if tb["Name"] == "logs":
+                    table_exists = True
+                    break
+
+    elif catalog is not None and database is not None and table is not None:
+        #Verifying catalog exists
+        catalogs = athena.list_data_catalogs()
+
+        if not any(cat['CatalogName'] == catalog for cat in catalogs['DataCatalogsSummary']):
+            print(f"{ERROR} The data catalog you entered doesn't exist.")
+            sys.exit(-1) 
+
+        regex_pattern = r'^[a-zA-Z_]{1,255}$'
+
+        if not match(regex_pattern, database):
+            print(f"{ERROR} Wrong database name format. Database name can only contains letters and `_`, up to 255 characters.")
+            sys.exit(-1) 
+        
+        if not match(regex_pattern, table):
+            print(f"{ERROR} Wrong table name format. Table name can only contains letters and `_`, up to 255 characters.")
+            sys.exit(-1) 
+
+        databases = athena.list_databases(CatalogName=catalog)
+        for db in databases["DatabaseList"]:
+            if db["Name"] == database:
+                db_exists = True
+
+    else:
+        print(f"{ERROR} You have to enter the 3 values : catalog, database and table")
+        sys.exit(-1)
+
+    exists = [db_exists, table_exists]
+    return exists
+
+def verify_structure_input(catalog, database, structure, region, db_exists):
+
+    athena = boto3.client("athena", region_name=region)
+    table_exists = False
+
+    if structure.endswith(".ddl"):
+        exists = path.isfile(structure)
+        if not exists:
+            print(f"{ERROR} you have to input an existing .ddl file to create a new table.")
+            sys.exit(-1)
+        else:
+            tmp_table = get_table(structure, False)[0]
+    else:
+        tmp_table = structure
+
+    if db_exists:
+        tables = athena.list_table_metadata(CatalogName=catalog,DatabaseName=database)
+        for tb in tables["TableMetadataList"]:
+            if tb["Name"] == tmp_table:
+                table_exists = True
+
+    return table_exists
+
+def verify_queryfile_input(queryfile):
+
+    exists = path.isfile(queryfile)
+    if not exists:
+        print(f"{ERROR} you have to input an existing query file.")
+        sys.exit(-1)
+
+def verify_bucket(bucket, entry_type):
     """Verify that the user inputs regarding the buckets logs are correct.
 
     Parameters
     ----------
     bucket : str
         Bucket we verify it exists
-    type : str
+    entry_type : str
         Source or output bucket (for log analysis)
 
     Returns
@@ -434,22 +501,31 @@ def verify_bucket(bucket, type):
     bucket : str
         Bucket we verify it exists
     """
-    s3 = boto3.resource('s3')
+    
 
     if not bucket.endswith("/"):
         bucket = bucket+"/"
 
+    if not bucket.startswith("s3://"):
+            bucket = f"s3://{bucket}"
+
+    if bucket.startswith("arn:aws:s3:::"):
+            print(f"{ERROR} The {entry_type} bucket you entered is not written well. Please verify that the format is 's3://s3-name/[potential-folders]/'")
+            sys.exit(-1)
+            
     name, prefix = get_bucket_and_prefix(bucket)
 
+    s3 = boto3.resource('s3')
     source_bucket = s3.Bucket(name)
+
     if not source_bucket.creation_date:
-       print(f"invictus-aws.py: error: the {type} bucket you entered doesn't exists or is not written well. Please verify that the format is 's3-name/[potential-folders]/'")
+       print(f"{ERROR} The {entry_type} bucket you entered doesn't exists or is not written well. Please verify that the format is 's3://s3-name/[potential-folders]/'")
        sys.exit(-1)
 
     if prefix:   
         response = S3_CLIENT.list_objects_v2(Bucket=name, Prefix=prefix)
         if 'Contents' not in response or len(response['Contents']) == 0:
-            print(f"invictus-aws.py: error: the path of the {type} bucket you entered doesn't exists or is not written well. Please verify that the format is 's3-name/[potential-folders]/'")
+            print(f"{ERROR} The path of the {entry_type} bucket you entered doesn't exists or is not written well. Please verify that the format is 's3://s3_name/[potential-folders]/'")
             sys.exit(-1)
     
     return bucket
@@ -467,7 +543,7 @@ def verify_dates(start, end, steps):
         Steps to run
     """
     if "3" not in steps and (start != None or end != None):
-        print("invictus-aws.py: error: Only input dates with step 3.")
+        print("[!] invictus-aws.py: error:  Only input dates with step 3.")
         sys.exit(-1)
 
     elif "3" not in steps and (start == None or end == None):
@@ -481,33 +557,33 @@ def verify_dates(start, end, steps):
             try:
                 start_date = datetime.datetime.strptime(start, "%Y-%m-%d")
             except ValueError:
-                print("invictus-aws.py: error: Start date in not in a valid format.")
+                print("[!] invictus-aws.py: error:  Start date in not in a valid format.")
                 sys.exit(-1)
 
             try:
                 end_date = datetime.datetime.strptime(end, "%Y-%m-%d")
             except ValueError:
-                print("invictus-aws.py: error: End date in not in a valid format.")
+                print("[!] invictus-aws.py: error:  End date in not in a valid format.")
                 sys.exit(-1)
 
             if start_date > present:
-                print("invictus-aws.py: error: Start date can not be in the future.")
+                print("[!] invictus-aws.py: error:  Start date can not be in the future.")
                 sys.exit(-1)
             elif end_date > present:
-                print("invictus-aws.py: error: End date can not be in the future.")
+                print("[!] invictus-aws.py: error:  End date can not be in the future.")
                 sys.exit(-1)
             elif start_date >= end_date:
-                print("invictus-aws.py: error: Start date can not be equal to or more recent than End date.")
+                print("[!] invictus-aws.py: error:  Start date can not be equal to or more recent than End date.")
                 sys.exit(-1)
 
         elif start == None and end != None:
-            print("invictus-aws.py: error: Start date in not defined.")
+            print("[!] invictus-aws.py: error:  Start date in not defined.")
             sys.exit(-1)
         elif start != None and end == None:
-            print("invictus-aws.py: error: End date in not defined.")
+            print("[!] invictus-aws.py: error:  End date in not defined.")
             sys.exit(-1)
         elif start == None and end == None:
-            print("invictus-aws.py: error: You have to specify start and end time.")
+            print("[!] invictus-aws.py: error:  You have to specify start and end time.")
             sys.exit(-1)
 
 def verify_file(queryfile, steps):
@@ -521,7 +597,7 @@ def verify_file(queryfile, steps):
         Steps to run
     """
     if "4" not in steps and queryfile != "source/files/queries.yaml":
-        print("invictus-aws.py: error: Only input queryfile with step 4.")
+        print("[!] invictus-aws.py: error:  Only input queryfile with step 4.")
         sys.exit(-1)
 
     if not path.isfile(queryfile):
@@ -544,67 +620,199 @@ def verify_timeframe(timeframe, steps):
     if timeframe != None:
 
         if "4" not in steps:
-            print("invictus-aws.py: error: Only input queryfile with step 4.")
+            print("{ERROR} Only input timeframe with step 4.")
             sys.exit(-1)
     
         if not timeframe.isdigit() or int(timeframe) <= 0:
-            print("invictus-aws.py: error: Only input valid number > 0")
+            print("{ERROR} Only input valid number > 0")
             sys.exit(-1)
+
+def verify_steps_input(steps):
+
+    for step in steps:
+        if step not in POSSIBLE_STEPS:
+            print(f"{ERROR} The steps you entered are not allowed. Please only enter valid steps.")
+            sys.exit(-1)
+
+    if "4" in steps and ("3" in steps or "2" in steps or "1" in steps):
+        print(f"{ERROR} Step 4 can only be executed alone.")
+        sys.exit(-1)
+
+def verify_input(input_name, possible_inputs):
+    if input_name not in possible_inputs:
+        print("[!] invictus-aws.py: error: The input you entered are not allowed. Please only enter valid inputs.")
+        sys.exit(-1)
+
+def verify_region_input(region_choice, region, steps):
+    ##all_regions = array of all regions in all mode, array of one region otherwise 
+
+    first_region="not-all"
+
+    try:
+        if region_choice == "1" and "4" in steps:
+            print(f"{ERROR} You cant run the tool on all regions with the Analysis step")
+            sys.exit(-1)
+        elif region_choice == "1":
+            try:
+                if region:
+                    all_regions = verify_all_regions(region)
+                    first_region = region
+            except IndexError:
+                all_regions = verify_all_regions("us-east-1")
+                first_region = "us-east-1"
+        else:
+            all_regions = verify_one_region(region)
+    except IndexError:
+        print(f"{ERROR} Please only enter valid region and follow the pattern needed.")
+        sys.exit(-1)
+
+    return all_regions, first_region
+
 
 def main():
     """Get the arguments and run the appropriate functions."""
-    print(
-        """
-      _            _      _                                      
-     (_)          (_)    | |                                     
-      _ _ ____   ___  ___| |_ _   _ ___ ______ __ ___      _____ 
-     | | '_ \ \ / / |/ __| __| | | / __|______/ _` \ \ /\ / / __|
-     | | | | \ V /| | (__| |_| |_| \__ \     | (_| |\ V  V /\__ \\
-     |_|_| |_|\_/ |_|\___|\__|\__,_|___/      \__,_| \_/\_/ |___/
-                                                             
-                                                             
-     Copyright (c) 2023 Invictus Incident Response
-     Authors: Antonio Macovei, Rares Bratean & Benjamin Guillouzo
-    """
-    )
+    print(TOOL_NAME)
+    
+    dl = ""
+    region = ""
+    first_region = ""
+    steps = ""
+    start = ""
+    end = ""
+    source = ""
+    output = ""
+    catalog = ""
+    database = ""
+    table = ""
+    queryfile = ""
+    exists = ""
+    timeframe = ""
 
     args = set_args()   
 
-    dl = True if args.write == 'local' else False
-    region = args.aws_region
-    all_regions= args.all_regions
-    steps = args.step.split(",")
+    ## Walkthough mode
+    if not args.aws_region and args.all_regions == "not-all":
+        print(WALKTHROUGHT_ENTRY)
+        print(STEPS_PRESENTATION)
+        steps = input(STEPS_ACTION)
+        verify_steps_input(steps.split(","))
 
-    source = args.source_bucket
-    output = args.output_bucket
+        print(REGION_PRESENTATION)
+        region_choice = input(REGION_ACTION)
+        verify_input(region_choice, ["1", "2"])
+        region = input(REGION)
+        regions, first_region = verify_region_input(region_choice, region, steps)
 
-    start = args.start_time
-    end = args.end_time
+        print(STORAGE_PRESENTATION)
+        storage_input = input(STORAGE_ACTION)
+        verify_input(storage_input, ["1", "2"])
+        if storage_input == "1":
+            dl = True
+        else:
+            dl = False
 
-    catalog = args.catalog
-    database = args.database
-    table = args.table
+        if "3" in steps:
+            print(START_END_PRESENTATION)
+            start_input = input(START)
+            end_input = input(END)
+            verify_dates(start_input, end_input, steps)
 
-    queryfile = args.queryfile
-    verify_file(queryfile, steps)
+        if "4" in steps:
+            
+            print(DB_INITIALIZED_PRESENTATION)
+            init_db_input = input(DB_INITIALIZED_ACTION)
+            verify_input(init_db_input, ["1", "2"])
 
-    timeframe = args.timeframe
-    verify_timeframe(timeframe, steps)
+            if init_db_input == "2": #aka db is not initialized yet
+                input_bucket_input = input(INPUT_BUCKET_ACTION)
+                verify_bucket(input_bucket_input, "source")
 
-    if region:
+                if not dl:
+                    output_bucket_input = input(OUTPUT_BUCKET_ACTION)
+                    verify_bucket(output_bucket_input, "output")
 
-        if verify_one_region(region):
-            steps, source, output, database, table, exists = verify_steps(steps, source, output, catalog, database, table, region, dl)  
-            run_steps(dl, region, all_regions, steps, start, end, source, output, catalog, database, table, queryfile, exists, timeframe)
+                print(DEFAULT_NAME_PRESENTATION)
+                default_name_input = input(DEFAULT_NAME_ACTION)
+                verify_input(default_name_input, ["1", "2"])
 
-    
-    else:
+                if default_name_input:
+                    print(NEW_NAMES_PRESENTATION)
+                    catalog = input(CATALOG_ACTION)
+                    database = input(DB_ACTION)
+                    table = input(TABLE_ACTION)
+                else:
+                    catalog = None
+                    database = None
+                    table = None
+
+                exists = verify_catalog_db_table(catalog, database, table, regions[0])
+
+                print(DEFAULT_STRUCTURE_PRESENTATION)
+                default_structure_input = input(DEFAULT_STRUCTURE_ACTION)
+                verify_input(default_structure_input, ["1", "2"])
+
+                if default_structure_input == "1":
+                    structure_file = input(STRUCTULE_FILE)
+                    exists[1] = verify_structure_input(catalog, database, structure_file, regions[0], exists[0])
+
+            print(DEFAULT_QUERY_PRESENTATION)
+            default_query_input = input(DEFAULT_QUERY_ACTION)
+            verify_input(default_query_input, ["1", "2"])
+
+            if default_query_input == "1":
+                queryfile = input(QUERY_FILE)
+                verify_queryfile_input(queryfile)
+
+            print(TIMEFRAME_PRESENTATION)
+            timeframe_input = input(TIMEFRAME_ACTION)
+            verify_input(timeframe_input, ["1", "2"])
+
+            if default_query_input == "1":
+                timeframe = input(TIMEFRAME)
+                verify_timeframe(timeframe)
+
+
+    else: 
+        print(args)
+
+        steps = args.step.split(",")
+        verify_steps_input(steps)
+
+        region = args.aws_region
+        all_regions= args.all_regions
+
+        if region:
+            regions, first_region = verify_region_input("2", region, steps)
+        else:
+            regions, first_region = verify_region_input("1", all_regions, steps)
+
+        dl = True if args.write == 'local' else False
+
+        if "3" in steps:
+            start = args.start_time
+            end = args.end_time
+            verify_dates(start, end, steps)
+
+        source = args.source_bucket
+        output = args.output_bucket
+
         
-        region_names, regionless = verify_all_regions(all_regions)
 
-        for name in region_names:
-            steps, source, output, database, table, exists = verify_steps(steps, source, output, catalog, database, table, name, dl)  
-            run_steps(dl, name, regionless, steps, start, end, source, output, catalog, database, table, queryfile, exists, timeframe)
+        catalog = args.catalog
+        database = args.database
+        table = args.table
+
+        queryfile = args.queryfile
+        verify_file(queryfile, steps)
+
+        timeframe = args.timeframe
+        verify_timeframe(timeframe, steps)
+
+        for region in regions:
+            steps, source, output, database, table, exists = verify_steps(steps, source, output, catalog, database, table, region, dl)  
+
+    for region in regions:
+        run_steps(dl, region, first_region, steps, start, end, source, output, catalog, database, table, queryfile, exists, timeframe)
 
 if __name__ == "__main__":
 

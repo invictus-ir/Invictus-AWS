@@ -107,7 +107,7 @@ class Analysis:
                 queries = yaml.safe_load(f)
                 print(f"[+] Using query file : {queryfile}")
         except Exception as e:
-            print(f"[!] Error : {str(e)}")
+            print(f"[!] invictus-aws.py: error: {str(e)}")
 
         if not notNone:
             db = "cloudtrailAnalysis"
@@ -426,7 +426,7 @@ class Analysis:
                     Bucket=bucket
                 )
             except Exception as e:
-                print(f"[!] Error : {str(e)}")
+                print(f"[!] invictus-aws.py: error: {str(e)}")
 
         else:
             
