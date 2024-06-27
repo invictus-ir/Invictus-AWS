@@ -1,5 +1,5 @@
-aws_attached_malicious_lambda_layer: SELECT * FROM DATABASE.TABLE WHERE (eventSource = 'lambda.amazonaws.com' AND eventName LIKE 'UpdateFunctionConfiguration%' ESCAPE '\');
-#aws_cloudtrail_disable_logging: SELECT * FROM DATABASE.TABLE WHERE (eventSource = 'cloudtrail.amazonaws.com' AND eventName IN ('StopLogging', 'UpdateTrail', 'DeleteTrail'));
+#aws_attached_malicious_lambda_layer: SELECT * FROM DATABASE.TABLE WHERE (eventSource = 'lambda.amazonaws.com' AND eventName LIKE 'UpdateFunctionConfiguration%' ESCAPE '\');
+aws_cloudtrail_disable_logging: SELECT * FROM DATABASE.TABLE WHERE (eventSource = 'cloudtrail.amazonaws.com' AND eventName IN ('StopLogging', 'UpdateTrail', 'DeleteTrail'));
 #aws_config_disable_recording: SELECT * FROM DATABASE.TABLE WHERE (eventSource = 'config.amazonaws.com' AND eventName IN ('DeleteDeliveryChannel', 'StopConfigurationRecorder'));
 #aws_delete_identity: SELECT * FROM DATABASE.TABLE WHERE (eventSource = 'ses.amazonaws.com' AND eventName = 'DeleteIdentity');
 #aws_ec2_disable_encryption: SELECT * FROM DATABASE.TABLE WHERE (eventSource = 'ec2.amazonaws.com' AND eventName = 'DisableEbsEncryptionByDefault');

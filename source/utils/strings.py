@@ -1,4 +1,4 @@
-ERROR="[!] invictus-aws.py: error:"
+ERROR="[!] Invictus-AWS: error:"
 
 ############# main.py #############
 
@@ -26,34 +26,36 @@ STORAGE_ACTION="[+] Press the number associated with the storage you want: "
 
 REGION_PRESENTATION="\n[+] Region possibilities:\n   [1] All regions, with the first region to run on if you want. Mind that this option is not available with the Analysis step.\n   [2] One specific region"
 REGION_ACTION="[+] Press the number associated with the operation: "
-REGION="\t[+] Region that you want (optional for all regions mode): "
+REGION="   [+] Region that you want (optional for all regions mode): "
 
 DB_INITIALIZED_PRESENTATION="\n[+] Database Initialization possibilities:\n   [1] The database you want to use is already initialized\n   [2] The database you want to use is not initialized yet"
 DB_INITIALIZED_ACTION="[+] Press the number associated with the option you want. If it's the first time you run the tool, press 2: "
 
 INPUT_BUCKET_ACTION="\n[+] Enter the S3 URI of the bucket containing the CloudTrail logs. Format is s3://s3_name/subfolders/ : "
-OUTPUT_BUCKET_ACTION="\n[+] Enter the S3 URI of the the where the results of the queries will be stored. Format is s3://s3_name/[subfolders]/ : "
+OUTPUT_BUCKET_ACTION="\n[+] Enter the S3 URI of where the results of the queries will be stored. Format is s3://s3_name/[subfolders]/ : "
 
 DEFAULT_NAME_PRESENTATION="\n[+] Name possibilities:\n   [1] Creates new database and table, using the default names (cloudtrailanalysis & logs)\n   [2] Creates new database and table, using your own names"
 DEFAULT_NAME_ACTION="[+] Press the number associated with the option you want: "
 
-NEW_NAMES_PRESENTATION="\n[+] You will now have to enter the catalog to use and the database and table name you want"
-CATALOG_ACTION="\t[+] Catalog name : "
-DB_ACTION="\t[+] Database name : "
-TABLE_ACTION="\t[+] Table name : "
+NAMES_PRESENTATION="\n[+] You will now have to enter your existing catalog, database and table"
+NEW_NAMES_PRESENTATION="\n[+] You will now have to enter the catalog to use and the database name you want"
+TABLE_PRESENTATION="\n[+] Don't forget to enter the name of the table you want"
+CATALOG_ACTION="   [+] Catalog name : "
+DB_ACTION="   [+] Database name : "
+TABLE_ACTION="   [+] Table name : "
 
-DEFAULT_STRUCTURE_PRESENTATION="\n[+] Structure file possibilities:\n   [1] Use your own file\n   [2] Use the default structure"
+DEFAULT_STRUCTURE_PRESENTATION="\n[+] Structure file possibilities:\n   [1] Use your own structure file\n   [2] Use the default structure"
 DEFAULT_STRUCTURE_ACTION="[+] Press the number associated with the option you want: "
-STRUCTULE_FILE="\t[+] Enter the name of the structure file you want to use for your table : "
+STRUCTULE_FILE="   [+] Enter the name of the structure file you want to use for your table : "
 
 DEFAULT_QUERY_PRESENTATION="\n[+] Query file possibilities:\n   [1] Use your own file\n   [2] Use the default query file"
 DEFAULT_QUERY_ACTION="[+] Press the number associated with the option you want: "
-QUERY_FILE="\t[+] Enter the name of the query file you want to use : "
+QUERY_FILE="   [+] Enter the name of the query file you want to use : "
 
 TIMEFRAME_PRESENTATION="\n[+] Timeframe possibilities:\n   [1] Use a timeframe to filter logs results\n   [2] Don't use a timeframe"
 TIMEFRAME_ACTION="[+] Press the number associated with the option you want: "
-TIMEFRAME="\t[+] Enter the number of last days to analyze : "
+TIMEFRAME="   [+] Enter the number of last days to analyze : "
 
 START_END_PRESENTATION="\n[+] You will now have to enter the start and end dates of the logs you want to collect"
-START="\t[+] Start date of the logs collection: "
-END="\t[+] End date of the logs collection: "
+START="   [+] Start date of the logs collection (YYYY-MM-DD): "
+END="   [+] End date of the logs collection (YYYY-MM-DD): "

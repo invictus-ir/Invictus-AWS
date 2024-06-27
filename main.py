@@ -22,6 +22,12 @@ def set_args():
     )
 
     parser.add_argument(
+        "--menu", 
+        action="store_true",
+        help="Run in walkthrough mode")
+
+
+    parser.add_argument(
         "-w",
         "--write",
         nargs="?",
@@ -207,7 +213,11 @@ def verify_all_regions(input_region):
         ACCOUNT_CLIENT.list_regions,
         RegionOptStatusContains=["ENABLED", "ENABLED_BY_DEFAULT"],
     )
-    regions = response["Regions"]
+    try:
+        regions = response["Regions"]
+    except KeyError as e:
+        print(f"{ERROR} The security token included in the request is expired. Please set a new token before running the tool.")
+        sys.exit(-1)
 
     region_names = []
 
@@ -219,6 +229,9 @@ def verify_all_regions(input_region):
         region_names.insert(0, input_region)
 
         return region_names
+    elif input_region == "not-all":
+        print(f"{ERROR} You have to specify a region option to run the tool : (-r) or (-A).")
+        sys.exit(-1)
     else:
         print(f"{ERROR} The region you entered doesn't exist or is not enabled. Please enter a valid region.")
         sys.exit(-1)
@@ -246,9 +259,12 @@ def verify_one_region(region):
             or response["RegionOptStatus"] == "ENABLED"
         ):
             enabled.append(region)
-    except Exception as e:
-            print(str(e))
-            sys.exit(-1)
+    except ClientError as e:
+        if e.response['Error']['Code'] == 'ExpiredTokenException':
+            print(f"{ERROR} The security token included in the request is expired. Please set a new token before running the tool.")
+        else:
+            print(f"{ERROR} {e}")
+        sys.exit(-1)
 
     return enabled
 
@@ -340,7 +356,7 @@ def verify_steps(steps, source, output, catalog, database, table, region, dl):
                 print(f"{ERROR} Wrong database name format. Database name can only contains letters and `_`, up to 255 characters.")
                 sys.exit(-1) 
             
-            if not match(regex_pattern, table):
+            if not table.endswith(".ddl") and not match(regex_pattern, table):
                 print(f"{ERROR} Wrong table name format. Table name can only contains letters and `_`, up to 255 characters.")
                 sys.exit(-1) 
 
@@ -363,6 +379,8 @@ def verify_steps(steps, source, output, catalog, database, table, region, dl):
                 for tb in tables["TableMetadataList"]:
                     if tb["Name"] == tmp_table:
                         table_exists = True
+                    if tb["Name"] == tmp_table and table.endswith(".ddl"):
+                        print(f"[!] Warning : The table {database}.{tmp_table} already exists. Using the existing one..")
 
         else:
             print(f"{ERROR} All or none of these arguments are required: -c/--catalog, -d/--database, -t/--table.")
@@ -373,6 +391,10 @@ def verify_steps(steps, source, output, catalog, database, table, region, dl):
             sys.exit(-1)
         elif output != None and dl == True: 
             print(f"{ERROR} The following arguments are not asked: -o/--output-bucket.")
+            sys.exit(-1)
+
+        if source != None and table.endswith(".ddl"):
+            print(f"{ERROR} The following arguments are not asked: -b/--source-bucket.")
             sys.exit(-1)
 
         #if all athena args are none, the source is none but table doesn't exists
@@ -392,41 +414,33 @@ def verify_steps(steps, source, output, catalog, database, table, region, dl):
     #Verify buckets inputs
 
     if source != None:
-        source = verify_bucket(source, "source")
+        source = verify_bucket(source, "source", False)
 
     
     if output != None:
-        output = verify_bucket(output, "output")
+        output = verify_bucket(output, "output", False)
 
     exists = [db_exists, table_exists]
             
     return steps, source, output, database, table, exists
 
-def verify_catalog_db_table(catalog, database, table, region):
+def verify_catalog_db(catalog, database, region, to_create):
 
-    #if db and table already exists (the basic ones if no input was provided)
+    #if db already exists (the basic one if no input is provided)
     db_exists = False
-    table_exists = False
 
     athena = boto3.client("athena", region_name=region)
 
-    if catalog is None and database is None and table is None:
+    if catalog is None and database is None:
         
-        #we need to verify if cloudtrailanalysis db and logs table already exists 
+        #we need to verify if cloudtrailanalysis db already exists 
         databases = athena.list_databases(CatalogName="AwsDataCatalog")
         for db in databases["DatabaseList"]:
             if db["Name"] == "cloudtrailanalysis":
                 db_exists = True
                 break
-        
-        if db_exists:
-            tables = athena.list_table_metadata(CatalogName="AwsDataCatalog",DatabaseName="cloudtrailanalysis")
-            for tb in tables["TableMetadataList"]:
-                if tb["Name"] == "logs":
-                    table_exists = True
-                    break
 
-    elif catalog is not None and database is not None and table is not None:
+    elif catalog is not None and database is not None:
         #Verifying catalog exists
         catalogs = athena.list_data_catalogs()
 
@@ -439,22 +453,65 @@ def verify_catalog_db_table(catalog, database, table, region):
         if not match(regex_pattern, database):
             print(f"{ERROR} Wrong database name format. Database name can only contains letters and `_`, up to 255 characters.")
             sys.exit(-1) 
-        
-        if not match(regex_pattern, table):
-            print(f"{ERROR} Wrong table name format. Table name can only contains letters and `_`, up to 255 characters.")
-            sys.exit(-1) 
 
         databases = athena.list_databases(CatalogName=catalog)
         for db in databases["DatabaseList"]:
             if db["Name"] == database:
                 db_exists = True
+                break
 
     else:
         print(f"{ERROR} You have to enter the 3 values : catalog, database and table")
         sys.exit(-1)
 
-    exists = [db_exists, table_exists]
-    return exists
+    if not db_exists and not to_create:
+        print(f"{ERROR} The database you entered doesn't exists.")
+        sys.exit(-1)
+    
+    if db_exists and to_create:
+        print(f"{ERROR} The database you entered already exists.")
+        sys.exit(-1)
+
+    return db_exists
+
+def verify_table(catalog, database, table, region, to_create, db_exists):
+
+    table_exists = False
+    athena = boto3.client("athena", region_name=region)
+
+    if catalog is None and database is None and table is None:
+        catalog = "AwsDataCatalog"
+        database = "cloudtrailanalysis"
+        table = "logs"
+
+    if db_exists:
+        tables = athena.list_table_metadata(CatalogName=catalog,DatabaseName=database)
+        for tb in tables["TableMetadataList"]:
+            if tb["Name"] == "logs":
+                table_exists = True
+
+    else:
+
+        regex_pattern = r'^[a-zA-Z_]{1,255}$'
+        
+        if not match(regex_pattern, table):
+            print(f"{ERROR} Wrong table name format. Table name can only contains letters and `_`, up to 255 characters.")
+            sys.exit(-1) 
+
+        if db_exists:
+            tables = athena.list_table_metadata(CatalogName=catalog,DatabaseName=database)
+            for tb in tables["TableMetadataList"]:
+                if tb["Name"] == table:
+                    table_exists = True
+            if not table_exists and not to_create:
+                print(f"{ERROR} The table you entered doesn't exists.")
+                sys.exit(-1)
+
+    if table_exists and to_create:
+        print(f"{ERROR} The table you entered already exists.")
+        sys.exit(-1)
+
+    return table_exists
 
 def verify_structure_input(catalog, database, structure, region, db_exists):
 
@@ -467,9 +524,12 @@ def verify_structure_input(catalog, database, structure, region, db_exists):
             print(f"{ERROR} you have to input an existing .ddl file to create a new table.")
             sys.exit(-1)
         else:
+            s3 = get_s3_in_ddl(structure)
+            verify_bucket(s3, "output", True)
             tmp_table = get_table(structure, False)[0]
     else:
-        tmp_table = structure
+        print(f"{ERROR} you have to input an existing .ddl file to create a new table.")
+        sys.exit(-1)
 
     if db_exists:
         tables = athena.list_table_metadata(CatalogName=catalog,DatabaseName=database)
@@ -486,7 +546,7 @@ def verify_queryfile_input(queryfile):
         print(f"{ERROR} you have to input an existing query file.")
         sys.exit(-1)
 
-def verify_bucket(bucket, entry_type):
+def verify_bucket(bucket, entry_type, is_from_ddl):
     """Verify that the user inputs regarding the buckets logs are correct.
 
     Parameters
@@ -519,13 +579,19 @@ def verify_bucket(bucket, entry_type):
     source_bucket = s3.Bucket(name)
 
     if not source_bucket.creation_date:
-       print(f"{ERROR} The {entry_type} bucket you entered doesn't exists or is not written well. Please verify that the format is 's3://s3-name/[potential-folders]/'")
+       if is_from_ddl:
+           print(f"{ERROR} The {entry_type} bucket you entered as LOCATION in your .DDL file doesn't exists or is not written well. Please verify that the format is 's3://s3-name/[potential-folders]/'")
+       else:
+        print(f"{ERROR} The {entry_type} bucket you entered doesn't exists or is not written well. Please verify that the format is 's3://s3-name/[potential-folders]/'")
        sys.exit(-1)
 
     if prefix:   
         response = S3_CLIENT.list_objects_v2(Bucket=name, Prefix=prefix)
         if 'Contents' not in response or len(response['Contents']) == 0:
-            print(f"{ERROR} The path of the {entry_type} bucket you entered doesn't exists or is not written well. Please verify that the format is 's3://s3_name/[potential-folders]/'")
+            if is_from_ddl:
+                print(f"{ERROR} The {entry_type} bucket you entered as LOCATION in your .DDL file doesn't exists or is not written well. Please verify that the format is 's3://s3-name/[potential-folders]/'")
+            else:
+                print(f"{ERROR} The {entry_type} bucket you entered doesn't exists or is not written well. Please verify that the format is 's3://s3-name/[potential-folders]/'")
             sys.exit(-1)
     
     return bucket
@@ -649,10 +715,7 @@ def verify_region_input(region_choice, region, steps):
     first_region="not-all"
 
     try:
-        if region_choice == "1" and "4" in steps:
-            print(f"{ERROR} You cant run the tool on all regions with the Analysis step")
-            sys.exit(-1)
-        elif region_choice == "1":
+        if region_choice == "1":
             try:
                 if region:
                     all_regions = verify_all_regions(region)
@@ -673,25 +736,30 @@ def main():
     """Get the arguments and run the appropriate functions."""
     print(TOOL_NAME)
     
-    dl = ""
-    region = ""
-    first_region = ""
-    steps = ""
-    start = ""
-    end = ""
-    source = ""
-    output = ""
-    catalog = ""
-    database = ""
-    table = ""
-    queryfile = ""
-    exists = ""
-    timeframe = ""
+    dl = None
+    region = None
+    first_region = None
+    steps = None
+    start = None
+    end = None
+    source = None
+    output = None
+    catalog = None
+    database = None
+    table = None
+    queryfile = None
+    exists = None
+    timeframe = None
 
     args = set_args()   
+    real_arg_count = len(sys.argv) - 1
 
-    ## Walkthough mode
-    if not args.aws_region and args.all_regions == "not-all":
+    if args.menu:
+        if real_arg_count >= 2:
+            print(f"{ERROR} --menu cannot be used with other arguments")
+            sys.exit(1)
+
+        ## Walkthough mode
         print(WALKTHROUGHT_ENTRY)
         print(STEPS_PRESENTATION)
         steps = input(STEPS_ACTION)
@@ -700,6 +768,9 @@ def main():
         print(REGION_PRESENTATION)
         region_choice = input(REGION_ACTION)
         verify_input(region_choice, ["1", "2"])
+        if region_choice == "1" and "4" in steps:
+            print(f"{ERROR} You cant run the tool on all regions with the Analysis step")
+            sys.exit(-1)
         region = input(REGION)
         regions, first_region = verify_region_input(region_choice, region, steps)
 
@@ -723,57 +794,86 @@ def main():
             init_db_input = input(DB_INITIALIZED_ACTION)
             verify_input(init_db_input, ["1", "2"])
 
-            if init_db_input == "2": #aka db is not initialized yet
-                input_bucket_input = input(INPUT_BUCKET_ACTION)
-                verify_bucket(input_bucket_input, "source")
+            #[if the database exists, If the table exists]
+            exists = [False, False]
 
-                if not dl:
-                    output_bucket_input = input(OUTPUT_BUCKET_ACTION)
-                    verify_bucket(output_bucket_input, "output")
+            if init_db_input == "2": #aka db is not initialized yet
 
                 print(DEFAULT_NAME_PRESENTATION)
                 default_name_input = input(DEFAULT_NAME_ACTION)
                 verify_input(default_name_input, ["1", "2"])
 
-                if default_name_input:
+                if default_name_input == "2": #aka the guy doesn't want the defaults names 
+
                     print(NEW_NAMES_PRESENTATION)
                     catalog = input(CATALOG_ACTION)
                     database = input(DB_ACTION)
-                    table = input(TABLE_ACTION)
+
+                    exists[0] = verify_catalog_db(catalog, database, regions[0], True)
+
+                    print(DEFAULT_STRUCTURE_PRESENTATION)
+                    default_structure_input = input(DEFAULT_STRUCTURE_ACTION)
+                    verify_input(default_structure_input, ["1", "2"])
+
+                    exists = [False, False]
+                    if default_structure_input == "1":
+                        table = input(STRUCTULE_FILE)
+                        exists[1] = verify_structure_input(catalog, database, table, regions[0], exists[0])
+
+                    else:
+                        
+                        print(TABLE_PRESENTATION)
+                        table = input(TABLE_ACTION)
+                        exists[1] = verify_table(catalog, database, table, regions[0], True, exists[0])
+
+                        source = input(INPUT_BUCKET_ACTION)
+                        verify_bucket(source, "source", False)
+                    
                 else:
                     catalog = None
                     database = None
                     table = None
+                    exists[0] = verify_catalog_db(catalog, database, regions[0], True)
+                    exists[1] = verify_table(catalog, database, table, regions[0], True, exists[0])
 
-                exists = verify_catalog_db_table(catalog, database, table, regions[0])
+                    source = input(INPUT_BUCKET_ACTION)
+                    verify_bucket(source, "source", False)
 
-                print(DEFAULT_STRUCTURE_PRESENTATION)
-                default_structure_input = input(DEFAULT_STRUCTURE_ACTION)
-                verify_input(default_structure_input, ["1", "2"])
+                if not dl and ((table and not table.endswith(".ddl")) or not table):
+                    output = input(OUTPUT_BUCKET_ACTION)
+                    verify_bucket(output, "output", False)               
 
-                if default_structure_input == "1":
-                    structure_file = input(STRUCTULE_FILE)
-                    exists[1] = verify_structure_input(catalog, database, structure_file, regions[0], exists[0])
+            else:
+                print(NEW_NAMES_PRESENTATION)
+                catalog = input(CATALOG_ACTION)
+                database = input(DB_ACTION)
+                exists[0] = verify_catalog_db(catalog, database, regions[0], False)
+                table = input(TABLE_ACTION)
+                exists[1] = verify_table(catalog, database, table, regions[0], False, exists[0])
 
             print(DEFAULT_QUERY_PRESENTATION)
-            default_query_input = input(DEFAULT_QUERY_ACTION)
-            verify_input(default_query_input, ["1", "2"])
+            queryfile = input(DEFAULT_QUERY_ACTION)
+            verify_input(queryfile, ["1", "2"])
 
-            if default_query_input == "1":
+            if queryfile == "1":
                 queryfile = input(QUERY_FILE)
                 verify_queryfile_input(queryfile)
+            else:
+                queryfile = "source/files/queries.yaml"
 
             print(TIMEFRAME_PRESENTATION)
             timeframe_input = input(TIMEFRAME_ACTION)
             verify_input(timeframe_input, ["1", "2"])
 
-            if default_query_input == "1":
+            if timeframe_input == "1":
                 timeframe = input(TIMEFRAME)
-                verify_timeframe(timeframe)
+                verify_timeframe(timeframe, steps)
 
+    elif real_arg_count == 0:
+        print(f"{ERROR} You have to use some arguments")
+        sys.exit(1)
 
     else: 
-        print(args)
 
         steps = args.step.split(",")
         verify_steps_input(steps)
@@ -796,8 +896,6 @@ def main():
         source = args.source_bucket
         output = args.output_bucket
 
-        
-
         catalog = args.catalog
         database = args.database
         table = args.table
@@ -815,5 +913,5 @@ def main():
         run_steps(dl, region, first_region, steps, start, end, source, output, catalog, database, table, queryfile, exists, timeframe)
 
 if __name__ == "__main__":
-
     main()
+        

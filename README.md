@@ -94,5 +94,5 @@ But don't forget that if you modify your logs source and still want to use the d
 `$python3 main.py -r eu-west-3 -s 4 -c your-catalog -d your-database -t your-table -f path-to-existing-query-file`  
 
 **Analyze CloudTrail logs using a new table with your own structure.** :  
-`$python3 main.py -a eu-west-3 -s 4 -s bucket/path-to-the-existing-logs/ -o bucket/path-to-existing-folder-where-to-put-the-results/ -c your-catalog -d your-database -t your-creation-table-file.ddl`  
+`$python3 main.py -r eu-west-3 -s 4 -b bucket/path-to-the-existing-logs/ -o bucket/path-to-existing-folder-where-to-put-the-results/ -c your-catalog -d your-database -t your-creation-table-file.ddl`  
 *You can find an example of ddl file in `source/files`. Just replace the name of the table by the one you want to create, the location by the location of your CloudTrail logs and add the structure of your table. The default table used by the tool is explained here : https://docs.aws.amazon.com/athena/latest/ug/cloudtrail-logs.html .*

@@ -7,6 +7,7 @@ from sys import exit
 from random import choices
 from string import ascii_lowercase, digits
 from json import dumps
+from source.utils.strings import * 
 
 
 def get_random_chars(n):
@@ -354,10 +355,13 @@ def athena_query(region, query, bucket):
     """
     athena = boto3.client("athena", region_name=region)
 
+    #try: 
     result = athena.start_query_execution(
         QueryString=query,
         ResultConfiguration={"OutputLocation": bucket}
     )
+    #except Exception:
+     #   print(f"{ERROR} Verify the output bucket you entered is valid and in the same region.")
     
     id = result["QueryExecutionId"]
     status = "QUEUED"
@@ -420,7 +424,30 @@ def get_table(ddl, get_db):
         table = table_content[0].strip().split(" ")[-1]
         if "." in table and not get_db:
             table = table.split(".")[1]
-        return table, data
+        return table, table_content
+    
+def get_s3_in_ddl(ddl):
+    """Get the table name out of a ddl file.
+
+    Parameters
+    ----------
+    ddl : str
+        Ddl file 
+    get_db : bool
+        False if you only want the table name. True if you also want the db name that can be present just before the table name.
+
+    Returns
+    -------
+    table : str
+        Name of the table
+    data : str
+        Content of the ddl file
+    """
+    with open(ddl, "rt") as ddl:
+        data = ddl.read()
+        location = data.split("LOCATION")
+        s3 = location[1].strip().split("'")[1]
+        return s3
 
 def get_bucket_and_prefix(bucket):
     """Split bucket name and prefix of the given bucket.
