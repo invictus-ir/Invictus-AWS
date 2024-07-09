@@ -18,13 +18,13 @@ TOOL_NAME= """
 
 WALKTHROUGHT_ENTRY="[+] Entering Walk–through mode..\n"
 
-STEPS_PRESENTATION="[+] Possible actions :\n   [1] Services Enumeration\n   [2] Services Configuration Acquisition\n   [3] Services Logs Acquisition\n   [4] Logs Analysis"
-STEPS_ACTION="[+] Press the number(s) associated with the action(s) you want, separated by a comma if needed: "
+STEPS_PRESENTATION="[+] Possible actions :\n   [1] Services Enumeration\n   [2] Services Configuration Acquisition\n   [3] Log Acquisition\n   [4] Log Analysis"
+STEPS_ACTION="[+] Select the action you want to perform, specify multiple actions with a comma (e.g. 1,2,3): "
 
 STORAGE_PRESENTATION="\n[+] Possible storage :\n   [1] Local\n   [2] Cloud"
 STORAGE_ACTION="[+] Press the number associated with the storage you want: "
 
-REGION_PRESENTATION="\n[+] Region possibilities:\n   [1] All regions, with the first region to run on if you want. Mind that this option is not available with the Analysis step.\n   [2] One specific region"
+REGION_PRESENTATION="\n[+] Specify your region:\n   [1] All regions, this option is not available with the Analysis step.\n   [2] One specific region"
 REGION_ACTION="[+] Press the number associated with the operation: "
 REGION="   [+] Region that you want (optional for all regions mode): "
 
@@ -56,6 +56,6 @@ TIMEFRAME_PRESENTATION="\n[+] Timeframe possibilities:\n   [1] Use a timeframe t
 TIMEFRAME_ACTION="[+] Press the number associated with the option you want: "
 TIMEFRAME="   [+] Enter the number of last days to analyze : "
 
-START_END_PRESENTATION="\n[+] You will now have to enter the start and end dates of the logs you want to collect"
+START_END_PRESENTATION="\n[+] Enter the start and end dates of the logs you want to collect"
 START="   [+] Start date of the logs collection (YYYY-MM-DD): "
 END="   [+] End date of the logs collection (YYYY-MM-DD): "

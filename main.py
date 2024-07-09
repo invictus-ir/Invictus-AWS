@@ -649,7 +649,7 @@ def verify_dates(start, end, steps):
             print("[!] invictus-aws.py: error:  End date in not defined.")
             sys.exit(-1)
         elif start == None and end == None:
-            print("[!] invictus-aws.py: error:  You have to specify start and end time.")
+            print("[!] invictus-aws.py: error: You have to specify start and end time.")
             sys.exit(-1)
 
 def verify_file(queryfile, steps):
@@ -754,7 +754,7 @@ def main():
     args = set_args()   
     real_arg_count = len(sys.argv) - 1
 
-    if args.menu:
+    if args.menu or real_arg_count == 0 :
         if real_arg_count >= 2:
             print(f"{ERROR} --menu cannot be used with other arguments")
             sys.exit(1)
@@ -868,10 +868,6 @@ def main():
             if timeframe_input == "1":
                 timeframe = input(TIMEFRAME)
                 verify_timeframe(timeframe, steps)
-
-    elif real_arg_count == 0:
-        print(f"{ERROR} You have to use some arguments")
-        sys.exit(1)
 
     else: 
 
