@@ -73,25 +73,29 @@ class Analysis:
         set_clients(self.region)
         self.source_bucket = source_bucket
 
+        #this devil's code just get the location data of the .ddl file provided (the bucket where the source logs are stored)
+        if not source_bucket and table and table.endswith(".ddl"):
+            self.source_bucket = get_table(table, False)[1][1].split("LOCATION")[1].strip()
+
         if output_bucket == None:
             rand_str = get_random_chars(5)
             tmp_bucket = f"invictus-aws-tmp-results-{rand_str}"
             create_tmp_bucket(self.region, tmp_bucket)
             output_bucket = f"s3://{tmp_bucket}/"
-            print(output_bucket)
     
         bucket, prefix = get_bucket_and_prefix(output_bucket)
         if not prefix:
             prefix = "queries-results/"
             self.output_bucket = f"{output_bucket}{prefix}{date}/{self.time}/"
-            S3_CLIENT.put_object(Bucket=bucket, Key=(f"{prefix}{date}/{self.time}/"))
         else:
             self.output_bucket = f"{output_bucket}{date}/{self.time}/"
+        
+        S3_CLIENT.put_object(Bucket=bucket, Key=(f"{prefix}{date}/{self.time}/"))
       
         #True if not using tool default db and table
-        notNone = False
+        not_using_default_names = False
         if (catalog != None and db != None and table != None):
-            notNone = True 
+            not_using_default_names = True 
         else:
             catalog = "AwsDataCatalog"
             db = "cloudtrailAnalysis"
@@ -107,9 +111,9 @@ class Analysis:
                 queries = yaml.safe_load(f)
                 print(f"[+] Using query file : {queryfile}")
         except Exception as e:
-            print(f"[!] Error : {str(e)}")
+            print(f"[!] invictus-aws.py: error: {str(e)}")
 
-        if not notNone:
+        if not not_using_default_names:
             db = "cloudtrailAnalysis"
         elif table.endswith(".ddl"):
             table = get_table(table, False)[0]      
@@ -189,7 +193,7 @@ class Analysis:
                 with open(table) as ddl:
                     query_table = ddl.read()
                     athena_query(self.region, query_table, self.output_bucket)
-                print(f"[+] Table {tb} created")
+                table = tb
             elif not isTrail:
                 query_table = f"""
                     CREATE EXTERNAL TABLE IF NOT EXISTS {db}.{table} (
@@ -313,7 +317,7 @@ class Analysis:
             print(f"[+] Table {db}.{table} created")
    
     def set_table(self, ddl, db):
-        """Replace the table name of the ddl file by database.table.
+        """Replace the table name of the ddl file by database.table
 
         Parameters
         ----------
@@ -328,10 +332,8 @@ class Analysis:
             Name of the table
         """
         table, data = get_table(ddl, True)
-
         if not "." in table:
-            data = data.replace(table, f"{db}.{table}")
-
+            data = data[0].replace(table, f"{db}.{table}") + "(\n" + data[1]
             with open(ddl, "wt") as f:
                 f.write(data)
                 f.close()
@@ -426,7 +428,7 @@ class Analysis:
                     Bucket=bucket
                 )
             except Exception as e:
-                print(f"[!] Error : {str(e)}")
+                print(f"[!] invictus-aws.py: error: {str(e)}")
 
         else:
             
@@ -474,14 +476,17 @@ class Analysis:
                         print("[!] Warning : You are using a trail bucket as source. Be aware these buckets can have millions of logs and so the tool can take a lot of time to process it all. Use the most precise subfolder available to be more efficient.")  
                         break
         else:
-            response = source.utils.utils.ATHENA_CLIENT.get_table_metadata(
-                CatalogName=catalog,
-                DatabaseName=db,
-                TableName=table
-            )
+            try:
+                response = source.utils.utils.ATHENA_CLIENT.get_table_metadata(
+                    CatalogName=catalog,
+                    DatabaseName=db,
+                    TableName=table
+                )
 
-            if response["TableMetadata"]["Parameters"]["inputformat"] == "com.amazon.emr.cloudtrail.CloudTrailInputFormat":
-                isTrail = True
+                if response["TableMetadata"]["Parameters"]["inputformat"] == "com.amazon.emr.cloudtrail.CloudTrailInputFormat":
+                    isTrail = True
+            except Exception as e:
+                print(e)
         
         return isTrail
 
