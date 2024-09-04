@@ -24,8 +24,17 @@ def set_args():
     parser.add_argument(
         "--menu", 
         action="store_true",
-        help="Run in walkthrough mode")
-
+        help="[+] Run in walkthrough mode")
+    
+    parser.add_argument(
+        "-p",
+        "--profile",
+        nargs="?",
+        type=str,
+        default="default",
+        const="default",
+        help="[+] Specify your aws profile. Default profile is 'default'."
+    )
 
     parser.add_argument(
         "-w",
@@ -731,11 +740,17 @@ def verify_region_input(region_choice, region, steps):
 
     return all_regions, first_region
 
+def verify_profile(profile):
+    if profile not in boto3.session.Session().available_profiles:
+        print("[!] invictus-aws.py: error: The profile you entered does not exist. Please only enter valid profile.")
+        sys.exit(-1)
+
 
 def main():
     """Get the arguments and run the appropriate functions."""
     print(TOOL_NAME)
     
+    profile = None
     dl = None
     region = None
     first_region = None
@@ -761,6 +776,18 @@ def main():
 
         ## Walkthough mode
         print(WALKTHROUGHT_ENTRY)
+
+        print(PROFILE_PRESENTATION)
+        profile_input = input(PROFILE_ACTION)
+        verify_input(profile_input, ["1", "2"])
+        if profile_input == "2":
+            profile = "default"
+        else:
+            profile = input(PROFILE)
+        
+        verify_profile(profile)
+        boto3.setup_default_session(profile_name=profile)
+
         print(STEPS_PRESENTATION)
         steps = input(STEPS_ACTION)
         verify_steps_input(steps.split(","))
@@ -873,6 +900,10 @@ def main():
 
         steps = args.step.split(",")
         verify_steps_input(steps)
+
+        profile = args.profile
+        verify_profile(profile)
+        boto3.setup_default_session(profile_name=profile)
 
         region = args.aws_region
         all_regions= args.all_regions

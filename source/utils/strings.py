@@ -18,7 +18,11 @@ TOOL_NAME= """
 
 WALKTHROUGHT_ENTRY="[+] Entering Walk–through mode..\n"
 
-STEPS_PRESENTATION="[+] Possible actions :\n   [1] Services Enumeration\n   [2] Services Configuration Acquisition\n   [3] Log Acquisition\n   [4] Log Analysis"
+PROFILE_PRESENTATION="[+] Possible profiles: \n   [1] User-defined Profile\n   [2] Default Profile"
+PROFILE_ACTION="[+] Select the profile you want to use: "
+PROFILE="   [+] Profile you want : "
+
+STEPS_PRESENTATION="\n[+] Possible actions :\n   [1] Services Enumeration\n   [2] Services Configuration Acquisition\n   [3] Log Acquisition\n   [4] Log Analysis"
 STEPS_ACTION="[+] Select the action you want to perform, specify multiple actions with a comma (e.g. 1,2,3): "
 
 STORAGE_PRESENTATION="\n[+] Possible storage :\n   [1] Local\n   [2] Cloud"
