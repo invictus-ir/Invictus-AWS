@@ -1,7 +1,8 @@
 Usage
 =====
 
-Default Usage : ``python3 invictus-aws.py`` will get you into a walkthrough mode
+Default Usage : ``python3 invictus-aws.py`` will get you into a walkthrough mode  
+
 Power User Usage : ``python3 invictus-aws.py [-h] [-p profile] -w [{cloud,local}] (-r AWS_REGION | -A [ALL_REGIONS]) -s [STEP] [-start YYYY-MM-DD] [-end YYYY-MM-DD] [-b SOURCE_BUCKET] [-o OUTPUT_BUCKET][-c CATALOG] [-d DATABASE] [-t TABLE] [-f QUERY_FILE] [-x TIMEFRAME]``
 
 The script runs with a few parameters :  
