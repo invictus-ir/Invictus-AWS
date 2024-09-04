@@ -2,8 +2,8 @@
 
 ![alt text](https://github.com/invictus-ir/Microsoft-Extractor-Suite/blob/main/docs/source/Images/Invictus-Incident-Response.jpg?raw=true)
 
-## Getting started with the Microsoft-Extractor-Suite
-To get started with the Microsoft-Extractor-Suite, check out the [Invictus-AWS docs.](https://invictus-aws.readthedocs.io/en/latest/)
+## Getting started with Invictus-AWS
+To get started with Invictus-AWS, check out the [Invictus-AWS docs.](https://invictus-aws.readthedocs.io/en/latest/)
 
 ## Introduction
 Invictus-AWS is a python script that will help automatically enumerate and acquire relevant data from an AWS environment.
