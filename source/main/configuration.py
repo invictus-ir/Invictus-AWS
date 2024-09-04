@@ -1211,7 +1211,7 @@ class Configuration:
                 "\t\u2705 "
                 + name.upper()
                 + "\033[1m"
-                + " - JSON File Extracted "
+                + " - Configuration Extracted "
                 + "\033[0m"
             )
         else:

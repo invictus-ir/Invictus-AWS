@@ -1,7 +1,7 @@
 Usage
 =====
 
-Usage : ``$python3 main.py [-h] -w [{cloud,local}] (-r AWS_REGION | -A [ALL_REGIONS]) -s [STEP] [-start YYYY-MM-DD] [-end YYYY-MM-DD] [-b SOURCE_BUCKET] [-o OUTPUT_BUCKET][-c CATALOG] [-d DATABASE] [-t TABLE] [-f QUERY_FILE] [-x TIMEFRAME]``
+Usage : ``$python3 invictus-aws.py [-h] -w [{cloud,local}] (-r AWS_REGION | -A [ALL_REGIONS]) -s [STEP] [-start YYYY-MM-DD] [-end YYYY-MM-DD] [-b SOURCE_BUCKET] [-o OUTPUT_BUCKET][-c CATALOG] [-d DATABASE] [-t TABLE] [-f QUERY_FILE] [-x TIMEFRAME]``
 
 The script runs with a few parameters :  
 

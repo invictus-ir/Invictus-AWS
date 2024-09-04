@@ -111,7 +111,7 @@ class Enumeration:
         return self.services
 
     def enumerate_s3(self):
-        """Enumerate the s3 buckets available."""
+        """Enumerate S3 buckets in use."""
         elements  = s3_lookup()
 
         self.services["s3"]["count"] = len(elements)
@@ -126,7 +126,7 @@ class Enumeration:
         self.display_progress(self.services["s3"]["ids"], "s3", True)
    
     def enumerate_wafv2(self):
-        """Enumerate the waf web acls available."""
+        """Enumerate waf web acls in use."""
         elements = misc_lookup("WAF", source.utils.utils.WAF_CLIENT.list_web_acls, "NextMarker", "WebACLs", Scope="REGIONAL", Limit=100)
 
         self.services["wafv2"]["count"] = len(elements)
@@ -141,7 +141,7 @@ class Enumeration:
         self.display_progress(self.services["wafv2"]["ids"], "wafv2", True)
     
     def enumerate_lambda(self):
-        """Enumerate the lambdas available."""
+        """Enumerate lambdas in use."""
         elements = paginate(source.utils.utils.LAMBDA_CLIENT, "list_functions", "Functions")
 
         self.services["lambda"]["count"] = len(elements)
@@ -156,7 +156,7 @@ class Enumeration:
         self.display_progress(self.services["lambda"]["ids"], "lambda", True)
     
     def enumerate_vpc(self):
-        """Enumerate the vpcs available."""
+        """Enumerate vpcs in use."""
         elements = paginate(source.utils.utils.EC2_CLIENT, "describe_vpcs", "Vpcs")
 
         self.services["vpc"]["count"] = len(elements)
@@ -171,7 +171,7 @@ class Enumeration:
         self.display_progress(self.services["vpc"]["ids"], "vpc", True)
 
     def enumerate_elasticbeanstalk(self):
-        """Enumerate the elasticbeanstalk environments available."""
+        """Enumerate elasticbeanstalk environments in use."""
         elements = paginate(source.utils.utils.EB_CLIENT, "describe_environments", "Environments")
         
         self.services["elasticbeanstalk"]["count"] = len(elements)
@@ -188,7 +188,7 @@ class Enumeration:
         )
    
     def enumerate_route53(self):
-        """Enumerate the routes53 hosted zones available."""
+        """Enumerate routes53 hosted zones in use."""
         elements = paginate(source.utils.utils.ROUTE53_CLIENT, "list_hosted_zones", "HostedZones")
 
         self.services["route53"]["count"] = len(elements)
@@ -203,7 +203,7 @@ class Enumeration:
         self.display_progress(self.services["route53"]["ids"], "route53", True)
   
     def enumerate_ec2(self):
-        """Enumerate the ec2 instances available."""
+        """Enumerate ec2 instances in use."""
         elements = ec2_lookup()
         
         self.services["ec2"]["count"] = len(elements)
@@ -219,7 +219,7 @@ class Enumeration:
         self.display_progress(self.services["ec2"]["ids"], "ec2", True)
    
     def enumerate_iam(self):
-        """Enumerate the IAM users available."""
+        """Enumerate IAM users in use."""
         elements = paginate(source.utils.utils.IAM_CLIENT, "list_users", "Users")
 
         self.services["iam"]["count"] = len(elements)
@@ -234,7 +234,7 @@ class Enumeration:
         self.display_progress(self.services["iam"]["ids"], "iam", True)
     
     def enumerate_dynamodb(self):
-        """Enumerate the dynamodb tables available."""
+        """Enumerate dynamodb tables in use."""
         elements = paginate(source.utils.utils.DYNAMODB_CLIENT, "list_tables", "TableNames")
 
         self.services["dynamodb"]["count"] = len(elements)
@@ -247,7 +247,7 @@ class Enumeration:
         self.display_progress(self.services["dynamodb"]["ids"], "dynamodb", True)
   
     def enumerate_rds(self):
-        """Enumerate the rds instances available."""
+        """Enumerate rds instances in use."""
         elements = paginate(source.utils.utils.RDS_CLIENT, "describe_db_instances", "DBInstances")
 
         self.services["rds"]["count"] = len(elements)
@@ -262,7 +262,7 @@ class Enumeration:
         self.display_progress(self.services["rds"]["ids"], "rds", True)
     
     def enumerate_eks(self):
-        """Enumerate the eks clusters available."""
+        """Enumerate eks clusters in use."""
         elements = paginate(source.utils.utils.EKS_CLIENT, "list_clusters", "clusters")
 
         self.services["eks"]["count"] = len(elements)
@@ -277,7 +277,7 @@ class Enumeration:
         self.display_progress(self.services["eks"]["ids"], "eks", True)
     
     def enumerate_elasticsearch(self):
-        """Enumerate the elasticsearch domains available."""
+        """Enumerate elasticsearch domains in use."""
         response = try_except(source.utils.utils.ELS_CLIENT.list_domain_names)
         response.pop("ResponseMetadata", None)
         response = fix_json(response)
@@ -295,7 +295,7 @@ class Enumeration:
         self.display_progress(self.services["els"]["ids"], "els", True)
     
     def enumerate_secrets(self):
-        """Enumerate the secretsmanager secrets available."""
+        """Enumerate secretsmanager secrets in use."""
         elements = paginate(source.utils.utils.SECRETS_CLIENT, "list_secrets", "SecretList")
             
         self.services["secrets"]["count"] = len(elements)
@@ -310,7 +310,7 @@ class Enumeration:
         self.display_progress(self.services["secrets"]["ids"], "secrets", True)
     
     def enumerate_kinesis(self):
-        """Enumerate the kinesis streams available."""
+        """Enumerate kinesis streams in use."""
         elements = paginate(source.utils.utils.KINESIS_CLIENT, "list_streams", "StreamNames")
                     
         self.services["kinesis"]["count"] = len(elements)
@@ -321,7 +321,7 @@ class Enumeration:
         self.display_progress(self.services["kinesis"]["ids"], "kinesis", True)
    
     def enumerate_cloudwatch(self):
-        """Enumerate the cloudwatch dashboards available."""
+        """Enumerate cloudwatch dashboards in use."""
         elements = paginate(source.utils.utils.CLOUDWATCH_CLIENT, "list_dashboards", "DashboardEntries")
 
         self.services["cloudwatch"]["count"] = len(elements)
@@ -336,7 +336,7 @@ class Enumeration:
         self.display_progress(self.services["cloudwatch"]["ids"], "cloudwatch", True)
    
     def enumerate_cloudtrail_trails(self):
-        """Enumerate the cloudtrail trails available."""
+        """Enumerate cloudtrail trails in use."""
         elements = paginate(source.utils.utils.CLOUDTRAIL_CLIENT, "list_trails", "Trails")
 
         self.services["cloudtrail"]["count"] = len(elements)
@@ -351,7 +351,7 @@ class Enumeration:
         self.display_progress(self.services["cloudtrail"]["ids"], "cloudtrail", True)
     
     def enumerate_guardduty(self):
-        """Enumerate the guardduty detectors available."""
+        """Enumerate guardduty detectors in use."""
         elements = paginate(source.utils.utils.GUARDDUTY_CLIENT, "list_detectors", "DetectorIds")
 
         self.services["guardduty"]["count"] = len(elements)
@@ -364,7 +364,7 @@ class Enumeration:
         self.display_progress(self.services["guardduty"]["ids"], "guardduty", True)
     
     def enumerate_inspector2(self):
-        """Enumerate the inspector coverages available."""
+        """Enumerate inspector coverages in use."""
         elements = paginate(source.utils.utils.INSPECTOR_CLIENT, "list_coverage", "coveredResources")
  
         self.services["inspector"]["count"] = len(elements)
@@ -379,7 +379,7 @@ class Enumeration:
         self.display_progress(self.services["inspector"]["ids"], "inspector", False)
     
     def enumerate_detective(self):
-        """Enumerate the detective graphs available."""
+        """Enumerate detective graphs in use."""
         elements = misc_lookup("DETECTIVE", source.utils.utils.DETECTIVE_CLIENT.list_graphs, "NextToken", "GraphList", MaxResults=100)
     
         self.services["detective"]["count"] = len(elements)
@@ -394,7 +394,7 @@ class Enumeration:
         self.display_progress(self.services["detective"]["ids"], "detective", True)
     
     def enumerate_maciev2(self):
-        """Enumerate the macie buckets available."""
+        """Enumerate macie buckets in use."""
         elements = paginate(source.utils.utils.MACIE_CLIENT, "describe_buckets", "buckets")
 
         self.services["macie"]["count"] = len(elements)
@@ -422,13 +422,13 @@ class Enumeration:
         """
         if len(ids) != 0:
             if no_list:
-                print("\t\u2705 " + name.upper() + "\033[1m" + " - Available")
+                print("\t\u2705 " + name.upper() + "\033[1m" + " - In use")
             else:
                 print(
                     "\t\u2705 "
                     + name.upper()
                     + "\033[1m"
-                    + " - Available with a count of "
+                    + " - In use with a count of "
                     + str(len(ids))
                     + "\033[0m"
                     + " and with the following identifiers: "
@@ -440,6 +440,6 @@ class Enumeration:
                 "\t\u274c "
                 + name.upper()
                 + "\033[1m"
-                + " - Not Available"
+                + " - Not in use"
                 + "\033[0m"
             )

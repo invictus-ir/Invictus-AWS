@@ -1,6 +1,6 @@
 ERROR="[!] Invictus-AWS: error:"
 
-############# main.py #############
+############# invictus-aws.py #############
 
 TOOL_NAME= """
       _            _      _                                      
