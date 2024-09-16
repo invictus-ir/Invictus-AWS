@@ -38,9 +38,10 @@ class Logs:
 
         #Also created for cloudtrail-logs results
         self.confs = ROOT_FOLDER + self.region + "/logs"
-        self.bucket = create_s3_if_not_exists(self.region, LOGS_BUCKET)
 
-        if self.dl:
+        if not self.dl:
+            self.bucket = create_s3_if_not_exists(self.region, LOGS_BUCKET)
+        else:
             create_folder(self.confs)
      
     def self_test(self):
@@ -104,6 +105,8 @@ class Logs:
                             )
                     pbar.update() 
                     sleep(0.1)
+            print(f"[+] Logs extraction results stored in the folder {ROOT_FOLDER}{self.region}/logs_acquisition/")
+
 
         else:
             with tqdm(desc="[+] Writing results", leave=False, total = len(self.results)) as pbar:
@@ -113,25 +116,25 @@ class Logs:
                     pbar.update() 
                     sleep(0.1)
 
-        # cloudtrail-logs has to be done in any case for further analysis
-        if self.results["cloudtrail-logs"]["results"]:
-            res = self.results["cloudtrail-logs"]["results"]
+            #doing the cloudtrail logs writing at the end because it can be very long 
+            if self.results["cloudtrail-logs"]["results"]:
+                res = self.results["cloudtrail-logs"]["results"]
 
-            with tqdm(desc="[+] Writing results", leave=False, total = len(self.results["cloudtrail-logs"]["results"])) as pbar:
-                for el in res:
+                with tqdm(desc="[+] Writing cloudtrail results", leave=False, total = len(self.results["cloudtrail-logs"]["results"])) as pbar:
+                    for el in res:
 
-                    trail = el["CloudTrailEvent"]
-                    obj = loads(trail)
-                    dump = dumps(obj, default=str)
-                    write_s3(
-                        self.bucket,
-                        f"{self.region}/logs/cloudtrail-logs/{obj['eventID']}.json",
-                        dump,
-                    ) 
-                    pbar.update() 
-                    sleep(0.1)
+                        trail = el["CloudTrailEvent"]
+                        obj = loads(trail)
+                        dump = dumps(obj, default=str)
+                        write_s3(
+                            self.bucket,
+                            f"{self.region}/logs/cloudtrail-logs/{obj['eventID']}.json",
+                            dump,
+                        ) 
+                        pbar.update() 
+                        sleep(0.1)
            
-        print(f"[+] Logs extraction results stored in the bucket {self.bucket}")
+            print(f"[+] Logs extraction results stored in the bucket {self.bucket}")
   
     def get_logs_guardduty(self):
         """Retrieve the logs of the existing guardduty detectors
@@ -230,23 +233,20 @@ class Logs:
                 for b in buckets:
                     print(f"\u2022 {b}")
                 
-
+#
         else:
-
             start_date = start.split("-")
             end_date = end.split("-")
             datetime_start = datetime.datetime(int(start_date[0]), int(start_date[1]), int(start_date[2]))
             datetime_end = datetime.datetime(int(end_date[0]), int(end_date[1]), int(end_date[2]))
             
             logs = paginate(source.utils.utils.CLOUDTRAIL_CLIENT, "lookup_events", "Events", StartTime=datetime_start, EndTime=datetime_end)
-
             if len(logs) == 0:
                 self.display_progress(0, "cloudtrail")
                 return
             
             self.results["cloudtrail-logs"]["action"] = 0
             self.results["cloudtrail-logs"]["results"] = logs
-
             self.display_progress(1, "cloudtrail-logs")
 
     def get_logs_wafv2(self):

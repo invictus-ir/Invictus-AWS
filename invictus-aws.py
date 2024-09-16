@@ -780,13 +780,10 @@ def main():
         print(PROFILE_PRESENTATION)
         profile_input = input(PROFILE_ACTION)
         verify_input(profile_input, ["1", "2"])
-        if profile_input == "2":
-            profile = "default"
-        else:
+        if profile_input == "1":
             profile = input(PROFILE)
-        
-        verify_profile(profile)
-        boto3.setup_default_session(profile_name=profile)
+            verify_profile(profile)
+            boto3.setup_default_session(profile_name=profile)       
 
         print(STEPS_PRESENTATION)
         steps = input(STEPS_ACTION)
@@ -798,7 +795,10 @@ def main():
         if region_choice == "1" and "4" in steps:
             print(f"{ERROR} You cant run the tool on all regions with the Analysis step")
             sys.exit(-1)
-        region = input(REGION)
+        if region_choice == "2":
+            region = input(REGION)
+        else:
+            region = input(ALL_REGION)
         regions, first_region = verify_region_input(region_choice, region, steps)
 
         print(STORAGE_PRESENTATION)
@@ -811,9 +811,9 @@ def main():
 
         if "3" in steps:
             print(START_END_PRESENTATION)
-            start_input = input(START)
-            end_input = input(END)
-            verify_dates(start_input, end_input, steps)
+            start = input(START)
+            end = input(END)
+            verify_dates(start, end, steps)
 
         if "4" in steps:
             
@@ -902,8 +902,9 @@ def main():
         verify_steps_input(steps)
 
         profile = args.profile
-        verify_profile(profile)
-        boto3.setup_default_session(profile_name=profile)
+        if profile != "default":
+            verify_profile(profile)
+            boto3.setup_default_session(profile_name=profile)
 
         region = args.aws_region
         all_regions= args.all_regions

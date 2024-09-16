@@ -7,7 +7,7 @@ TOOL_NAME= """
      (_)          (_)    | |                                     
       _ _ ____   ___  ___| |_ _   _ ___ ______ __ ___      _____ 
      | | '_ \ \ / / |/ __| __| | | / __|______/ _` \ \ /\ / / __|
-     | | | | \ V /| | (__| |_| |_| \__ \     | (_| |\ V  V /\__ \\
+     | | | | \ V /| | (__| |_| |_| \__ \     | (_| |\ V  V /\__ \ 
      |_|_| |_|\_/ |_|\___|\__|\__,_|___/      \__,_| \_/\_/ |___/
                                                              
                                                              
@@ -30,7 +30,8 @@ STORAGE_ACTION="[+] Press the number associated with the storage you want: "
 
 REGION_PRESENTATION="\n[+] Specify your region:\n   [1] All regions, this option is not available with the Analysis step.\n   [2] One specific region"
 REGION_ACTION="[+] Press the number associated with the operation: "
-REGION="   [+] Region that you want (optional for all regions mode): "
+REGION="   [+] Region that you want: "
+ALL_REGION="   [+] Region that you want (optional): "
 
 DB_INITIALIZED_PRESENTATION="\n[+] Database Initialization possibilities:\n   [1] The database you want to use is already initialized\n   [2] The database you want to use is not initialized yet"
 DB_INITIALIZED_ACTION="[+] Press the number associated with the option you want. If it's the first time you run the tool, press 2: "
