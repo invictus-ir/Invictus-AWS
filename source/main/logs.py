@@ -203,51 +203,51 @@ class Logs:
             End time for logs collection
         """
 
-        trails_name = paginate(source.utils.utils.CLOUDTRAIL_CLIENT, "list_trails", "Trails")
-        if trails_name:
-            if len(trails_name) == 1:
-                response = source.utils.utils.CLOUDTRAIL_CLIENT.get_trail(Name=trails_name["TrailARN"])
-                bucket = response["Trail"]["S3BucketName"]
-
-                if "S3KeyPrefix" in response["Trail"]:
-                    prefix = response["Trail"]["S3KeyPrefix"]
-                else:
-                    prefix = ""
-                
-                all_bucket = f"{bucket}/{prefix}"
-                print(f"[+] You have an existing Cloudtrail trail. You can use the associated bucket {all_bucket} as source for the analysis. But don't forget to restrain the number of logs as much as possible by using the most precise subfolder.")
-            else:
-                buckets = []
-                for trail in trails_name:
-                    response =  source.utils.utils.CLOUDTRAIL_CLIENT.get_trail(Name=trail["TrailARN"])
-                    bucket = response["Trail"]["S3BucketName"]
-                    if "S3KeyPrefix" in response["Trail"]:
-                        prefix = response["Trail"]["S3KeyPrefix"]
-                    else:
-                        prefix = ""
-
-                    all_bucket = f"{bucket}/{prefix}"
-                    buckets.append(all_bucket)
-
-                print(f"[+] You have multiple existing Cloudtrail trails. You can use the associated buckets listed below as source for the analysis.\n[!] Warning : If you do so, don't forget to restrain the number of logs as much as possible by using the most precise subfolder :")
-                for b in buckets:
-                    print(f"\u2022 {b}")
-                
+        #trails_name = paginate(source.utils.utils.CLOUDTRAIL_CLIENT, "list_trails", "Trails")
+        #if trails_name:
+        #    if len(trails_name) == 1:
+        #        response = source.utils.utils.CLOUDTRAIL_CLIENT.get_trail(Name=trails_name["TrailARN"])
+        #        bucket = response["Trail"]["S3BucketName"]
 #
-        else:
-            start_date = start.split("-")
-            end_date = end.split("-")
-            datetime_start = datetime.datetime(int(start_date[0]), int(start_date[1]), int(start_date[2]))
-            datetime_end = datetime.datetime(int(end_date[0]), int(end_date[1]), int(end_date[2]))
-            
-            logs = paginate(source.utils.utils.CLOUDTRAIL_CLIENT, "lookup_events", "Events", StartTime=datetime_start, EndTime=datetime_end)
-            if len(logs) == 0:
-                self.display_progress(0, "cloudtrail")
-                return
-            
-            self.results["cloudtrail-logs"]["action"] = 0
-            self.results["cloudtrail-logs"]["results"] = logs
-            self.display_progress(1, "cloudtrail-logs")
+        #        if "S3KeyPrefix" in response["Trail"]:
+        #            prefix = response["Trail"]["S3KeyPrefix"]
+        #        else:
+        #            prefix = ""
+        #        
+        #        all_bucket = f"{bucket}/{prefix}"
+        #        print(f"[+] You have an existing Cloudtrail trail. You can use the associated bucket {all_bucket} as source for the analysis. But don't forget to restrain the number of logs as much as possible by using the most precise subfolder.")
+        #    else:
+        #        buckets = []
+        #        for trail in trails_name:
+        #            response =  source.utils.utils.CLOUDTRAIL_CLIENT.get_trail(Name=trail["TrailARN"])
+        #            bucket = response["Trail"]["S3BucketName"]
+        #            if "S3KeyPrefix" in response["Trail"]:
+        #                prefix = response["Trail"]["S3KeyPrefix"]
+        #            else:
+        #                prefix = ""
+#
+        #            all_bucket = f"{bucket}/{prefix}"
+        #            buckets.append(all_bucket)
+#
+        #        print(f"[+] You have multiple existing Cloudtrail trails. You can use the associated buckets listed below as source for the analysis.\n[!] Warning : If you do so, don't forget to restrain the number of logs as much as possible by using the most precise subfolder :")
+        #        for b in buckets:
+        #            print(f"\u2022 {b}")
+        #        
+##
+        #else:
+        start_date = start.split("-")
+        end_date = end.split("-")
+        datetime_start = datetime.datetime(int(start_date[0]), int(start_date[1]), int(start_date[2]))
+        datetime_end = datetime.datetime(int(end_date[0]), int(end_date[1]), int(end_date[2]))
+        
+        logs = paginate(source.utils.utils.CLOUDTRAIL_CLIENT, "lookup_events", "Events", StartTime=datetime_start, EndTime=datetime_end)
+        if len(logs) == 0:
+            self.display_progress(0, "cloudtrail")
+            return
+        
+        self.results["cloudtrail-logs"]["action"] = 0
+        self.results["cloudtrail-logs"]["results"] = logs
+        self.display_progress(1, "cloudtrail-logs")
 
     def get_logs_wafv2(self):
         """Retrieve the logs of the existing waf web acls
