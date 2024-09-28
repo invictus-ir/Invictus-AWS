@@ -1,6 +1,6 @@
 """File containg all the aws enumeration function used to get data."""
 
-from source.utils.utils import fix_json, try_except, S3_CLIENT
+from source.utils.utils import fix_json, try_except
 import source.utils.utils
 from tqdm import tqdm
 
@@ -12,7 +12,7 @@ def s3_lookup():
     elements : list
         List of the existing buckets
     """
-    response = try_except(S3_CLIENT.list_buckets)
+    response = try_except(source.utils.utils.S3_CLIENT.list_buckets)
     buckets = fix_json(response)
 
     elements = []

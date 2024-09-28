@@ -1,7 +1,7 @@
 """File used for the analysis."""
 
 import yaml, datetime
-from source.utils.utils import athena_query, S3_CLIENT, rename_file_s3, get_table, set_clients, date, get_bucket_and_prefix, ENDC, OKGREEN, ROOT_FOLDER, create_folder, create_tmp_bucket, get_random_chars
+from source.utils.utils import athena_query, rename_file_s3, get_table, set_clients, date, get_bucket_and_prefix, ENDC, OKGREEN, ROOT_FOLDER, create_folder, create_tmp_bucket, get_random_chars
 import source.utils.utils
 from source.utils.enum import paginate
 import pandas as pd
@@ -90,7 +90,7 @@ class Analysis:
         else:
             self.output_bucket = f"{output_bucket}{date}/{self.time}/"
         
-        S3_CLIENT.put_object(Bucket=bucket, Key=(f"{prefix}{date}/{self.time}/"))
+        source.utils.utils.S3_CLIENT.put_object(Bucket=bucket, Key=(f"{prefix}{date}/{self.time}/"))
       
         #True if not using tool default db and table
         not_using_default_names = False
@@ -373,7 +373,7 @@ class Analysis:
 
             for local_file_name in self.results:
                 s3_file_name = prefix + local_file_name
-                S3_CLIENT.download_file(bucket_name, s3_file_name, local_file_name)
+                source.utils.utils.S3_CLIENT.download_file(bucket_name, s3_file_name, local_file_name)
 
 
             for i, file in enumerate(self.results):
@@ -387,7 +387,7 @@ class Analysis:
 
             if not self.dl:
 
-                S3_CLIENT.upload_file(writer, bucket_name, f'{prefix}{name_writer}')    
+                source.utils.utils.S3_CLIENT.upload_file(writer, bucket_name, f'{prefix}{name_writer}')    
                 remove(name_writer)
                 for local_file_name in self.results:
                     remove(local_file_name)
@@ -417,14 +417,14 @@ class Analysis:
         bucket, prefix = get_bucket_and_prefix(self.output_bucket)
 
         if dl:
-            res = paginate(S3_CLIENT, "list_objects_v2", "Contents", Bucket=bucket)
+            res = paginate(source.utils.utils.S3_CLIENT, "list_objects_v2", "Contents", Bucket=bucket)
 
             if res:
                 objects = [{'Key': obj['Key']} for obj in res]
-                S3_CLIENT.delete_objects(Bucket=bucket, Delete={'Objects': objects})
+                source.utils.utils.S3_CLIENT.delete_objects(Bucket=bucket, Delete={'Objects': objects})
 
             try:
-                S3_CLIENT.delete_bucket(
+                source.utils.utils.S3_CLIENT.delete_bucket(
                     Bucket=bucket
                 )
             except Exception as e:
@@ -432,12 +432,12 @@ class Analysis:
 
         else:
             
-            res = paginate(S3_CLIENT, "list_objects_v2", "Contents", Bucket=bucket, Prefix=prefix)
+            res = paginate(source.utils.utils.S3_CLIENT, "list_objects_v2", "Contents", Bucket=bucket, Prefix=prefix)
 
             if res:
                 for el in res:
                     if not el["Key"].split("/")[-1] in self.results:
-                        S3_CLIENT.delete_object(
+                        source.utils.utils.S3_CLIENT.delete_object(
                             Bucket=bucket,
                             Key=f"{el['Key']}"
                         )

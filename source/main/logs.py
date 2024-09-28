@@ -474,7 +474,7 @@ class Logs:
             
                 name = bucket["Name"]
 
-                logging = try_except(S3_CLIENT.get_bucket_logging, Bucket=name)
+                logging = try_except(source.utils.utils.S3_CLIENT.get_bucket_logging, Bucket=name)
 
                 if "LoggingEnabled" in logging:
                     target = logging["LoggingEnabled"]["TargetBucket"]

@@ -138,11 +138,11 @@ class Configuration:
 
                 # list_objects_v2
 
-                objects[bucket_name] = simple_paginate(S3_CLIENT, "list_objects_v2", Bucket=bucket_name)
+                objects[bucket_name] = simple_paginate(source.utils.utils.S3_CLIENT, "list_objects_v2", Bucket=bucket_name)
 
                 # get_bucket_logging
 
-                response = try_except(S3_CLIENT.get_bucket_logging, Bucket=bucket_name)
+                response = try_except(source.utils.utils.S3_CLIENT.get_bucket_logging, Bucket=bucket_name)
                 if "LoggingEnabled" in response:
                     buckets_logging[bucket_name] = response
                 else:
@@ -150,19 +150,19 @@ class Configuration:
 
                 # get_bucket_policy
 
-                response = try_except(S3_CLIENT.get_bucket_policy, Bucket=bucket_name)
+                response = try_except(source.utils.utils.S3_CLIENT.get_bucket_policy, Bucket=bucket_name)
                 buckets_policy[bucket_name] = json.loads(response.get("Policy", "{}"))
 
                 # get_bucket_acl
 
-                response = try_except(S3_CLIENT.get_bucket_acl, Bucket=bucket_name)
+                response = try_except(source.utils.utils.S3_CLIENT.get_bucket_acl, Bucket=bucket_name)
                 response.pop("ResponseMetadata", None)
                 response = fix_json(response)
                 buckets_acl[bucket_name] = response
 
                 # get_bucket_location
 
-                response = try_except(S3_CLIENT.get_bucket_location, Bucket=bucket_name)
+                response = try_except(source.utils.utils.S3_CLIENT.get_bucket_location, Bucket=bucket_name)
                 response.pop("ResponseMetadata", None)
                 response = fix_json(response)
                 buckets_location[bucket_name] = response

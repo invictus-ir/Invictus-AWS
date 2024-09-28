@@ -134,7 +134,7 @@ def writefile_s3(bucket, key, filename):
     response : dict
         Response of the request made
     """
-    response = S3_CLIENT.meta.client.upload_file(filename, bucket, key)
+    response = source.utils.utils.S3_CLIENT.meta.client.upload_file(filename, bucket, key)
     return response
 
 def create_s3_if_not_exists(region, bucket_name):
@@ -212,7 +212,7 @@ def run_s3_dl(bucket, path, prefix=""):
     prefix : str, optional
         Specific folder in the bucket to download
     """
-    paginator = S3_CLIENT.get_paginator('list_objects_v2')
+    paginator = source.utils.utils.S3_CLIENT.get_paginator('list_objects_v2')
     operation_parameters = {"Bucket": bucket, "Prefix": prefix}
 
     for page in paginator.paginate(**operation_parameters):
@@ -225,7 +225,7 @@ def run_s3_dl(bucket, path, prefix=""):
                 create_folder(local_directory)
 
                 if not local_path.endswith("/"): 
-                    S3_CLIENT.download_file(bucket, s3_key, local_path)
+                    source.utils.utils.S3_CLIENT.download_file(bucket, s3_key, local_path)
 
 def write_s3(bucket, key, content):
     """Write content to s3 bucket.
@@ -244,7 +244,7 @@ def write_s3(bucket, key, content):
     response : dict
         Results of the request made
     """
-    response = S3_CLIENT.put_object(Bucket=bucket, Key=key, Body=content)
+    response = source.utils.utils.S3_CLIENT.put_object(Bucket=bucket, Key=key, Body=content)
     return response
 
 def copy_s3_bucket(src_bucket, dst_bucket, service, region, prefix=""):
@@ -265,7 +265,7 @@ def copy_s3_bucket(src_bucket, dst_bucket, service, region, prefix=""):
     """
     s3res = boto3.resource("s3")
 
-    paginator = S3_CLIENT.get_paginator('list_objects_v2')
+    paginator = source.utils.utils.S3_CLIENT.get_paginator('list_objects_v2')
     operation_parameters = {"Bucket": src_bucket, "Prefix": prefix}
 
     for page in paginator.paginate(**operation_parameters):
@@ -390,13 +390,13 @@ def rename_file_s3(bucket, folder, new_key, old_key):
     old_key : str
         Old name of the file
     """
-    S3_CLIENT.copy_object(
+    source.utils.utils.S3_CLIENT.copy_object(
         Bucket=bucket,
         Key=f'{folder}{new_key}',
         CopySource = {"Bucket": bucket, "Key": f"{folder}{old_key}"}
     )
 
-    S3_CLIENT.delete_object(
+    source.utils.utils.S3_CLIENT.delete_object(
         Bucket=bucket,
         Key=f"{folder}{old_key}"
     )
@@ -529,12 +529,11 @@ UNDERLINE = '\033[4m'
 # CLIENTS #
 ###########
 
-ACCOUNT_CLIENT = boto3.client('account')
-S3_CLIENT = boto3.client("s3")
-CLOUDWATCH_CLIENT = boto3.client("cloudwatch")
-CLOUDTRAIL_CLIENT = boto3.client("cloudtrail")
-ROUTE53_CLIENT = boto3.client("route53")
-IAM_CLIENT = boto3.client("iam")
+S3_CLIENT = None
+CLOUDWATCH_CLIENT = None
+CLOUDTRAIL_CLIENT = None
+ROUTE53_CLIENT = None
+IAM_CLIENT = None
 GUARDDUTY_CLIENT = None
 WAF_CLIENT = None
 LAMBDA_CLIENT = None
@@ -561,6 +560,13 @@ def set_clients(region):
     region : str
         Region where the client will be used
     """
+
+    global S3_CLIENT
+    global CLOUDWATCH_CLIENT
+    global CLOUDTRAIL_CLIENT
+    global ROUTE53_CLIENT
+    global IAM_CLIENT
+
     global LAMBDA_CLIENT
     global WAF_CLIENT
     global EC2_CLIENT
@@ -578,6 +584,12 @@ def set_clients(region):
     global MACIE_CLIENT
     global SSM_CLIENT
     global ATHENA_CLIENT
+
+    S3_CLIENT = boto3.client("s3")
+    CLOUDWATCH_CLIENT = boto3.client("cloudwatch")
+    CLOUDTRAIL_CLIENT = boto3.client("cloudtrail")
+    ROUTE53_CLIENT = boto3.client("route53")
+    IAM_CLIENT = boto3.client("iam")
 
     WAF_CLIENT = boto3.client("wafv2", region_name=region)
     LAMBDA_CLIENT = boto3.client("lambda", region_name=region)

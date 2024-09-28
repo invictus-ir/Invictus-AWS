@@ -9,6 +9,8 @@ from source.main.ir import IR
 from source.utils.utils import *
 from source.utils.strings import *
 
+ACCOUNT_CLIENT = boto3.client('account')
+
 def set_args():
     """Define the arguments used when calling the tool."""
     parser = argparse.ArgumentParser(add_help=False)
@@ -595,7 +597,7 @@ def verify_bucket(bucket, entry_type, is_from_ddl):
        sys.exit(-1)
 
     if prefix:   
-        response = S3_CLIENT.list_objects_v2(Bucket=name, Prefix=prefix)
+        response = source.utils.utils.S3_CLIENT.list_objects_v2(Bucket=name, Prefix=prefix)
         if 'Contents' not in response or len(response['Contents']) == 0:
             if is_from_ddl:
                 print(f"{ERROR} The {entry_type} bucket you entered as LOCATION in your .DDL file doesn't exists or is not written well. Please verify that the format is 's3://s3-name/[potential-folders]/'")
@@ -749,7 +751,7 @@ def verify_profile(profile):
 def main():
     """Get the arguments and run the appropriate functions."""
     print(TOOL_NAME)
-    
+
     profile = None
     dl = None
     region = None
@@ -783,7 +785,11 @@ def main():
         if profile_input == "1":
             profile = input(PROFILE)
             verify_profile(profile)
-            boto3.setup_default_session(profile_name=profile)       
+            boto3.setup_default_session(profile_name=profile)     
+
+        sts = boto3.client('sts')
+        print(sts.get_caller_identity())  
+        print(boto3.session.Session().available_profiles)
 
         print(STEPS_PRESENTATION)
         steps = input(STEPS_ACTION)
