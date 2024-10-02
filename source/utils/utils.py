@@ -134,7 +134,7 @@ def writefile_s3(bucket, key, filename):
     response : dict
         Response of the request made
     """
-    response = source.utils.utils.S3_CLIENT.meta.client.upload_file(filename, bucket, key)
+    response = S3_CLIENT.meta.client.upload_file(filename, bucket, key)
     return response
 
 def create_s3_if_not_exists(region, bucket_name):
@@ -212,7 +212,7 @@ def run_s3_dl(bucket, path, prefix=""):
     prefix : str, optional
         Specific folder in the bucket to download
     """
-    paginator = source.utils.utils.S3_CLIENT.get_paginator('list_objects_v2')
+    paginator = S3_CLIENT.get_paginator('list_objects_v2')
     operation_parameters = {"Bucket": bucket, "Prefix": prefix}
 
     for page in paginator.paginate(**operation_parameters):
@@ -225,7 +225,7 @@ def run_s3_dl(bucket, path, prefix=""):
                 create_folder(local_directory)
 
                 if not local_path.endswith("/"): 
-                    source.utils.utils.S3_CLIENT.download_file(bucket, s3_key, local_path)
+                    S3_CLIENT.download_file(bucket, s3_key, local_path)
 
 def write_s3(bucket, key, content):
     """Write content to s3 bucket.
@@ -244,7 +244,7 @@ def write_s3(bucket, key, content):
     response : dict
         Results of the request made
     """
-    response = source.utils.utils.S3_CLIENT.put_object(Bucket=bucket, Key=key, Body=content)
+    response = S3_CLIENT.put_object(Bucket=bucket, Key=key, Body=content)
     return response
 
 def copy_s3_bucket(src_bucket, dst_bucket, service, region, prefix=""):
@@ -265,7 +265,7 @@ def copy_s3_bucket(src_bucket, dst_bucket, service, region, prefix=""):
     """
     s3res = boto3.resource("s3")
 
-    paginator = source.utils.utils.S3_CLIENT.get_paginator('list_objects_v2')
+    paginator = S3_CLIENT.get_paginator('list_objects_v2')
     operation_parameters = {"Bucket": src_bucket, "Prefix": prefix}
 
     for page in paginator.paginate(**operation_parameters):
@@ -390,13 +390,13 @@ def rename_file_s3(bucket, folder, new_key, old_key):
     old_key : str
         Old name of the file
     """
-    source.utils.utils.S3_CLIENT.copy_object(
+    S3_CLIENT.copy_object(
         Bucket=bucket,
         Key=f'{folder}{new_key}',
         CopySource = {"Bucket": bucket, "Key": f"{folder}{old_key}"}
     )
 
-    source.utils.utils.S3_CLIENT.delete_object(
+    S3_CLIENT.delete_object(
         Bucket=bucket,
         Key=f"{folder}{old_key}"
     )
@@ -469,7 +469,11 @@ def get_bucket_and_prefix(bucket):
     
     el = bucket.split("/", 1)
     bucket_name = el[0]
-    prefix = el[1]
+
+    if len(el) > 1  :
+        prefix = el[1]
+    else:
+        prefix = None
 
     return bucket_name, prefix
 

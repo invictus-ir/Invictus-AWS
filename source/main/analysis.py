@@ -73,6 +73,8 @@ class Analysis:
         set_clients(self.region)
         self.source_bucket = source_bucket
 
+        print(source_bucket, output_bucket, catalog, db, table, queryfile, exists, timeframe)
+
         #this devil's code just get the location data of the .ddl file provided (the bucket where the source logs are stored)
         if not source_bucket and table and table.endswith(".ddl"):
             self.source_bucket = get_table(table, False)[1][1].split("LOCATION")[1].strip()
@@ -84,12 +86,13 @@ class Analysis:
             output_bucket = f"s3://{tmp_bucket}/"
     
         bucket, prefix = get_bucket_and_prefix(output_bucket)
+        print(bucket, prefix)
         if not prefix:
             prefix = "queries-results/"
             self.output_bucket = f"{output_bucket}{prefix}{date}/{self.time}/"
         else:
             self.output_bucket = f"{output_bucket}{date}/{self.time}/"
-        
+            
         source.utils.utils.S3_CLIENT.put_object(Bucket=bucket, Key=(f"{prefix}{date}/{self.time}/"))
       
         #True if not using tool default db and table

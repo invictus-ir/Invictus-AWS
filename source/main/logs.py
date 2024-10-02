@@ -533,7 +533,7 @@ class Logs:
     def get_logs_maciev2(self):
         """Retrieve the logs of the configuration of the existing macie buckets
         """
-
+    
         macie_list = self.services["macie"]
 
         if macie_list["count"] == -1:

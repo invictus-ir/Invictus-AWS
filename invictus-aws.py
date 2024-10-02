@@ -5,6 +5,8 @@ from os import path
 import datetime
 from re import match
 
+import source.utils.utils
+
 from source.main.ir import IR
 from source.utils.utils import *
 from source.utils.strings import *
@@ -731,6 +733,9 @@ def verify_region_input(region_choice, region, steps):
                 if region:
                     all_regions = verify_all_regions(region)
                     first_region = region
+                else:
+                    all_regions = verify_all_regions("us-east-1")
+                    first_region = "us-east-1"
             except IndexError:
                 all_regions = verify_all_regions("us-east-1")
                 first_region = "us-east-1"
@@ -759,8 +764,8 @@ def main():
     steps = None
     start = None
     end = None
-    source = None
-    output = None
+    source_bucket = None
+    output_bucket = None
     catalog = None
     database = None
     table = None
@@ -787,10 +792,6 @@ def main():
             verify_profile(profile)
             boto3.setup_default_session(profile_name=profile)     
 
-        sts = boto3.client('sts')
-        print(sts.get_caller_identity())  
-        print(boto3.session.Session().available_profiles)
-
         print(STEPS_PRESENTATION)
         steps = input(STEPS_ACTION)
         verify_steps_input(steps.split(","))
@@ -806,6 +807,8 @@ def main():
         else:
             region = input(ALL_REGION)
         regions, first_region = verify_region_input(region_choice, region, steps)
+
+        set_clients(first_region)
 
         print(STORAGE_PRESENTATION)
         storage_input = input(STORAGE_ACTION)
@@ -859,8 +862,8 @@ def main():
                         table = input(TABLE_ACTION)
                         exists[1] = verify_table(catalog, database, table, regions[0], True, exists[0])
 
-                        source = input(INPUT_BUCKET_ACTION)
-                        verify_bucket(source, "source", False)
+                        source_bucket = input(INPUT_BUCKET_ACTION)
+                        verify_bucket(source_bucket, "source", False)
                     
                 else:
                     catalog = None
@@ -869,12 +872,12 @@ def main():
                     exists[0] = verify_catalog_db(catalog, database, regions[0], True)
                     exists[1] = verify_table(catalog, database, table, regions[0], True, exists[0])
 
-                    source = input(INPUT_BUCKET_ACTION)
-                    verify_bucket(source, "source", False)
+                    source_bucket = input(INPUT_BUCKET_ACTION)
+                    verify_bucket(source_bucket, "source", False)
 
                 if not dl and ((table and not table.endswith(".ddl")) or not table):
-                    output = input(OUTPUT_BUCKET_ACTION)
-                    verify_bucket(output, "output", False)               
+                    output_bucket = input(OUTPUT_BUCKET_ACTION)
+                    verify_bucket(output_bucket, "output", False)               
 
             else:
                 print(NEW_NAMES_PRESENTATION)
@@ -920,6 +923,8 @@ def main():
         else:
             regions, first_region = verify_region_input("1", all_regions, steps)
 
+        set_clients(first_region)
+
         dl = True if args.write == 'local' else False
 
         if "3" in steps:
@@ -927,8 +932,8 @@ def main():
             end = args.end_time
             verify_dates(start, end, steps)
 
-        source = args.source_bucket
-        output = args.output_bucket
+        source_bucket = args.source_bucket
+        output_bucket = args.output_bucket
 
         catalog = args.catalog
         database = args.database
@@ -941,10 +946,10 @@ def main():
         verify_timeframe(timeframe, steps)
 
         for region in regions:
-            steps, source, output, database, table, exists = verify_steps(steps, source, output, catalog, database, table, region, dl)  
+            steps, source_bucket, output_bucket, database, table, exists = verify_steps(steps, source_bucket, output_bucket, catalog, database, table, region, dl)  
 
     for region in regions:
-        run_steps(dl, region, first_region, steps, start, end, source, output, catalog, database, table, queryfile, exists, timeframe)
+        run_steps(dl, region, first_region, steps, start, end, source_bucket, output_bucket, catalog, database, table, queryfile, exists, timeframe)
 
 if __name__ == "__main__":
     main()
