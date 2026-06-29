@@ -1,6 +1,8 @@
 """File containing all types of functions and variables, used everywhere in the tool."""
 
 import boto3
+import shutil
+import subprocess
 from botocore.exceptions import ClientError
 import datetime, os
 from sys import exit
@@ -212,20 +214,28 @@ def run_s3_dl(bucket, path, prefix=""):
     prefix : str, optional
         Specific folder in the bucket to download
     """
-    paginator = S3_CLIENT.get_paginator('list_objects_v2')
-    operation_parameters = {"Bucket": bucket, "Prefix": prefix}
+    if S5CMD_CLIENT:
+        s3_path = f"{bucket}"
+        if prefix:
+            s3_path += f"/{prefix}"
+        subprocess.run(
+            [S5CMD_CLIENT, "cp", "-sp", f"s3://{s3_path}/**", path],
+        )
+    else:
+        paginator = S3_CLIENT.get_paginator('list_objects_v2')
+        operation_parameters = {"Bucket": bucket, "Prefix": prefix}
 
-    for page in paginator.paginate(**operation_parameters):
-        if 'Contents' in page:
-            for s3_object in page['Contents']:
-                s3_key = s3_object['Key']
-                local_path = os.path.join(path, s3_key)
+        for page in paginator.paginate(**operation_parameters):
+            if 'Contents' in page:
+                for s3_object in page['Contents']:
+                    s3_key = s3_object['Key']
+                    local_path = os.path.join(path, s3_key)
 
-                local_directory = os.path.dirname(local_path)
-                create_folder(local_directory)
+                    local_directory = os.path.dirname(local_path)
+                    create_folder(local_directory)
 
-                if not local_path.endswith("/"): 
-                    S3_CLIENT.download_file(bucket, s3_key, local_path)
+                    if not local_path.endswith("/"):
+                        S3_CLIENT.download_file(bucket, s3_key, local_path)
 
 def write_s3(bucket, key, content):
     """Write content to s3 bucket.
@@ -534,6 +544,7 @@ UNDERLINE = '\033[4m'
 ###########
 
 S3_CLIENT = None
+S5CMD_CLIENT = None
 CLOUDWATCH_CLIENT = None
 CLOUDTRAIL_CLIENT = None
 ROUTE53_CLIENT = None
@@ -566,6 +577,7 @@ def set_clients(region):
     """
 
     global S3_CLIENT
+    global S5CMD_CLIENT
     global CLOUDWATCH_CLIENT
     global CLOUDTRAIL_CLIENT
     global ROUTE53_CLIENT
@@ -590,6 +602,7 @@ def set_clients(region):
     global ATHENA_CLIENT
 
     S3_CLIENT = boto3.client("s3", region_name=region)
+    S5CMD_CLIENT = shutil.which("s5cmd")
     CLOUDWATCH_CLIENT = boto3.client("cloudwatch", region_name=region)
     CLOUDTRAIL_CLIENT = boto3.client("cloudtrail", region_name=region)
     ROUTE53_CLIENT = boto3.client("route53", region_name=region)
@@ -612,6 +625,8 @@ def set_clients(region):
     MACIE_CLIENT = boto3.client("macie2", region_name=region)
     SSM_CLIENT = boto3.client("ssm", region_name=region)
     ATHENA_CLIENT = boto3.client("athena", region_name=region)
+
+
 
 ########
 # MISC #
