@@ -7,6 +7,7 @@ from json import loads, dumps
 from time import sleep
 from os import remove, rmdir
 from requests import get
+from copy import deepcopy
 
 import source.utils.utils
 from source.utils.utils import write_file, create_folder, copy_or_write_s3, create_command, writefile_s3, LOGS_RESULTS, create_s3_if_not_exists, LOGS_BUCKET, ROOT_FOLDER, set_clients, write_or_dl, write_s3, athena_query
@@ -33,7 +34,7 @@ class Logs:
         """
 
         self.region = region
-        self.results = LOGS_RESULTS
+        self.results = deepcopy(LOGS_RESULTS)
         self.dl = dl
 
         #Also created for cloudtrail-logs results
