@@ -201,7 +201,25 @@ def create_folder(path):
         Path of the folder to be created
     """
     os.makedirs(path, exist_ok=True)
+def _s5cmd_env():
+    """Credentials for the s5cmd child process.
 
+    s5cmd resolves credentials independently using a pinned aws-sdk-go v1,
+    which cannot read several providers boto3 handles, notably `aws login`
+    sessions and MFA-protected assume-role profiles. Resolve here and pass
+    the result down so both paths always use the same identity.
+    """
+    session = boto3.DEFAULT_SESSION or boto3.Session()
+    creds = session.get_credentials().get_frozen_credentials()
+
+    env = {**os.environ,
+           "AWS_ACCESS_KEY_ID": creds.access_key,
+           "AWS_SECRET_ACCESS_KEY": creds.secret_key,
+           "AWS_REGION": S3_CLIENT.meta.region_name}
+    if creds.token:
+        env["AWS_SESSION_TOKEN"] = creds.token
+    env.pop("AWS_PROFILE", None)
+    return env
 def run_s3_dl(bucket, path, prefix=""):
     """Handle the steps of the content's download of a s3 bucket.
     
@@ -215,12 +233,12 @@ def run_s3_dl(bucket, path, prefix=""):
         Specific folder in the bucket to download
     """
     if S5CMD_CLIENT:
-        s3_path = f"{bucket}"
-        if prefix:
-            s3_path += f"/{prefix}"
-        subprocess.run(
-            [S5CMD_CLIENT, "cp", "-sp", f"s3://{s3_path}/**", path],
-        )
+        src = f"s3://{bucket}/{prefix}**"
+        base = prefix.rpartition("/")[0]
+        dest = os.path.join(path, *base.split("/")) if base else path
+        create_folder(dest)
+        subprocess.run([S5CMD_CLIENT, "cp", src, dest],
+                       check=True, env=_s5cmd_env())
     else:
         paginator = S3_CLIENT.get_paginator('list_objects_v2')
         operation_parameters = {"Bucket": bucket, "Prefix": prefix}
